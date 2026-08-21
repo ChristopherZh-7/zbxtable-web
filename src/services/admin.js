@@ -38,6 +38,7 @@ import {
 	ASSET_TYPE,
 	ASSET_GROUP,
 	SYSTEM_BINDING,
+	DASHBOARD,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -110,6 +111,21 @@ export async function deleteTopology(id) {
 }
 export async function deployTopology(params) {
 	return request(TOPOLOGY_LIST + '/status', METHOD.POST, params)
+}
+export async function dashboardList(params) {
+	return request(DASHBOARD, METHOD.GET, params)
+}
+export async function dashboardDetail(id) {
+	return request(DASHBOARD + '/' + id, METHOD.GET)
+}
+export async function createDashboard(params) {
+	return request(DASHBOARD, METHOD.POST, params)
+}
+export async function updateDashboard(id, params) {
+	return request(DASHBOARD + '/' + id, METHOD.PUT, params)
+}
+export async function deleteDashboard(id) {
+	return request(DASHBOARD + '/' + id, METHOD.DELETE)
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -446,6 +462,11 @@ export default {
 	createTopology,
 	updateTopology,
 	deleteTopology,
+	dashboardList,
+	dashboardDetail,
+	createDashboard,
+	updateDashboard,
+	deleteDashboard,
 	itemList,
 	triggerList,
 	deployTopology,

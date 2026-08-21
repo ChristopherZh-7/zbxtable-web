@@ -15,6 +15,7 @@ module.exports = {
 	INDEX_TRIGGER: '/v1/trigger',
 	INDEX_VERSION: '/v1/index/version',
 	INDEX_SESSION: '/v1/index/session',
+	DASHBOARD: '/v1/dashboard',
 	TRIGGER_LIST: '/v1/trigger/list',
 	ALARM: '/v1/alarm',
 	ALARM_ANALYSIS: '/v1/alarm/analysis',

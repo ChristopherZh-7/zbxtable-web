@@ -59,6 +59,17 @@ const options = {
               meta: { page: { closable: false } },
               component: () => import("@/pages/dashboard/overview"),
             },
+            {
+              path: "custom-dashboards",
+              name: "自定义仪表盘",
+              component: () => import("@/pages/dashboard/custom/index"),
+            },
+            {
+              path: "custom-dashboard-designer",
+              name: "仪表盘设计",
+              meta: { highlight: "/dashboard/custom-dashboards", invisible: true },
+              component: () => import("@/pages/dashboard/custom/designer"),
+            },
           ],
         },
         {

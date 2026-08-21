@@ -41,6 +41,12 @@ const routerMap = {
 	dash: {
 		component: () => import('@/pages/dashboard/dash'),
 	},
+	customDashboards: {
+		component: () => import('@/pages/dashboard/custom/index'),
+	},
+	customDashboardDesigner: {
+		component: () => import('@/pages/dashboard/custom/designer'),
+	},
 	// host/net/server 父容器保留：仅用于挂载各设备详情路由（列表已并入“资产管理”）
 	host: {
 		component: view.blank,

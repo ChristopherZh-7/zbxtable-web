@@ -14,6 +14,7 @@
 		"test:audit": "node --test tests/audit/*.test.js",
 		"test:proxy-management": "node --test tests/proxy-management/*.test.js",
 		"test:asset-tags": "node --test tests/assets/*.test.js",
+		"test:dashboards": "node --test tests/dashboards/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
