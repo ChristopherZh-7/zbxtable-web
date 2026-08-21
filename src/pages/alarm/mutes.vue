@@ -78,10 +78,15 @@
             </a-row>
           </a-card>
           <a-card class="card" :title="$t('mutes_form_time_card_title')" :bordered="false">
+            <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
+              <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
+                <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+              </a-select>
+            </a-form-model-item>
             <a-row>
               <a-col :span="8">
                 <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 8}" :wrapperCol="{span: 14}" :required="true">
-                  <a-date-picker show-time v-model="rule.s_time" @change="changeStime"></a-date-picker>
+                  <a-time-picker v-model="rule.s_time" format="HH:mm" @change="changeStime" />
                 </a-form-model-item>
               </a-col>
               <a-col :span="8">
@@ -95,7 +100,7 @@
               </a-col>
               <a-col :span="8">
                 <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-date-picker show-time v-model="rule.e_time" @change="changeEtime"></a-date-picker>
+                  <a-time-picker v-model="rule.e_time" format="HH:mm" @change="changeEtime" />
                 </a-form-model-item>
               </a-col>
             </a-row>
@@ -165,10 +170,15 @@
             </a-row>
           </a-card>
           <a-card class="card" :title="$t('mutes_form_time_card_title')" :bordered="false">
+            <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
+              <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
+                <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+              </a-select>
+            </a-form-model-item>
             <a-row>
               <a-col :span="8">
                 <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-date-picker show-time v-model="rule.s_time" @change="changeStime"></a-date-picker>
+                  <a-time-picker v-model="rule.s_time" format="HH:mm" @change="changeStime" />
                 </a-form-model-item>
               </a-col>
               <a-col :span="8">
@@ -182,7 +192,7 @@
               </a-col>
               <a-col :span="8">
                 <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-date-picker show-time v-model="rule.e_time" @change="changeEtime"></a-date-picker>
+                  <a-time-picker v-model="rule.e_time" format="HH:mm" @change="changeEtime" />
                 </a-form-model-item>
               </a-col>
             </a-row>
@@ -243,8 +253,8 @@ export default {
         m_type: "3",
         conditions: [],
         s_week: ['0', '1', '2', '3', '4', '5', '6'],
-        s_time: parseTimeFun(new Date()),
-        e_time: parseTimeFun(new Date().getTime() + 1 * 60 * 60 * 1000),
+        s_time: moment(),
+        e_time: moment().add(1, 'hour'),
         channel: [],
         user_ids: "",
         group_ids: "",
@@ -255,6 +265,7 @@ export default {
       rChannelOptions: [],
       rFuncOptions: [],
       rTypeOptions: [],
+      rWeekOptions: [],
       columns: [],
       tOptions: [],
       tenantlist: [],
@@ -294,8 +305,9 @@ export default {
           "r_func": "==",
           "r_value": this.message,
         }],
-        s_time: parseTimeFun(new Date()),
-        e_time: parseTimeFun(new Date().getTime() + 1 * 60 * 60 * 1000),
+        s_week: ['0', '1', '2', '3', '4', '5', '6'],
+        s_time: moment(),
+        e_time: moment().add(1, 'hour'),
         note: this.host + " muted by " + this.$store.state.account['user'].name,
         duration: "1h",
         channel: [],
@@ -319,8 +331,19 @@ export default {
       // 初始化操作符选项
       this.rFuncOptions = [
         { value: "==", label: this.$t('mutes_operator_equal') },
-        { value: "=~", label: this.$t('mutes_operator_contain') },
+        { value: "contains", label: this.$t('mutes_operator_contain') },
         { value: "!=", label: this.$t('mutes_operator_not_equal') },
+        { value: "=~", label: "Regex" },
+      ];
+
+      this.rWeekOptions = [
+        { value: "0", label: this.$t('week_sunday') },
+        { value: "1", label: this.$t('week_monday') },
+        { value: "2", label: this.$t('week_tuesday') },
+        { value: "3", label: this.$t('week_wednesday') },
+        { value: "4", label: this.$t('week_thursday') },
+        { value: "5", label: this.$t('week_friday') },
+        { value: "6", label: this.$t('week_saturday') },
       ];
       
       // 初始化字段选项
@@ -434,7 +457,7 @@ export default {
         record.status = 1
       }
       this.loading = true;
-      ruleStatusPut(record.id, this.rule = { status: record.status }).then((resp) => {
+      ruleStatusPut(record.id, this.rule = { status: String(record.status) }).then((resp) => {
         let res = resp.data;
         if (res.code == 200) {
           this.$message.success(res.message);
@@ -460,8 +483,8 @@ export default {
           { r_type: "", r_func: "", r_value: "", }
         ],
         s_week: ['0', '1', '2', '3', '4', '5', '6'],
-        s_time: parseTimeFun(new Date()),
-        e_time: parseTimeFun(new Date().getTime() + 1 * 60 * 60 * 1000),
+        s_time: moment(),
+        e_time: moment().add(1, 'hour'),
         channel: [],
         note: "",
         duration: "1h",
@@ -493,8 +516,9 @@ export default {
         zid: lten,
         channel: lchan,
         conditions: parsedConditions,
-        s_time: parseTimeFun(record.s_time),
-        e_time: parseTimeFun(record.e_time),
+        s_week: record.s_week ? String(record.s_week).split(",") : [],
+        s_time: moment(record.s_time || "00:00", "HH:mm"),
+        e_time: moment(record.e_time || "23:59", "HH:mm"),
         note: record.note,
         m_type: "3",
         status: "0"
@@ -502,20 +526,32 @@ export default {
     },
     changeDuration(value) {
       this.duration = value;
-      this.rule.s_time = parseTimeFun(new Date().getTime())
-      this.rule.e_time = parseTimeFun(new Date().getTime() + 1 * value * 60 * 60 * 1000)
+      this.rule.s_time = moment()
+      this.rule.e_time = moment().add(Number(value), 'hour')
     },
     changeStime(value) {
-      this.rule.s_time = moment(value).format("YYYY-MM-DD HH:mm:ss")
+      this.rule.s_time = value
     },
     changeEtime(value) {
-      this.rule.e_time = moment(value).format("YYYY-MM-DD HH:mm:ss")
+      this.rule.e_time = value
+    },
+    buildRulePayload() {
+      return {
+        ...this.rule,
+        z_ids: Array.isArray(this.rule.zid) ? this.rule.zid.join(",") : String(this.rule.zid || ""),
+        conditions: JSON.stringify(this.rule.conditions || []),
+        s_week: Array.isArray(this.rule.s_week) ? this.rule.s_week.join(",") : String(this.rule.s_week || ""),
+        s_time: this.rule.s_time ? moment(this.rule.s_time).format("HH:mm") : "",
+        e_time: this.rule.e_time ? moment(this.rule.e_time).format("HH:mm") : "",
+        channel: Array.isArray(this.rule.channel) ? this.rule.channel.join(",") : String(this.rule.channel || ""),
+        user_ids: "",
+        group_ids: "",
+        status: String(this.rule.status == null ? "0" : this.rule.status),
+        m_type: "3",
+      }
     },
     updateRule() {
-      const payload = {
-        ...this.rule,
-        z_ids: Array.isArray(this.rule.zid) ? this.rule.zid : (this.rule.zid ? [this.rule.zid] : []),
-      }
+      const payload = this.buildRulePayload()
       rulePut(this.rule.id, payload).then((resp) => {
         let res = resp.data
         if (res.code == 200) {
@@ -534,10 +570,7 @@ export default {
       this.visible = false;
     },
     createRule() {
-      const payload = {
-        ...this.rule,
-        z_ids: Array.isArray(this.rule.zid) ? this.rule.zid : (this.rule.zid ? [this.rule.zid] : []),
-      }
+      const payload = this.buildRulePayload()
       ruleAdd(payload).then((resp) => {
         let res = resp.data
         if (res.code == 200) {

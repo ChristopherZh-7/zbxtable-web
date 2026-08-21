@@ -236,6 +236,9 @@ module.exports = {
       // 提示消息
       msg_please_fill_name: '请填写名称',
       msg_please_select_instance: '请选择实例',
+      msg_please_complete_conditions: '请完整填写至少一个匹配条件',
+      msg_please_select_time: '请选择生效星期和时间段',
+      msg_please_select_delivery: '请选择通知渠道以及接收人或接收组',
       
       // 告警屏蔽页面 (mutes.vue)
       mutes_search_label: '搜索',
@@ -568,6 +571,9 @@ module.exports = {
       // Messages
       msg_please_fill_name: 'Please Fill in Name',
       msg_please_select_instance: 'Please Select Instance',
+      msg_please_complete_conditions: 'Please complete at least one match condition',
+      msg_please_select_time: 'Please select weekdays and a time range',
+      msg_please_select_delivery: 'Please select a channel and a recipient or group',
       
       // Alarm mute page (mutes.vue)
       mutes_search_label: 'Search',
@@ -900,6 +906,9 @@ module.exports = {
       // 提示消息
       msg_please_fill_name: '請填寫名稱',
       msg_please_select_instance: '請選擇實例',
+      msg_please_complete_conditions: '請完整填寫至少一個匹配條件',
+      msg_please_select_time: '請選擇生效星期和時間段',
+      msg_please_select_delivery: '請選擇通知渠道以及接收人或接收組',
       
       // 告警屏蔽頁面 (mutes.vue)
       mutes_search_label: '搜索',

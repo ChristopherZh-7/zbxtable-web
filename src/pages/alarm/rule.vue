@@ -13,7 +13,7 @@
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-        <a-button style="margin-left: 10px;" type="primary" @click="addRecord">{{ $t('btn_add') }}</a-button>
+        <a-button v-if="$can('platform.rules', 'create')" style="margin-left: 10px;" type="primary" @click="addRecord">{{ $t('btn_add') }}</a-button>
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -21,15 +21,21 @@
         <div slot="instance_tag" slot-scope="text">
           <a-tag :color="themeColor">{{ getInstanceNames(text) || $t('status_not_selected') }}</a-tag>
         </div>
+        <div slot="condition_summary" slot-scope="text">
+          <a-tag v-for="(condition, index) in ruleConditionSummary(text)" :key="index" color="blue" style="margin-bottom: 4px;">
+            {{ condition }}
+          </a-tag>
+          <span v-if="ruleConditionSummary(text).length === 0">-</span>
+        </div>
         <span slot="created" slot-scope="record">{{record.created | parsetime }}</span>
         <span slot="status" slot-scope="record">
-          <a-switch :checked="record.status == '0' ? true : false" :checked-children="$t('status_enabled')" :un-checked-children="$t('status_disabled')" @change="onStatusChange($event, record)" />
+          <a-switch :checked="record.status == '0' ? true : false" :disabled="!$can('platform.rules', 'update')" :checked-children="$t('status_enabled')" :un-checked-children="$t('status_disabled')" @change="onStatusChange($event, record)" />
         </span>
         <span slot="operation" slot-scope="record">
           <!-- <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeDetail(record)">详细信息</a-button> -->
-          <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeEdit(record)">{{ $t('btn_edit') }}</a-button>
+          <a-button v-if="$can('platform.rules', 'update')" class="pd20 paddingleft0" type="link" size="small" @click="seeEdit(record)">{{ $t('btn_edit') }}</a-button>
           <a-popconfirm :title="$t('confirm_delete_title')" :ok-text="$t('confirm_delete_ok')" :cancel-text="$t('confirm_delete_cancel')" @confirm="deleteRecord(record)">
-            <a-button class="paddingleft0" type="link" size="small" v-auth="`delete`">{{ $t('btn_delete') }}</a-button>
+            <a-button v-if="$can('platform.rules', 'delete')" class="paddingleft0" type="link" size="small">{{ $t('btn_delete') }}</a-button>
           </a-popconfirm>
         </span>
       </a-table>
@@ -146,16 +152,6 @@ export default {
   components: {
     PageLayout,
   },
-  authorize: {              //权限校验注入设置
-    deleteRecord: {        //需要 注入权限校验 的方法名：deleteRecord
-      check: 'delete',     //需要校验的操作权限：check
-      type: 'role'         //指定操作权限校验的类型，可选 permission 和 role。这里指定以 role.operation 校验操作权限
-    },
-    onStatusChange: {        //需要 注入权限校验 的方法名：deleteRecord
-      check: 'update',     //需要校验的操作权限：check
-      type: 'role'         //指定操作权限校验的类型，可选 permission 和 role。这里指定以 role.operation 校验操作权限
-    },
-  },
   data() {
     return {
       page: 1,
@@ -165,9 +161,10 @@ export default {
       status: "",
       rTypeOptions: [],
       rFuncOptions: [
-        { value: "==", label: "==" },
-        { value: "=~", label: "=~" },
-        { value: "!=", label: "!=" }
+        { value: "==", label: "=" },
+        { value: "!=", label: "≠" },
+        { value: "contains", label: "包含" },
+        { value: "=~", label: "正则" }
       ],
       rWeekOptions: [],
       rChannelOptions: [],
@@ -234,6 +231,20 @@ export default {
       })
       return mapped.join(", ")
     },
+    ruleConditionSummary(raw) {
+      if (!raw) return []
+      let conditions = raw
+      if (!Array.isArray(conditions)) {
+        try {
+          conditions = JSON.parse(raw)
+        } catch (error) {
+          return []
+        }
+      }
+      const fieldLabels = Object.fromEntries(this.rTypeOptions.map(item => [item.value, item.label]))
+      const operatorLabels = Object.fromEntries(this.rFuncOptions.map(item => [item.value, item.label]))
+      return conditions.map(item => `${fieldLabels[item.r_type] || item.r_type} ${operatorLabels[item.r_func] || item.r_func} ${item.r_value}`)
+    },
     initOptions() {
       // 初始化字段选项
       this.rTypeOptions = [
@@ -270,7 +281,7 @@ export default {
         { title: this.$t('col_id'), dataIndex: "id", align: "left" },
         { title: this.$t('col_name'), dataIndex: "name", align: "left" },
         { title: this.$t('col_instances'), dataIndex: "z_ids", key: "instance_tag", align: "left", scopedSlots: { customRender: "instance_tag" } },
-        { title: this.$t('col_distribution_conditions'), dataIndex: "conditions", align: "left" },
+        { title: this.$t('col_distribution_conditions'), dataIndex: "conditions", align: "left", scopedSlots: { customRender: "condition_summary" } },
         {
           title: this.$t('col_distribution_channel'), dataIndex: "channel", align: "left", customRender: (value) => {
             let allist = []
@@ -375,7 +386,6 @@ export default {
         let res = resp.data
         if (res.code == 200) {
           this.instanceList = res.data || []
-          console.log(this.instanceList)
         }
       })
       //user get
@@ -444,7 +454,7 @@ export default {
         record.status = 1
       }
       this.loading = true;
-      ruleStatusPut(record.id, this.rule = { status: record.status }).then((resp) => {
+      ruleStatusPut(record.id, this.rule = { status: String(record.status) }).then((resp) => {
         let res = resp.data;
         if (res.code == 200) {
           this.$message.success(res.message);
@@ -504,6 +514,18 @@ export default {
       }
       if (!this.editRule.z_ids || this.editRule.z_ids.length === 0) {
         this.$message.warning(this.$t('msg_please_select_instance'))
+        return
+      }
+      if (!this.editRule.conditions.length || this.editRule.conditions.some(item => !item.r_type || !item.r_func || !String(item.r_value || '').trim())) {
+        this.$message.warning(this.$t('msg_please_complete_conditions'))
+        return
+      }
+      if (!this.editRule.s_week.length || !this.editRule.s_time || !this.editRule.e_time) {
+        this.$message.warning(this.$t('msg_please_select_time'))
+        return
+      }
+      if (!this.editRule.channel.length || (!this.editRule.user_ids.length && !this.editRule.group_ids.length)) {
+        this.$message.warning(this.$t('msg_please_select_delivery'))
         return
       }
       this.modalLoading = true

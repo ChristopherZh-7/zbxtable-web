@@ -17,6 +17,7 @@
 		"test:dashboards": "node --test tests/dashboards/*.test.js",
 		"test:baselines": "node --test tests/baselines/*.test.js",
 		"test:webhook": "node --test tests/webhook/*.test.js",
+		"test:rules": "node --test tests/rules/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
