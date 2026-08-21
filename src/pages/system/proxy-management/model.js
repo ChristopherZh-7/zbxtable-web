@@ -51,6 +51,44 @@ function flattenProxies(snapshot) {
   })))
 }
 
+function proxyPricingBasis(value) {
+  const snapshot = normalizeSnapshot(value)
+  const reasons = []
+  const keys = new Set()
+
+  if (Number(snapshot.summary.instance_count) !== snapshot.instances.length) {
+    reasons.push('instance_count_mismatch')
+  }
+
+  snapshot.instances.forEach((instance) => {
+    if (instance.supported !== true || instance.available !== true || instance.error) {
+      reasons.push(`instance_unavailable:${instance.zid}`)
+    }
+    instance.proxies.forEach((proxy) => {
+      const zid = Number(instance.zid)
+      const proxyid = String(proxy.proxyid || '')
+      if (!Number.isInteger(zid) || zid <= 0 || !proxyid) {
+        reasons.push('invalid_proxy_identity')
+        return
+      }
+      const key = `${zid}:${proxyid}`
+      if (keys.has(key)) reasons.push(`duplicate_proxy:${key}`)
+      keys.add(key)
+    })
+  })
+
+  if (Number(snapshot.summary.proxy_count) !== keys.size) {
+    reasons.push('proxy_count_mismatch')
+  }
+
+  return {
+    count: keys.size,
+    complete: reasons.length === 0,
+    display: reasons.length === 0 ? String(keys.size) : '--',
+    reasons: [...new Set(reasons)],
+  }
+}
+
 function matchesKeyword(record, keyword) {
   const target = String(keyword || '').trim().toLowerCase()
   if (!target) return true
@@ -93,5 +131,6 @@ module.exports = {
   flattenProxies,
   formatDeviation,
   normalizeSnapshot,
+  proxyPricingBasis,
   readBusinessSnapshot,
 }

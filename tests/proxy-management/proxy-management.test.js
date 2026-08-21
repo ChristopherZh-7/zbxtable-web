@@ -9,6 +9,7 @@ const {
   flattenGroups,
   flattenProxies,
   formatDeviation,
+  proxyPricingBasis,
   readBusinessSnapshot,
 } = require('../../src/pages/system/proxy-management/model')
 
@@ -17,8 +18,8 @@ const snapshot = {
   generated_at: '2026-08-22T00:00:00Z',
   summary: {instance_count: 2, proxy_count: 2},
   instances: [
-    {zid: 1, instance: 'prod', name: 'Production', warnings: [], groups: [{proxy_groupid: '9', name: 'Edge', state_name: 'online'}], proxies: [{proxyid: '11', name: 'edge-a', proxy_groupid: '9', proxy_group_name: 'Edge', state_name: 'online'}]},
-    {zid: 2, instance: 'backup', name: 'Backup', warnings: [], groups: [], proxies: [{proxyid: '12', name: 'standalone', proxy_groupid: '0', state_name: 'offline'}]},
+    {zid: 1, instance: 'prod', name: 'Production', supported: true, available: true, warnings: [], groups: [{proxy_groupid: '9', name: 'Edge', state_name: 'online'}], proxies: [{proxyid: '11', name: 'edge-a', proxy_groupid: '9', proxy_group_name: 'Edge', state_name: 'online'}]},
+    {zid: 2, instance: 'backup', name: 'Backup', supported: true, available: true, warnings: [], groups: [], proxies: [{proxyid: '12', name: 'standalone', proxy_groupid: '0', state_name: 'offline'}]},
   ],
 }
 
@@ -46,12 +47,38 @@ test('load deviation is explicit host-count deviation', () => {
   assert.equal(formatDeviation(0), '0')
 })
 
+test('pricing basis counts unique (zid, proxyid) rows and ignores table filters', () => {
+  const basis = proxyPricingBasis(snapshot)
+  assert.deepEqual(basis, {count: 2, complete: true, display: '2', reasons: []})
+  assert.equal(filterProxyRows(flattenProxies(snapshot), {zid: 1}).length, 1)
+  assert.equal(proxyPricingBasis(snapshot).count, 2)
+})
+
+test('pricing basis refuses unavailable, duplicate, or inconsistent snapshots', () => {
+  const unavailable = structuredClone(snapshot)
+  unavailable.instances[1].available = false
+  unavailable.instances[1].error = 'unreachable'
+  assert.equal(proxyPricingBasis(unavailable).complete, false)
+  assert.equal(proxyPricingBasis(unavailable).display, '--')
+
+  const duplicate = structuredClone(snapshot)
+  duplicate.instances[0].proxies.push({...duplicate.instances[0].proxies[0]})
+  duplicate.summary.proxy_count = 3
+  assert.match(proxyPricingBasis(duplicate).reasons.join(','), /duplicate_proxy/)
+
+  const mismatch = structuredClone(snapshot)
+  mismatch.summary.proxy_count = 9
+  assert.match(proxyPricingBasis(mismatch).reasons.join(','), /proxy_count_mismatch/)
+})
+
 test('proxy page is read-only, retains data on refresh errors, and polls every 15 seconds', () => {
   const page = source('src/pages/system/proxy-management/index.vue')
   const service = source('src/services/zabbix.js')
   const routeMap = source('src/router/async/router.map.js')
   assert.match(routeMap, /proxyManagement[\s\S]*pages\/system\/proxy-management/)
   assert.match(page, /REFRESH_INTERVAL_MS = 15000/)
+  assert.match(page, /billableProxies/)
+  assert.match(page, /pricingBasis\.complete/)
   assert.match(page, /this\.snapshot = next/)
   assert.doesNotMatch(page, /catch[\s\S]{0,180}this\.snapshot\s*=/)
   assert.match(service, /\/v1\/zabbix\/proxy-management.*METHOD\.GET/)

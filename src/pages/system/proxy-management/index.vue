@@ -1,6 +1,7 @@
 <template>
   <page-layout :noTitle="true">
     <a-alert class="proxy-notice" type="info" show-icon :message="$t('notice')" />
+    <a-alert v-if="!pricingBasis.complete" class="proxy-error" type="warning" show-icon :message="$t('billingIncomplete')" />
 
     <div class="proxy-toolbar">
       <div class="last-success">{{ $t('lastSuccess') }}：{{ generatedAtLabel }}</div>
@@ -111,6 +112,7 @@ import {
   flattenGroups,
   flattenProxies,
   formatDeviation,
+  proxyPricingBasis,
   readBusinessSnapshot,
 } from './model'
 
@@ -160,11 +162,12 @@ export default {
         {key: 'instances', label: this.$t('instances'), value: value.instance_count},
         {key: 'available', label: this.$t('availableInstances'), value: value.available_instance_count, tone: 'success'},
         {key: 'groups', label: this.$t('proxyGroups'), value: value.group_count},
-        {key: 'proxies', label: this.$t('proxies'), value: value.proxy_count},
+        {key: 'proxies', label: this.$t('billableProxies'), value: this.pricingBasis.display, tone: this.pricingBasis.complete ? '' : 'danger'},
         {key: 'online', label: this.$t('online'), value: value.online_proxy_count, tone: 'success'},
         {key: 'offline', label: this.$t('offline'), value: value.offline_proxy_count, tone: value.offline_proxy_count ? 'danger' : ''},
       ]
     },
+    pricingBasis() { return proxyPricingBasis(this.snapshot) },
     instanceOptions() { return this.snapshot.instances },
     groupOptions() { return flattenGroups(this.snapshot).filter((group) => !this.filters.zid || Number(group.zid) === Number(this.filters.zid)) },
     instanceProblems() { return this.snapshot.instances.filter((instance) => instance.error || instance.warnings.length) },
