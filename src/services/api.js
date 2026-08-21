@@ -1,6 +1,7 @@
 module.exports = {
 	LOGIN: '/v1/login',
 	ROUTES: '/v1/index/routers',
+	PERMISSION_CURRENT: '/v1/permission/current',
 	INDEX_INFO: '/v1/index/baseinfo',
 	HOST_LIST: '/v1/host',
 	HOST_EXPORT: '/v1/export/hosts',
@@ -36,6 +37,7 @@ module.exports = {
 	TENANT: '/v1/tenant',
 	TENANT_CONTEXT: '/v1/tenant/context',
 	TENANT_CURRENT: '/v1/tenant/current',
+	TENANT_CURRENT_MEMBERS: '/v1/tenant/current/members',
 	GROUP: '/v1/group',
 	AI: '/v1/ai',
 	API_WS: '/ws/auth',

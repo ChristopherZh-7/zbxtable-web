@@ -18,11 +18,11 @@
       </div>
         <div class="header-actions">
           <a-button-group>
-            <a-button @click="saveToPNG()">
+			<a-button v-auth="'export'" @click="saveToPNG()">
               <a-icon type="file-image" />
               {{ $t('btn_export_png') }}
             </a-button>
-            <a-button @click="saveToSVG()">
+			<a-button v-auth="'export'" @click="saveToSVG()">
               <a-icon type="save" />
               {{ $t('btn_export_svg') }}
             </a-button>

@@ -10,7 +10,7 @@
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-        <a-button type="primary" style="margin-left: 10px;" @click="newPage">{{ $t('btn_new_topology') }}</a-button>
+		<a-button v-auth="'create'" type="primary" style="margin-left: 10px;" @click="newPage">{{ $t('btn_new_topology') }}</a-button>
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -27,10 +27,10 @@
         <div slot="updated_at" slot-scope="record">
           {{ new Date(+new Date(record.created_at) + 8 * 3600 * 1000).toISOString().replace(/T/g, ' ').replace(/\.[\d]{3}Z/, '') || '--' }}</div>
         <div slot="operation" slot-scope="record">
-          <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeDetail(record)">{{ $t('btn_edit') }}</a-button>
+		  <a-button v-auth="'update'" class="pd20 paddingleft0" type="link" size="small" @click="seeDetail(record)">{{ $t('btn_edit') }}</a-button>
           <a-button class="pd20 paddingleft0" type="link" size="small" @click="showTopo(record)">{{ $t('btn_view') }}</a-button>
           <a-popconfirm :title="$t('confirm_delete')" :ok-text="$t('confirm_yes')" :cancel-text="$t('confirm_no')" @confirm="confirm(record)">
-            <a-button class="paddingleft0" type="link" size="small">{{ $t('btn_delete') }}</a-button>
+			<a-button v-auth="'delete'" class="paddingleft0" type="link" size="small">{{ $t('btn_delete') }}</a-button>
           </a-popconfirm>
         </div>
       </a-table>

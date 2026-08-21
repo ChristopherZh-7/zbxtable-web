@@ -1,4 +1,4 @@
-import { LOGIN, ROUTES } from "@/services/api";
+import { LOGIN, PERMISSION_CURRENT, ROUTES } from "@/services/api";
 import { request, METHOD, removeAuthorization } from "@/utils/request";
 
 /**
@@ -16,6 +16,10 @@ export async function login(name, password) {
 
 export async function getRoutesConfig() {
   return request(ROUTES, METHOD.GET);
+}
+
+export async function getPermissionContext() {
+  return request(PERMISSION_CURRENT, METHOD.GET);
 }
 
 /**
@@ -40,4 +44,5 @@ export default {
   login,
   logout,
   getRoutesConfig,
+	getPermissionContext,
 };

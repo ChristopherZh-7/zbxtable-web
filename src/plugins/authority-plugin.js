@@ -1,3 +1,5 @@
+const {canPerform, normalizeAction} = require('@/utils/permission-policy')
+
 /**
  * 获取路由需要的权限
  * @param permissions
@@ -52,7 +54,7 @@ const auth = function(authConfig, permission, role, permissions, roles) {
  * @returns {boolean}
  */
 const checkFromPermission = function(check, permission) {
-  return permission && permission.operation && permission.operation.indexOf(check) !== -1
+	return permission && permission.operation && permission.operation.indexOf(normalizeAction(check)) !== -1
 }
 
 /**
@@ -87,18 +89,17 @@ const checkInject = function (el, binding,vnode) {
 }
 
 const addDisabled = function (el) {
-  if (el.tagName === 'BUTTON') {
-    el.disabled = true
-  } else {
-    el.classList.add('disabled')
-  }
-  el.setAttribute('title', '无此权限')
+	if (el.__permissionDisplay === undefined) el.__permissionDisplay = el.style.display || ''
+	el.style.display = 'none'
+	el.setAttribute('aria-hidden', 'true')
+	el.setAttribute('title', '无此权限')
 }
 
 const removeDisabled = function (el) {
-  el.disabled = false
-  el.classList.remove('disabled')
-  el.removeAttribute('title')
+	el.style.display = el.__permissionDisplay === undefined ? '' : el.__permissionDisplay
+	el.classList.remove('disabled')
+	el.removeAttribute('aria-hidden')
+	el.removeAttribute('title')
 }
 
 const AuthorityPlugin = {
@@ -152,13 +153,16 @@ const AuthorityPlugin = {
          * 如未设置，则自动识别，如匹配到当前路由 permission 则 type = permission，否则 type = role
          * @returns {boolean} 是否校验通过
          */
-        $auth(check, type) {
+		$auth(check, type) {
           const permissions = this.$store.getters['account/permissions']
           const roles = this.$store.getters['account/roles']
           const permission = getRoutePermission(permissions, this.$route)
           const role = getRouteRole(roles, this.$route)
-          return auth.apply(this, [{check, type}, permission, role, permissions, roles])
-        }
+			return auth.apply(this, [{check, type}, permission, role, permissions, roles])
+		},
+		$can(resource, action = 'read') {
+			return canPerform(this.$store.getters['account/permissions'], resource, action)
+		}
       }
     })
   }

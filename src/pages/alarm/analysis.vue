@@ -2,7 +2,7 @@
   <page-layout :noTitle="true">
     <a-card :bodyStyle="{boxShadow: '0 1px 8px 0 #ddd'}" :loading="!showPage">
       <a-form-model class="home-search" layout="inline" :colon='false'>
-        <a-form-model-item :label="$t('analysis_select_instance')">
+		<a-form-model-item v-if="$can('platform.zabbix', 'read')" :label="$t('analysis_select_instance')">
           <a-select v-model="selectedInstance" :placeholder="$t('analysis_all_instances')" allowClear style="width: 200px">
             <a-select-option value="">{{ $t('analysis_all_instances') }}</a-select-option>
             <a-select-option v-for="item in instanceList" :key="item.id" :value="item.id">
@@ -18,7 +18,7 @@
           <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         </a-form-model-item>
         <a-form-model-item>
-          <a-button type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		  <a-button v-auth="'export'" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
         </a-form-model-item>
       </a-form-model>
       <a-row style="margin: 20px -12px">
@@ -74,7 +74,7 @@ export default {
   created() {
     this.timeRanges = buildAlarmTimeRanges(this.$t.bind(this));
     this.applyTimeRange(getDefaultAlarmTimeRange());
-    this.loadInstances();
+	if (this.$can('platform.zabbix', 'read')) this.loadInstances();
     this.init();
   },
   methods: {

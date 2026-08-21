@@ -99,7 +99,7 @@
 </template>
 
 <script>
-import { login, getRoutesConfig } from '@/services/user'
+import { login, getPermissionContext, getRoutesConfig } from '@/services/user'
 import { getPublicSystemInfo } from '@/services/admin'
 import { setAuthorization } from '@/utils/request'
 import { loadRoutes } from '@/utils/routerUtil'
@@ -108,6 +108,7 @@ import { startTokenRefresher } from '@/utils/tokenRefresher'
 import { listTenantContexts } from '@/services/tenant'
 import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
 import { normalizeTenantItems, selectInitialTenant } from '@/pages/system/tenant-context'
+import { businessPayload, normalizePermissionContext } from '@/utils/permission-policy'
 export default {
   name: 'Login',
   i18n: require('./i18n'),
@@ -165,6 +166,23 @@ export default {
       removeTenantContext()
       this.setCurrentTenant(null)
       return user && user.role === 'admin' && tenants.length === 0 ? '/system/tenants' : '/tenant-select'
+    },
+    async refreshAccessContext() {
+      const permissionResponse = await getPermissionContext()
+      const permissionBusiness = businessPayload(permissionResponse)
+      if (!permissionBusiness || Number(permissionBusiness.code) !== 200) {
+        throw new Error(permissionBusiness && permissionBusiness.message ? permissionBusiness.message : '加载权限失败')
+      }
+      const context = normalizePermissionContext(permissionResponse)
+      this.setRoles(context.roles)
+      this.setPermissions(context.permissions)
+
+      const routesResponse = await getRoutesConfig()
+      const routesBusiness = businessPayload(routesResponse)
+      if (!routesBusiness || Number(routesBusiness.code) !== 200) {
+        throw new Error(routesBusiness && routesBusiness.message ? routesBusiness.message : '加载菜单失败')
+      }
+      loadRoutes(Array.isArray(routesBusiness.data) ? routesBusiness.data : [])
     },
     async loadPublicSystemInfo() {
       try {
@@ -319,7 +337,7 @@ export default {
         }
       })
     },
-    afterLogin(res) {
+    async afterLogin(res) {
       this.logging = false
       // 兼容两种形态：
       // 1) 全局 request.js 返回 axios-like：{ data: { code, message, data } }
@@ -332,7 +350,7 @@ export default {
       const code = loginRes && loginRes.code
       // 兼容历史 mock 返回 code = 0，以及当前后端返回 code = 200
       if (loginRes && (code === 200 || code === 0 || code === '200' || code === '0')) {
-        const { user, roles } = (loginRes && loginRes.data) || {}
+        const { user, roles, permissions } = (loginRes && loginRes.data) || {}
         // let premissions = [{ id: "queryForm", operation: ["add", "edit", 'delete'] }]
         // roles = [{ id: "admin", operation: ["add", "edit", "delete"] }],
         // user = {
@@ -342,41 +360,24 @@ export default {
         //   address: "武汉",
         // };
         this.setUser(user)
-        // this.setPermissions(premissions);
-        this.setRoles(roles)
+        this.setPermissions(Array.isArray(permissions) ? permissions : [])
+        this.setRoles(Array.isArray(roles) ? roles : [])
         setAuthorization({ token: loginRes && loginRes.data && loginRes.data.token })
         startTokenRefresher()
 
         // 加载用户主题配置
         this.loadUserTheme(user)
         
-        // 获取路由配置
-        getRoutesConfig().then(async (result) => {
-          try {
-            const routesRes =
-              (result && result.data && typeof result.data.code !== 'undefined')
-                ? result.data
-                : result
-            const routesConfig =
-              routesRes && routesRes.data && routesRes.data ? routesRes.data : []
-            loadRoutes(routesConfig)
-
-            // 加载系统配置（名称和Logo）
-            this.loadSystemConfig()
-            
-            const target = await this.prepareTenantContext(user)
-            this.$router.push(target)
-            this.$message.success(loginRes.message || this.$t('loginSuccess'), 1)
-          } catch (e) {
-            // 路由加载失败时也至少完成登录并进入首页
-            this.$router.push(user && user.role === 'admin' ? '/system/tenants' : '/tenant-select')
-            this.$message.success(loginRes && loginRes.message ? loginRes.message : '登录成功', 1)
-          }
-        }).catch(() => {
-          // 路由配置接口异常时，至少完成基本登录跳转
+        try {
+          const target = await this.prepareTenantContext(user)
+          await this.refreshAccessContext()
+          if (user && user.role === 'admin') this.loadSystemConfig()
+          this.$router.push(target)
+          this.$message.success(loginRes.message || this.$t('loginSuccess'), 1)
+        } catch (error) {
           this.$router.push(user && user.role === 'admin' ? '/system/tenants' : '/tenant-select')
-          this.$message.success(loginRes && loginRes.message ? loginRes.message : '登录成功', 1)
-        })
+          this.$message.warning(error.message || '登录成功，但权限上下文加载失败')
+        }
       } else {
         this.error = (loginRes && loginRes.message) ? loginRes.message : '登录失败'
       }

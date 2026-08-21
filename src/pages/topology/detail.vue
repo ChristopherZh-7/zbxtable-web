@@ -34,10 +34,10 @@
           </a-button>
         </div>
         <div class="topology-actions">
-          <a-button v-if="isReading" type="primary" @click="editNode">
+		  <a-button v-if="isReading" v-auth="'update'" type="primary" @click="editNode">
             <a-icon type="edit" /> {{ $t('btn_edit') }}
           </a-button>
-          <a-button v-else type="primary" @click="saveData">
+		  <a-button v-else v-auth="id ? 'update' : 'create'" type="primary" @click="saveData">
             <a-icon type="save" /> {{ $t('btn_save') }}
           </a-button>
           <a-button @click="backToList">
@@ -389,6 +389,10 @@ export default {
     }
   },
   created() {
+	if (!this.$route.query.id && !this.$can('tenant.visualizations', 'create')) {
+	  this.$router.replace('/topology/list')
+	  return
+	}
     this.syncRouteState()
   },
   mounted() {

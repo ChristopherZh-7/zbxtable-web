@@ -2,12 +2,12 @@
   <page-layout :noTitle="true">
     <div class="tenant-toolbar">
       <a-alert type="info" show-icon message="租户范围由服务端按 Zabbix 实例和稳定 Host Group ID 强制隔离。" />
-      <a-button type="primary" icon="plus" @click="openCreate">新增租户</a-button>
+	  <a-button v-auth="'create'" type="primary" icon="plus" @click="openCreate">新增租户</a-button>
     </div>
 
     <a-table :loading="loading" :columns="columns" :data-source="tenants" :row-key="record => record.id">
       <template slot="status" slot-scope="record">
-        <a-switch
+		<a-switch v-auth="'update'"
           :checked="Number(record.status) === 0"
           checked-children="启用"
           un-checked-children="停用"
@@ -25,7 +25,7 @@
         </a-tag>
       </template>
       <template slot="operation" slot-scope="record">
-        <a-button type="link" @click="openEdit(record)">编辑</a-button>
+		<a-button v-auth="'update'" type="link" @click="openEdit(record)">编辑</a-button>
       </template>
     </a-table>
 

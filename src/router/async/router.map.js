@@ -118,6 +118,9 @@ const routerMap = {
 	systemTenants: {
 		component: () => import('@/pages/system/tenants'),
 	},
+	tenantMembers: {
+		component: () => import('@/pages/system/tenant-members'),
+	},
 	systemGroups: {
 		component: () => import('@/pages/system/groups'),
 	},

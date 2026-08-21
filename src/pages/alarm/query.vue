@@ -7,7 +7,7 @@
       <a-form-model-item label="IP">
         <a-input v-model.trim="hostIp" :placeholder="$t('label_host_ip')" />
       </a-form-model-item>
-      <a-form-model-item :label="$t('label_select_instance')">
+	  <a-form-model-item v-if="$can('platform.zabbix', 'read')" :label="$t('label_select_instance')">
         <a-select v-model="selectedInstance" :placeholder="$t('label_all_instances')" allowClear style="width: 200px">
           <a-select-option value="">{{ $t('label_all_instances') }}</a-select-option>
           <a-select-option v-for="item in instanceList" :key="item.id" :value="item.id">
@@ -36,7 +36,7 @@
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-        <a-button style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		<a-button v-auth="'export'" style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
       </a-form-model-item>
     </a-form-model>
 
@@ -68,8 +68,8 @@
           <template v-else-if="record.notify_status==2">{{ $t('notify_status_default_rule') }}</template>
         </span>
         <span slot="operation" slot-scope="record">
-          <a-button v-if="record.notify_status!=1" class="pd20 paddingleft0" type="link" size="small" @click="addMutes(record)">{{ $t('btn_mute') }}</a-button>
-          <a-button class="pd20" type="link" size="small" @click="analyzeWithDeepseek(record)">{{ $t('btn_ai_analysis') }}</a-button>
+		  <a-button v-if="record.notify_status!=1" v-auth="'operate'" class="pd20 paddingleft0" type="link" size="small" @click="addMutes(record)">{{ $t('btn_mute') }}</a-button>
+		  <a-button v-auth="'operate'" class="pd20" type="link" size="small" @click="analyzeWithDeepseek(record)">{{ $t('btn_ai_analysis') }}</a-button>
         </span>
         
         <!-- 展开行的嵌套表格 -->
@@ -337,7 +337,7 @@ export default {
     this.applyTimeRange(getDefaultAlarmTimeRange());
     this.initOptions();
     this.initColumns();
-    this.loadInstances();
+	if (this.$can('platform.zabbix', 'read')) this.loadInstances();
     this.loadAlarmAnalysisPrompt();
     this.init();
   },

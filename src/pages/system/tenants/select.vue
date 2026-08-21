@@ -16,7 +16,10 @@
 
 <script>
 import { getCurrentTenant, listTenantContexts } from '@/services/tenant'
+import { getPermissionContext, getRoutesConfig } from '@/services/user'
 import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
+import { loadRoutes } from '@/utils/routerUtil'
+import { businessPayload, normalizePermissionContext } from '@/utils/permission-policy'
 import { normalizeTenantItems } from '../tenant-context'
 
 export default {
@@ -46,6 +49,15 @@ export default {
         const business = result && result.data && result.data.code !== undefined ? result.data : result
         if (!business || Number(business.code) !== 200) throw new Error(business && business.message)
         this.$store.commit('account/setCurrentTenant', tenant)
+		const permissionResponse = await getPermissionContext()
+		const permissionBusiness = businessPayload(permissionResponse)
+		if (!permissionBusiness || Number(permissionBusiness.code) !== 200) throw new Error(permissionBusiness && permissionBusiness.message)
+		const permissionContext = normalizePermissionContext(permissionResponse)
+		this.$store.commit('account/setRoles', permissionContext.roles)
+		this.$store.commit('account/setPermissions', permissionContext.permissions)
+		const routesBusiness = businessPayload(await getRoutesConfig())
+		if (!routesBusiness || Number(routesBusiness.code) !== 200) throw new Error(routesBusiness && routesBusiness.message)
+		loadRoutes(Array.isArray(routesBusiness.data) ? routesBusiness.data : [])
         this.$router.replace('/dashboard/workplace')
       } catch (error) {
         if (previous) setTenantContext(previous)

@@ -81,7 +81,9 @@ import HeaderAvatar from "./HeaderAvatar";
 import IMenu from "@/components/menu/menu";
 import { mapState, mapMutations } from "vuex";
 import { getCurrentTenant } from '@/services/tenant'
+import { getPermissionContext, getRoutesConfig } from '@/services/user'
 import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
+import { businessPayload, normalizePermissionContext } from '@/utils/permission-policy'
 
 export default {
   name: "AdminHeader",
@@ -161,6 +163,15 @@ export default {
         const business = response && response.data && response.data.code !== undefined ? response.data : response
         if (!business || Number(business.code) !== 200) throw new Error(business && business.message)
         this.$store.commit('account/setCurrentTenant', candidate)
+		const permissionResponse = await getPermissionContext()
+		const permissionBusiness = businessPayload(permissionResponse)
+		if (!permissionBusiness || Number(permissionBusiness.code) !== 200) throw new Error(permissionBusiness && permissionBusiness.message)
+		const permissionContext = normalizePermissionContext(permissionResponse)
+		this.$store.commit('account/setRoles', permissionContext.roles)
+		this.$store.commit('account/setPermissions', permissionContext.permissions)
+		const routesBusiness = businessPayload(await getRoutesConfig())
+		if (!routesBusiness || Number(routesBusiness.code) !== 200) throw new Error(routesBusiness && routesBusiness.message)
+		this.$store.commit('account/setRoutesConfig', Array.isArray(routesBusiness.data) ? routesBusiness.data : [])
         window.location.reload()
       } catch (error) {
         if (previous) setTenantContext(previous)
