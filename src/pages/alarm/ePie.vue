@@ -54,6 +54,14 @@ export default {
       }]
     }
   },
+  watch: {
+    mock: {
+      handler() {
+        this.init();
+      },
+      deep: true
+    }
+  },
   mounted () {
     this.init();
   },
@@ -75,11 +83,12 @@ export default {
     levelFilter (v) {
       let res = "未分类";
       switch (v) {
-        case "1": res = "未分类"; break;
-        case "2": res = "信息"; break;
-        case "3": res = "一般"; break;
-        case "4": res = "严重"; break;
-        case "5": res = "灾难"; break;
+		case "0": res = "未分类"; break;
+		case "1": res = "信息"; break;
+		case "2": res = "警告"; break;
+		case "3": res = "一般"; break;
+		case "4": res = "严重"; break;
+		case "5": res = "灾难"; break;
       }
       return res;
     },

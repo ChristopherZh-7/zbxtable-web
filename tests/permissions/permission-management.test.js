@@ -60,7 +60,7 @@ test('unauthorized controls are hidden and tenant switches refresh server state'
 
 test('viewer-sensitive export and topology write controls declare action checks', () => {
   assert.match(source('src/pages/alarm/query.vue'), /v-auth="'export'"/)
-  assert.match(source('src/pages/alarm/analysis.vue'), /v-auth="'export'"/)
+  assert.match(source('src/pages/alarm/analysis.vue'), /\$can\('tenant\.alarms', 'export'\)/)
   assert.match(source('src/pages/topology/index.vue'), /v-auth="'create'"/)
   assert.match(source('src/pages/topology/index.vue'), /v-auth="'delete'"/)
   assert.match(source('src/pages/topology/show.vue'), /v-auth="'export'"/)

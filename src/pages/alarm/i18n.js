@@ -158,6 +158,8 @@ module.exports = {
       time_range_last_30d: '最近30天',
       analysis_historical_alarm_top10: '历史告警TOP10',
       analysis_alarm_classification_top: '告警分类TOP',
+      analysis_alarm_trend: '告警时间趋势',
+      msg_export_failed: '导出失败',
       
       // 告警规则页面 - a-alert
       alert_multi_instance_title: '多实例告警规则说明',
@@ -493,6 +495,8 @@ module.exports = {
       time_range_last_30d: 'Last 30 Days',
       analysis_historical_alarm_top10: 'Historical Alarm TOP10',
       analysis_alarm_classification_top: 'Alarm Classification TOP',
+      analysis_alarm_trend: 'Alarm Time Trend',
+      msg_export_failed: 'Export Failed',
       
       // Alarm rule page - a-alert
       alert_multi_instance_title: 'Multi-Instance Alarm Rule Description',
@@ -828,6 +832,8 @@ module.exports = {
       time_range_last_30d: '最近30天',
       analysis_historical_alarm_top10: '歷史告警TOP10',
       analysis_alarm_classification_top: '告警分類TOP',
+      analysis_alarm_trend: '告警時間趨勢',
+      msg_export_failed: '導出失敗',
       
       // 告警規則頁面 - a-alert
       alert_multi_instance_title: '多實例告警規則說明',

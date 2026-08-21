@@ -18,18 +18,23 @@
           <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         </a-form-model-item>
         <a-form-model-item>
-		  <a-button v-auth="'export'" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		  <a-button v-if="$can('tenant.alarms', 'export')" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
         </a-form-model-item>
       </a-form-model>
       <a-row style="margin: 20px -12px">
-        <a-col style="padding: 0 12px" :xl="12" :lg="12" :md="24" :sm="24" :xs="24" v-if="nameList && nameList.length">
+        <a-col style="padding: 0 12px" :xl="12" :lg="12" :md="24" :sm="24" :xs="24">
           <a-card hoverable :headStyle="$cardHeadStyle" :bodyStyle="{padding: '0'}" :title="$t('analysis_historical_alarm_top10')">
             <e-line :mock="nameList" :numList="numList" />
           </a-card>
         </a-col>
-        <a-col style="padding: 0 12px" :xl="12" :lg="12" :md="24" :sm="24" :xs="24" v-if="list && list.length">
+        <a-col style="padding: 0 12px" :xl="12" :lg="12" :md="24" :sm="24" :xs="24">
           <a-card hoverable :headStyle="$cardHeadStyle" :bodyStyle="{padding: '0'}" :title="$t('analysis_alarm_classification_top')">
             <e-pie :mock="list" />
+          </a-card>
+        </a-col>
+        <a-col class="trend-card" :span="24">
+          <a-card hoverable :headStyle="$cardHeadStyle" :bodyStyle="{padding: '0'}" :title="$t('analysis_alarm_trend')">
+            <e-trend :mock="trendList" :bucket="trendBucket" />
           </a-card>
         </a-col>
       </a-row>
@@ -41,6 +46,7 @@
 import PageLayout from "@/layouts/PageLayout";
 import ePie from "./ePie";
 import eLine from "./eLine";
+import eTrend from "./eTrend";
 import { alarmAnalysis, alarmExport } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
 import { parseTimeFun } from "@/utils/formatter";
@@ -54,6 +60,7 @@ export default {
     PageLayout,
     ePie,
     eLine,
+    eTrend,
   },
   data() {
     return {
@@ -62,6 +69,8 @@ export default {
       list: [],
       nameList: [],
       numList: [],
+      trendList: [],
+      trendBucket: 'day',
       moment,
       timeRanges: {},
       timeValue: null,
@@ -97,13 +106,14 @@ export default {
           this.instanceList = allItems.filter(item => item.enabled)
         }
       }).catch(err => {
-        console.error('加载实例列表失败:', err)
+		this.$message.error(this.$t('msg_load_instances_failed'))
       })
     },
     init() {
       this.list = [];
       this.nameList = [];
       this.numList = [];
+      this.trendList = [];
       const params = { 
         begin: this.beginTime, 
         end: this.endTime
@@ -118,8 +128,15 @@ export default {
             this.list = res.data ? res.data.level_count || [] : [];
             this.nameList = res.data ? res.data.host || [] : [];
             this.numList = res.data ? res.data.host_count || [] : [];
+            this.trendList = res.data ? res.data.trend || [] : [];
+            this.trendBucket = res.data ? res.data.trend_bucket || 'day' : 'day';
+          } else {
+            this.$message.error(res.message || this.$t('msg_get_data_failed'));
           }
         })
+		.catch(() => {
+		  this.$message.error(this.$t('msg_get_data_failed'));
+		})
         .finally(() => {
           this.showPage = true;
         });
@@ -136,7 +153,8 @@ export default {
         params,
         { responseType: "arraybuffer", }
       ).then((resp) => {
-        let filename = resp.headers["content-disposition"]
+        const disposition = resp.headers["content-disposition"] || 'attachment; filename=alarm_list.xlsx';
+        let filename = disposition
           .split(";")
           .find((n) => n.includes("filename="))
           .replace("filename=", "")
@@ -147,6 +165,10 @@ export default {
         link.setAttribute("download", filename);
         document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }).catch(() => {
+        this.$message.error(this.$t('msg_export_failed'));
       });
     },
     changeCreationTime(e) {
@@ -175,5 +197,8 @@ export default {
   height: 64px;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+}
+.trend-card {
+  padding: 24px 12px 0;
 }
 </style>
