@@ -242,6 +242,11 @@ const options = {
               component: () => import("@/pages/system/version"),
             },
             {
+              path: "audit",
+              name: "操作审计",
+              component: () => import("@/pages/system/audit"),
+            },
+            {
               path: "asset-type",
               name: "资产类型",
               meta: { invisible: true, highlight: "/system/asset-management" },

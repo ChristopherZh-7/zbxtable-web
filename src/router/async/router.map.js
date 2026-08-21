@@ -140,6 +140,9 @@ const routerMap = {
 	version: {
 		component: () => import('@/pages/system/version'),
 	},
+	systemAudit: {
+		component: () => import('@/pages/system/audit'),
+	},
 	menuManagement: {
 		component: () => import('@/pages/system/menu'),
 	},
