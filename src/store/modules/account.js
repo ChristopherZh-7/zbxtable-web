@@ -4,7 +4,9 @@ export default {
     user: undefined,
     permissions: null,
     roles: null,
-    routesConfig: null
+    routesConfig: null,
+    tenants: null,
+    currentTenant: undefined
   },
   getters: {
     user: state => {
@@ -53,6 +55,26 @@ export default {
         }
       }
       return state.routesConfig
+    },
+    tenants: state => {
+      if (!state.tenants) {
+        try {
+          state.tenants = JSON.parse(localStorage.getItem('zbxtable.tenants')) || []
+        } catch (e) {
+          state.tenants = []
+        }
+      }
+      return state.tenants
+    },
+    currentTenant: state => {
+      if (!state.currentTenant) {
+        try {
+          state.currentTenant = JSON.parse(localStorage.getItem('zbxtable.currentTenant'))
+        } catch (e) {
+          state.currentTenant = null
+        }
+      }
+      return state.currentTenant
     }
   },
   mutations: {
@@ -71,6 +93,13 @@ export default {
     setRoutesConfig(state, routesConfig) {
       state.routesConfig = routesConfig
       localStorage.setItem(process.env.VUE_APP_ROUTES_KEY, JSON.stringify(routesConfig))
+    },
+    setTenants(state, tenants) {
+      state.tenants = tenants || []
+      localStorage.setItem('zbxtable.tenants', JSON.stringify(state.tenants))
+    },
+    setCurrentTenant(state, tenant) {
+      state.currentTenant = tenant || null
     }
   }
 }

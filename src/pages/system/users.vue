@@ -25,36 +25,31 @@
         <span slot="ding_talk" slot-scope="record">{{record.ding_talk}}</span>
         <span slot="wechat" slot-scope="record">{{record.wechat}}</span>
         <span slot="wechat_robot_key" slot-scope="record">
-          <template v-if="record.wechat_robot_key">
-            <span style="display: inline-flex; align-items: center; max-width: 300px;">
-              <span style="flex: 1; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">
-                {{ wechatRobotKeyVisible[record.id] ? record.wechat_robot_key : maskKey(record.wechat_robot_key) }}
-              </span>
-              <a-icon 
-                :type="wechatRobotKeyVisible[record.id] ? 'eye-invisible' : 'eye'" 
-                @click="toggleWechatRobotKey(record.id)"
-                style="cursor: pointer; color: #1890ff; flex-shrink: 0;"
-              />
-            </span>
-          </template>
-          <span v-else>-</span>
+          <a-tag :color="record.wechat_robot_key_configured ? 'green' : 'default'">
+            {{ record.wechat_robot_key_configured ? $t('configured') : $t('not_configured') }}
+          </a-tag>
         </span>
         <div slot="created" slot-scope="record">{{record.created| parsetime}}</div>
         <span slot="status" slot-scope="record">
-          <a-switch :checked="record.status == '0' ? true : false" :checked-children="$t('enabled')"  :un-checked-children="$t('disabled')" @change="onStatusChange($event, record)" />
+          <a-switch
+            :checked="record.status == 0"
+            :disabled="isProtectedRecord(record)"
+            :checked-children="$t('enabled')"
+            :un-checked-children="$t('disabled')"
+            @change="onStatusChange($event, record)"
+          />
         </span>
         <span slot="operation" slot-scope="record">
-          <!-- <a-button class="pd20 paddingleft0" type="link" size="small" @click="editModal(record)"> {{ $t('edit_btn') }} </a-button> -->
           <a-button class="pd20 paddingleft0" type="link" size="small" @click="editModal(record)">{{ $t('edit_btn') }}</a-button>
           <a-popconfirm :title="$t('delete_user_confirm')" :ok-text="$t('yes_btn')" :cancel-text="$t('no_btn')" @confirm="deleteRecord(record)">
-            <a-button class="paddingleft0" type="link" size="small" v-auth="`delete`">{{ $t('delete_btn') }}</a-button>
+            <a-button class="paddingleft0" type="link" size="small" :disabled="isProtectedRecord(record)" v-auth="`delete`">{{ $t('delete_btn') }}</a-button>
           </a-popconfirm>
         </span>
       </a-table>
     </div>
     <a-modal title="新增用户" :visible="visible" :confirm-loading="confirmLoading" @ok="createUser" @cancel="handleCancel" width="600px">
       <template>
-        <a-form-model :rules="rules" :model="user">
+        <a-form-model ref="createForm" :rules="rules" :model="user">
           <a-form-model-item :label="$t('modalUsername')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="username">
             <a-input v-model.trim="user.username" :placeholder="$t('modalInputUser')" />
           </a-form-model-item>
@@ -88,7 +83,7 @@
     </a-modal>
     <a-modal :title="$t('edit')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateUser" @cancel="handleEditCancel" width="600px">
       <template>
-        <a-form-model :rules="rulesUpdate" :model="user">
+        <a-form-model ref="editForm" :rules="rulesUpdate" :model="user">
           <a-form-model-item :label="$t('modalUsername')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="username">
             <span>{{user.username}}</span>
           </a-form-model-item>
@@ -96,7 +91,7 @@
             <a-input-password v-model="user.password" :placeholder="$t('modalEditPassword')" />
           </a-form-model-item>
           <a-form-model-item v-if="nowrole==='admin'" :label="$t('label_role')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="role">
-            <a-select v-model="user.role">
+            <a-select v-model="user.role" :disabled="isProtectedRecord(user)">
               <a-select-option v-for="(item, index) in roleOption" :key="index" :value="item.value" :label="item.label" :title="item.label">
                 {{ item.label }}
               </a-select-option>
@@ -113,6 +108,11 @@
           </a-form-model-item>
           <a-form-model-item :label="$t('label_wechat_robot_key')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="wechat_robot_key">
             <a-input-password v-model.trim="user.wechat_robot_key" :placeholder="$t('modalInputWechatRobotKey')" />
+            <a-checkbox
+              v-if="user.wechat_robot_key_configured"
+              v-model="clearWechatRobotKey"
+              :disabled="Boolean(user.wechat_robot_key)"
+            >{{ $t('clear_robot_key') }}</a-checkbox>
           </a-form-model-item>
           <a-form-model-item :label="$t('label_ding_talk')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="ding_talk">
             <a-input v-model.trim="user.ding_talk" :placeholder="$t('modalInputDingTalk')" />
@@ -128,6 +128,20 @@
 import PageLayout from "@/layouts/PageLayout";
 import { parseTimeFun } from "@/utils/formatter";
 import { userList, userCreate, userDelete, userPut, userStatusPut } from "@/services/admin";
+import { buildUserUpdatePayload, isValidPassword, isValidUsername, statusAfterResponse } from "./user-validation";
+
+const emptyUser = () => ({
+  username: "",
+  password: "",
+  role: "user",
+  email: "",
+  phone: "",
+  wechat: "",
+  wechat_robot_key: "",
+  wechat_robot_key_configured: false,
+  ding_talk: "",
+});
+
 export default {
   name: "userList",
   i18n: require('./i18n'),
@@ -157,34 +171,30 @@ export default {
       username: "",
       nowuser: "",
       nowrole: "",
-      wechatRobotKeyVisible: {}, // 存储每行key的显示状态 {recordId: true/false}
-      user: {
-        username: "",
-        password: "",
-        role: "user",
-        email: "",
-        phone: "",
-        wechat: "",
-        wechat_robot_key: "",
-        status: "1",
-        ding_talk: "",
-      },
+      clearWechatRobotKey: false,
+      user: emptyUser(),
       rules: {
-	username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-        password: [{ required: true, message: '请输入用户密码', trigger: 'change' }],
-        role: [{ required: true, message: '请输入用户密码', trigger: 'change' }],
+	username: [
+          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { validator: (rule, value, callback) => isValidUsername(value) ? callback() : callback(new Error(this.$t('username_format_error'))), trigger: 'blur' },
+        ],
+        password: [
+          { required: true, message: '请输入用户密码', trigger: 'change' },
+          { validator: (rule, value, callback) => isValidPassword(value) ? callback() : callback(new Error(this.$t('password_length_error'))), trigger: 'change' },
+        ],
+        role: [{ required: true, message: '请选择角色', trigger: 'change' }],
         email: [{ required: false, type: 'email', message: '请输入正确邮箱', trigger: 'change' }],
-        phone: [{ required: false, pattern: /^1(3[0-9]|4[01456879]|5[0-3,5-9]|6[2567]|7[0-8]|8[0-9]|9[0-3,5-9])\d{8}$/, message: '请输入正确的手机号码', trigger: 'change' }],
+        phone: [{ required: false, max: 32, message: '手机号不能超过 32 个字符', trigger: 'change' }],
         wechat: [{ required: false, type: 'string', message: '请输入正确的微信账号', trigger: 'blur' }],
         wechat_robot_key: [{ required: false, type: 'string', message: '请输入企业微信群机器人webhook key', trigger: 'blur' }],
         ding_talk: [{ required: false, type: 'string', message: '请输入正确的钉钉账号', trigger: 'blur' }],      
       },
       rulesUpdate: {
 	username: [{ required: false, message: '请输入用户名', trigger: 'blur' }],
-        password: [{ required: false, message: '留空则不修改', trigger: 'change' }],
-        role: [{ required: true, message: '请输入用户密码', trigger: 'change' }],
+        password: [{ validator: (rule, value, callback) => isValidPassword(value, true) ? callback() : callback(new Error(this.$t('password_length_error'))), trigger: 'change' }],
+        role: [{ required: true, message: '请选择角色', trigger: 'change' }],
         email: [{ required: false, type: 'email', message: '请输入正确邮箱', trigger: 'change' }],
-        phone: [{ required: false, pattern: /^1(3[0-9]|4[01456879]|5[0-3,5-9]|6[2567]|7[0-8]|8[0-9]|9[0-3,5-9])\d{8}$/, message: '请输入正确的手机号码', trigger: 'change' }],
+        phone: [{ required: false, max: 32, message: '手机号不能超过 32 个字符', trigger: 'change' }],
         wechat: [{ required: false, type: 'string', message: '请输入正确的微信账号', trigger: 'blur' }],
         wechat_robot_key: [{ required: false, type: 'string', message: '请输入企业微信群机器人webhook key', trigger: 'blur' }],
         ding_talk: [{ required: false, type: 'string', message: '请输入正确的钉钉账号', trigger: 'blur' }],
@@ -242,6 +252,9 @@ export default {
     getRoleLabel(role) {
       return role === "admin" ? this.$t('role_admin') : this.$t('role_user');
     },
+    isProtectedRecord(record) {
+      return record && (record.username === "admin" || record.username === this.nowuser);
+    },
     init() {
       this.nowuser = this.$store.getters['account/user'].name;
       this.nowrole = this.$store.getters['account/user'].role;
@@ -258,51 +271,53 @@ export default {
           this.pagination.current = this.page;
           this.pagination.pageSize = this.pageSize;
           this.list = res.data.items || [];
+        } else {
+          this.$message.error(res.message);
         }
+      }).catch(() => {
+        this.$message.error(this.$t('request_failed'));
       }).finally(() => {
         this.loading = false;
       });
     },
-    onStatusChange(e, record) {
-      if (e) {
-        record.status = 0
-      } else {
-        if (record.username === "admin") {
-          this.$message.error("cannot disable admin user")
-          return
-        }
-        record.status = 1
-      }
+    onStatusChange(enabled, record) {
+      const currentStatus = Number(record.status);
       this.loading = true;
-      userStatusPut(record.id, this.user = { status: record.status }).then((resp) => {
-        let res = resp.data;
+      userStatusPut(record.id, {status: enabled ? 0 : 1}).then((resp) => {
+        const res = resp.data;
+        record.status = statusAfterResponse(currentStatus, enabled, res.code);
         if (res.code == 200) {
           this.$message.success(res.message);
-          this.loading = false;
         } else {
           this.$message.error(res.message);
-          this.loading = true;
         }
+      }).catch(() => {
+        record.status = currentStatus;
+        this.$message.error(this.$t('request_failed'));
       }).finally(() => {
         this.loading = false;
       });
     },
     createUser() {
-      this.confirmLoading = true;
-      userCreate(this.user).then((resp) => {
-        let res = resp.data;
-        if (res.code == 200) {
-          this.$message.success(res.message)
-          this.loading = false;
+      this.$refs.createForm.validate(valid => {
+        if (!valid) return;
+        this.confirmLoading = true;
+        userCreate(this.user).then((resp) => {
+          const res = resp.data;
+          if (res.code == 200) {
+            this.$message.success(res.message);
+            this.visible = false;
+            this.user = emptyUser();
+            this.init();
+          } else {
+            this.$message.error(res.message);
+          }
+        }).catch(() => {
+          this.$message.error(this.$t('request_failed'));
+        }).finally(() => {
           this.confirmLoading = false;
-          this.visible = false;
-          this.init()
-        } else {
-          this.visible = true;
-          this.confirmLoading = false;
-          this.$message.error(res.message);
-        }
-      })
+        });
+      });
     },
     changePage(e) {
       // 切换页码
@@ -311,32 +326,36 @@ export default {
       this.init();
     },
     showModal() {
+      this.user = emptyUser();
       this.visible = true;
+      this.$nextTick(() => this.$refs.createForm && this.$refs.createForm.clearValidate());
     },
     handleCancel() {
       this.visible = false;
-    },
-    seeDetail(v) {
-      this.$router.push("/system/user?id=" + v.hostid + "&type=1");
+      this.user = emptyUser();
     },
     deleteRecord(record) {
-      this.loading = true
+      this.loading = true;
       userDelete(record.id).then((resp) => {
-        let res = resp.data
+        const res = resp.data;
         if (res.code == 200) {
-          this.loading = false
-          this.$message.success(res.message)
-          this.init()
+          this.$message.success(res.message);
+          this.init();
         } else {
-          this.loading = false
-          this.$message.error(res.message)
+          this.$message.error(res.message);
         }
-      })
+      }).catch(() => {
+        this.$message.error(this.$t('request_failed'));
+      }).finally(() => {
+        this.loading = false;
+      });
     },
     handleEditCancel() {
       this.visibleEdit = false;
+      this.clearWechatRobotKey = false;
     },
     editModal(record) {
+      this.clearWechatRobotKey = false;
       this.visibleEdit = true;
       this.user = {
         id: record.id,
@@ -346,21 +365,33 @@ export default {
         email: record.email,
         phone: record.phone,
         wechat: record.wechat,
-        wechat_robot_key: record.wechat_robot_key,
+        wechat_robot_key: "",
+        wechat_robot_key_configured: record.wechat_robot_key_configured,
         ding_talk: record.ding_talk,
-      }
+      };
+      this.$nextTick(() => this.$refs.editForm && this.$refs.editForm.clearValidate());
     },
     updateUser() {
-      userPut(this.user.id, this.user).then((resp) => {
-        let res = resp.data
-        if (res.code == 200) {
-          this.$message.success(res.message)
-          this.init()
-        } else {
-          this.$message.error(res.message)
-        }
-      })
-      this.visibleEdit = false
+      this.$refs.editForm.validate(valid => {
+        if (!valid) return;
+        this.confirmLoading = true;
+        const payload = buildUserUpdatePayload(this.user, {clearWechatRobotKey: this.clearWechatRobotKey});
+        userPut(this.user.id, payload).then((resp) => {
+          const res = resp.data;
+          if (res.code == 200) {
+            this.$message.success(res.message);
+            this.visibleEdit = false;
+            this.clearWechatRobotKey = false;
+            this.init();
+          } else {
+            this.$message.error(res.message);
+          }
+        }).catch(() => {
+          this.$message.error(this.$t('request_failed'));
+        }).finally(() => {
+          this.confirmLoading = false;
+        });
+      });
     },
     resetData() {
       if (this.username || this.status) {
@@ -368,19 +399,6 @@ export default {
         this.status = "";
         this.init();
       }
-    },
-    toggleWechatRobotKey(recordId) {
-      this.$set(this.wechatRobotKeyVisible, recordId, !this.wechatRobotKeyVisible[recordId]);
-    },
-    maskKey(key) {
-      if (!key || key.length <= 8) {
-        return "****";
-      }
-      // 显示前4位和后4位，中间用*代替
-      const start = key.substring(0, 4);
-      const end = key.substring(key.length - 4);
-      const masked = "*".repeat(Math.max(4, key.length - 8));
-      return start + masked + end;
     },
   },
 };

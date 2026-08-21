@@ -29,6 +29,7 @@ import {mapState, mapMutations} from 'vuex'
 import {getI18nKey} from '@/utils/routerUtil'
 import AKeepAlive from '@/components/cache/AKeepAlive'
 import TabsHead from '@/layouts/tabs/TabsHead'
+import {loadTabs, saveTabs} from './tab-persistence'
 
 export default {
   name: 'TabsView',
@@ -107,6 +108,14 @@ export default {
         this.removeListener()
       } else {
         this.addListener()
+      }
+    },
+    pageList: {
+      deep: true,
+      handler() {
+        if (this.multiPage) {
+          this.persistTabs()
+        }
       }
     },
     tabsOffset(newVal, oldVal) {
@@ -254,8 +263,10 @@ export default {
      * 页面 unload 事件监听器，添加页签到 session 缓存，用于刷新时保留页签
      */
     unloadListener() {
-      const tabs = this.pageList.map(item => ({...item, _init_: false}))
-      sessionStorage.setItem(process.env.VUE_APP_TBAS_KEY, JSON.stringify(tabs))
+      this.persistTabs()
+    },
+    persistTabs() {
+      saveTabs(sessionStorage, process.env.VUE_APP_TBAS_KEY, this.pageList)
     },
     createPage(route) {
       return {
@@ -283,18 +294,9 @@ export default {
      * 加载缓存的 tabs
      */
     loadCachedTabs() {
-      const cachedTabsStr = sessionStorage.getItem(process.env.VUE_APP_TBAS_KEY)
-      if (cachedTabsStr) {
-        try {
-          const cachedTabs = JSON.parse(cachedTabsStr)
-          if (cachedTabs.length > 0) {
-            this.pageList = cachedTabs
-          }
-        } catch (e) {
-          console.warn('failed to load cached tabs, got exception:', e)
-        } finally {
-          sessionStorage.removeItem(process.env.VUE_APP_TBAS_KEY)
-        }
+      const cachedTabs = loadTabs(sessionStorage, process.env.VUE_APP_TBAS_KEY)
+      if (cachedTabs.length > 0) {
+        this.pageList = cachedTabs
       }
     },
     loadCacheConfig(routes, pCache = true) {

@@ -27,12 +27,6 @@
         <div slot="updated_at" slot-scope="record">
           {{ new Date(+new Date(record.created_at) + 8 * 3600 * 1000).toISOString().replace(/T/g, ' ').replace(/\.[\d]{3}Z/, '') || '--' }}</div>
         <div slot="operation" slot-scope="record">
-          <a-button class="pd20 paddingleft0" type="link" size="small" v-if="record.status==0" @click="deployTopo(record)">{{ $t('btn_share') }}</a-button>
-          <a-button class="pd20 paddingleft0" type="link" size="small" v-else @click="deployTopo(record)">{{ $t('btn_cancel_share') }}</a-button>
-          <a-button class="pd20 paddingleft0" type="link" size="small" v-if="record.status==1" @click="copyShareLink(record)">
-            <a-icon type="link" />
-            {{ $t('btn_share') }}
-          </a-button>
           <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeDetail(record)">{{ $t('btn_edit') }}</a-button>
           <a-button class="pd20 paddingleft0" type="link" size="small" @click="showTopo(record)">{{ $t('btn_view') }}</a-button>
           <a-popconfirm :title="$t('confirm_delete')" :ok-text="$t('confirm_yes')" :cancel-text="$t('confirm_no')" @confirm="confirm(record)">

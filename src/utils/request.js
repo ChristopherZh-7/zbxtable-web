@@ -3,6 +3,8 @@ import Cookie from 'js-cookie'
 
 // 跨域认证信息 header 名
 const xsrfHeaderName = 'X-Token'
+const tenantHeaderName = 'X-Tenant-ID'
+const tenantStorageKey = 'zbxtable.currentTenant'
 const zbxSessionName = 'zbx_session'
 
 axios.defaults.timeout = 20000
@@ -34,18 +36,50 @@ const METHOD = {
  * @returns {Promise<AxiosResponse<T>>}
  */
 async function request(url, method, params, config) {
+	const tenant = getTenantContext()
+	const requestConfig = {
+		...(config || {}),
+		headers: {
+			...((config && config.headers) || {}),
+			...(tenant && tenant.id ? { [tenantHeaderName]: String(tenant.id) } : {}),
+		},
+	}
 	switch (method) {
 		case METHOD.GET:
-			return axios.get(url, { params, ...config })
+			return axios.get(url, { params, ...requestConfig })
 		case METHOD.POST:
-			return axios.post(url, params, config)
+			return axios.post(url, params, requestConfig)
 		case METHOD.PUT:
-			return axios.put(url, params, config)
+			return axios.put(url, params, requestConfig)
 		case METHOD.DELETE:
-			return axios.delete(url, params, config)
+			return axios.delete(url, { ...requestConfig, data: params })
 		default:
-			return axios.get(url, { params, ...config })
+			return axios.get(url, { params, ...requestConfig })
 	}
+}
+
+function getTenantContext() {
+	try {
+		const stored = localStorage.getItem(tenantStorageKey)
+		return stored ? JSON.parse(stored) : null
+	} catch (error) {
+		return null
+	}
+}
+
+function setTenantContext(tenant) {
+	if (!tenant || !tenant.id) {
+		removeTenantContext()
+		return
+	}
+	const normalized = { id: Number(tenant.id), code: tenant.code, name: tenant.name }
+	localStorage.setItem(tenantStorageKey, JSON.stringify(normalized))
+	Cookie.set(tenantHeaderName, String(normalized.id), { expires: 7, sameSite: 'strict' })
+}
+
+function removeTenantContext() {
+	localStorage.removeItem(tenantStorageKey)
+	Cookie.remove(tenantHeaderName)
 }
 
 /**
@@ -75,6 +109,7 @@ function removeAuthorization(authType = AUTH_TYPE.BEARER) {
 		case AUTH_TYPE.BEARER:
 			Cookie.remove(xsrfHeaderName)
 			Cookie.remove(zbxSessionName)
+			removeTenantContext()
 			break
 		case AUTH_TYPE.BASIC:
 		case AUTH_TYPE.AUTH1:
@@ -240,4 +275,7 @@ export {
 	checkAuthorization,
 	loadInterceptors,
 	parseUrlParams,
+	getTenantContext,
+	setTenantContext,
+	removeTenantContext,
 }

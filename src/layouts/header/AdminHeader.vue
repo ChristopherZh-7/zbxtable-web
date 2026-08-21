@@ -11,6 +11,19 @@
         <i-menu class="head-menu" :theme="headerTheme" mode="horizontal" :options="menuData" @select="onSelect" />
       </div>
       <div :class="['admin-header-right', headerTheme]">
+        <a-select
+          v-if="tenantOptions.length"
+          class="header-item tenant-selector"
+          size="small"
+          :value="activeTenantID"
+          :loading="switchingTenant"
+          placeholder="选择租户"
+          @change="switchTenant"
+        >
+          <a-select-option v-for="tenant in tenantOptions" :key="tenant.id" :value="tenant.id">
+            {{ tenant.name }}
+          </a-select-option>
+        </a-select>
         <header-search
           v-if="!isMobile"
           class="header-item header-search-item"
@@ -67,6 +80,8 @@ import HeaderSearch from './HeaderSearch'
 import HeaderAvatar from "./HeaderAvatar";
 import IMenu from "@/components/menu/menu";
 import { mapState, mapMutations } from "vuex";
+import { getCurrentTenant } from '@/services/tenant'
+import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
 
 export default {
   name: "AdminHeader",
@@ -80,6 +95,7 @@ export default {
         { key: "US", name: "English", alias: "English" },
       ],
       searchActive: false,
+      switchingTenant: false,
     };
   },
   computed: {
@@ -110,6 +126,13 @@ export default {
     showEnterScreen() {
       return this.$route.path !== '/screen/dashboard'
     },
+    tenantOptions() {
+      return this.$store.getters['account/tenants'] || []
+    },
+    activeTenantID() {
+      const tenant = this.$store.getters['account/currentTenant'] || getTenantContext()
+      return tenant && tenant.id
+    },
     menuWidth() {
       const { layout, searchActive } = this;
       const headWidth = layout === "head" ? "100% - 188px" : "100%";
@@ -126,6 +149,26 @@ export default {
     },
     goToScreen() {
       this.$router.push('/screen/dashboard')
+    },
+    async switchTenant(id) {
+      const candidate = this.tenantOptions.find((tenant) => Number(tenant.id) === Number(id))
+      if (!candidate || Number(this.activeTenantID) === Number(id)) return
+      const previous = getTenantContext()
+      this.switchingTenant = true
+      try {
+        setTenantContext(candidate)
+        const response = await getCurrentTenant()
+        const business = response && response.data && response.data.code !== undefined ? response.data : response
+        if (!business || Number(business.code) !== 200) throw new Error(business && business.message)
+        this.$store.commit('account/setCurrentTenant', candidate)
+        window.location.reload()
+      } catch (error) {
+        if (previous) setTenantContext(previous)
+        else removeTenantContext()
+        this.$message.error(error.message || '切换租户失败')
+      } finally {
+        this.switchingTenant = false
+      }
     },
     ...mapMutations("setting", ["setLang"]),
   },
@@ -150,5 +193,10 @@ export default {
   display: inline-flex;
   align-items: center;
   line-height: 1;
+}
+
+.tenant-selector {
+  min-width: 150px;
+  margin-right: 8px;
 }
 </style>

@@ -16,6 +16,11 @@ const options = {
       component: () => import("@/pages/login"),
     },
     {
+      path: "/tenant-select",
+      name: "选择租户",
+      component: () => import("@/pages/system/tenants/select"),
+    },
+    {
       path: "*",
       name: "404",
       component: () => import("@/pages/exception/404"),
@@ -38,7 +43,7 @@ const options = {
       children: [
         {
           path: "dashboard",
-          name: "系统概要",
+          name: "监控",
           meta: { icon: "dashboard" },
           component: BlankView,
           children: [
@@ -53,6 +58,47 @@ const options = {
               name: "状态总览",
               meta: { page: { closable: false } },
               component: () => import("@/pages/dashboard/overview"),
+            },
+          ],
+        },
+        {
+          path: "alarm",
+          name: "告警",
+          meta: { icon: "history", page: { cacheAble: false } },
+          component: BlankView,
+          children: [
+            {
+              path: "analysis",
+              name: "告警分析",
+              component: () => import("@/pages/alarm/analysis"),
+            },
+            {
+              path: "query",
+              name: "告警查询",
+              component: () => import("@/pages/alarm/query"),
+            },
+            {
+              path: "rule",
+              name: "分发规则",
+              component: () => import("@/pages/alarm/rule"),
+            },
+            {
+              path: "mutes",
+              name: "屏蔽规则",
+              component: () => import("@/pages/alarm/mutes"),
+            },
+          ],
+        },
+        {
+          path: "assets",
+          name: "资产",
+          meta: { icon: "appstore", page: { cacheAble: false } },
+          component: BlankView,
+          children: [
+            {
+              path: "tree",
+              name: "设备树",
+              component: () => import("@/pages/host/AssetBrowser"),
             },
           ],
         },
@@ -106,36 +152,8 @@ const options = {
           ],
         },
         {
-          path: "alarm",
-          name: "告警管理",
-          meta: { icon: "history", page: { cacheAble: false } },
-          component: BlankView,
-          children: [
-            {
-              path: "analysis",
-              name: "告警分析",
-              component: () => import("@/pages/alarm/analysis"),
-            },
-            {
-              path: "query",
-              name: "告警查询",
-              component: () => import("@/pages/alarm/query"),
-            },
-            {
-              path: "rule",
-              name: "分发规则",
-              component: () => import("@/pages/alarm/rule"),
-            },
-            {
-              path: "mutes",
-              name: "屏蔽规则",
-              component: () => import("@/pages/alarm/mutes"),
-            },
-          ],
-        },
-        {
           path: "topology",
-          name: "拓扑管理",
+          name: "可视化",
           meta: { icon: "cluster", page: { cacheAble: false } },
           component: BlankView,
           children: [
@@ -156,12 +174,17 @@ const options = {
               meta: { highlight: "/topology", invisible: true },
               component: () => import("@/pages/topology/show"),
             },
+            {
+              path: "/screen/dashboard",
+              name: "运维大屏",
+              component: () => import("@/pages/screen/index"),
+            },
           ],
         },
         {
           path: "report",
           name: "报表管理",
-          meta: { icon: "cluster", page: { cacheAble: false } },
+          meta: { icon: "cluster", page: { cacheAble: false }, invisible: true },
           component: BlankView,
           children: [
             {
@@ -186,6 +209,12 @@ const options = {
               name: "用户管理",
               meta: { icon: "user", page: { cacheAble: false } },
               component: () => import("@/pages/system/users"),
+            },
+            {
+              path: "tenants",
+              name: "租户管理",
+              meta: { icon: "team", page: { cacheAble: false } },
+              component: () => import("@/pages/system/tenants"),
             },
             {
               path: "bandwidth",

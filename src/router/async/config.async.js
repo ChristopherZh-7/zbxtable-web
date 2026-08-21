@@ -6,9 +6,9 @@ const routesConfig = [
   'install',
   'login',
   {
-    router: 'topologyShare',
-    path: '/share/topology',
-    name: '共享拓扑'
+    router: 'tenantSelect',
+    path: '/tenant-select',
+    name: '选择租户'
   },
   {
     router: 'screenDashboard',

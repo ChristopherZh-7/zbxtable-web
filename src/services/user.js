@@ -27,8 +27,13 @@ export function logout() {
     process.env.VUE_APP_USER_KEY,
     process.env.VUE_APP_PERMISSIONS_KEY,
     process.env.VUE_APP_ROLES_KEY,
-    process.env.VUE_APP_ROUTES_KEY
+    process.env.VUE_APP_ROUTES_KEY,
+    'zbxtable.tenants'
   ].filter(Boolean).forEach((key) => localStorage.removeItem(key))
+  ;[
+    process.env.VUE_APP_TBAS_KEY,
+    process.env.VUE_APP_TBAS_TITLES_KEY
+  ].filter(Boolean).forEach((key) => sessionStorage.removeItem(key))
 }
 
 export default {

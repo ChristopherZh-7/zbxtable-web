@@ -3,13 +3,13 @@ module.exports = {
     CN: {
       home: {name: '首页'},
       dashboard: {
-        name: '系统概要',
+        name: '监控',
         workplace: {name: '面板'},
         inventory: {name: '资产管理'},
         overview: {name: '状态总览'}
       },
       alarm: {
-        name: '告警管理',
+        name: '告警',
         list: {name: '告警查询'},
         query: {name: '告警查询'},
         alarmList: {name: '告警查询'},
@@ -34,10 +34,17 @@ module.exports = {
         detail: {name: '详细信息'}
       },
       topology: {
-        name: '拓扑管理',
+        name: '可视化',
         list: {name: '拓扑维护'},
         detail: {name: '编辑'},
         show: {name: '展示'}
+      },
+      assets: {
+        name: '资产',
+        tree: {name: '设备树'}
+      },
+      screen: {
+        dashboard: {name: '运维大屏'}
       },
       report: {
         name: '报表管理',
@@ -46,6 +53,7 @@ module.exports = {
       system: {
         name: '系统管理',
         users: {name: '用户管理'},
+        tenants: {name: '租户管理'},
         systemUsers: {name: '用户管理'},
         groups: {name: '用户组'},
         systemGroups: {name: '用户组'},
@@ -103,13 +111,13 @@ module.exports = {
     US: {
       home: {name: 'Home'},
       dashboard: {
-        name: 'Dashboard',
+        name: 'Monitoring',
         workplace: {name: 'Dashboard'},
         inventory: {name: 'Inventory'},
         overview: {name: 'Overview'}
       },
       alarm: {
-        name: 'Alarm',
+        name: 'Alerts',
         list: {name: 'Query'},
         query: {name: 'Alarm Query'},
         alarmList: {name: 'Alarm Query'},
@@ -134,10 +142,17 @@ module.exports = {
         detail: {name: 'Detailed Info'}
       },
       topology: {
-        name: 'Topology',
+        name: 'Visualization',
         list: {name: 'Topology'},
         detail: {name: 'Edit'},
         show: {name: 'Show'}
+      },
+      assets: {
+        name: 'Assets',
+        tree: {name: 'Device Tree'}
+      },
+      screen: {
+        dashboard: {name: 'Operations Screen'}
       },
       report: {
         name: 'Report',
@@ -146,6 +161,7 @@ module.exports = {
       system: {
         name: 'System',
         users: {name: 'User'},
+        tenants: {name: 'Tenants'},
         systemUsers: {name: 'User'},
         groups: {name: 'User Group'},
         systemGroups: {name: 'User'},
@@ -203,13 +219,13 @@ module.exports = {
     HK: {
       home: {name: '首頁'},
       dashboard: {
-        name: '系統概要',
+        name: '監控',
         workplace: {name: '面板'},
         inventory: {name: '資產管理'},
         overview: {name: '狀態總覽'}
       },
       alarm: {
-        name: '告警管理',
+        name: '告警',
         list: {name: '告警查詢'},
         query: {name: '告警查詢'},
         alarmList: {name: '告警查詢'},
@@ -234,10 +250,17 @@ module.exports = {
         detail: {name: '詳細信息'}
       },
       topology: {
-        name: '拓撲管理',
+        name: '可視化',
         list: {name: '拓撲維護'},
         detail: {name: '編輯'},
         show: {name: '展示'}
+      },
+      assets: {
+        name: '資產',
+        tree: {name: '設備樹'}
+      },
+      screen: {
+        dashboard: {name: '運維大屏'}
       },
       report: {
         name: '報表管理',

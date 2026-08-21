@@ -17,6 +17,10 @@ const routerMap = {
 		path: '/login',
 		component: () => import('@/pages/login'),
 	},
+	tenantSelect: {
+		path: '/tenant-select',
+		component: () => import('@/pages/system/tenants/select'),
+	},
 	root: {
 		path: '/',
 		name: '根路由',
@@ -110,6 +114,9 @@ const routerMap = {
 	},
 	systemUsers: {
 		component: () => import('@/pages/system/users'),
+	},
+	systemTenants: {
+		component: () => import('@/pages/system/tenants'),
 	},
 	systemGroups: {
 		component: () => import('@/pages/system/groups'),

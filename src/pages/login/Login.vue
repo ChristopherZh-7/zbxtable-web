@@ -105,6 +105,9 @@ import { setAuthorization } from '@/utils/request'
 import { loadRoutes } from '@/utils/routerUtil'
 import { mapMutations } from 'vuex'
 import { startTokenRefresher } from '@/utils/tokenRefresher'
+import { listTenantContexts } from '@/services/tenant'
+import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
+import { normalizeTenantItems, selectInitialTenant } from '@/pages/system/tenant-context'
 export default {
   name: 'Login',
   i18n: require('./i18n'),
@@ -148,7 +151,21 @@ export default {
     })
   },
   methods: {
-    ...mapMutations('account', ['setUser', 'setPermissions', 'setRoles']),
+    ...mapMutations('account', ['setUser', 'setPermissions', 'setRoles', 'setTenants', 'setCurrentTenant']),
+    async prepareTenantContext(user) {
+      const response = await listTenantContexts()
+      const tenants = normalizeTenantItems(response)
+      this.setTenants(tenants)
+      const selected = selectInitialTenant(tenants, getTenantContext())
+      if (selected) {
+        setTenantContext(selected)
+        this.setCurrentTenant(selected)
+        return '/dashboard/workplace'
+      }
+      removeTenantContext()
+      this.setCurrentTenant(null)
+      return user && user.role === 'admin' && tenants.length === 0 ? '/system/tenants' : '/tenant-select'
+    },
     async loadPublicSystemInfo() {
       try {
         const res = await getPublicSystemInfo()
@@ -334,7 +351,7 @@ export default {
         this.loadUserTheme(user)
         
         // 获取路由配置
-        getRoutesConfig().then((result) => {
+        getRoutesConfig().then(async (result) => {
           try {
             const routesRes =
               (result && result.data && typeof result.data.code !== 'undefined')
@@ -347,16 +364,17 @@ export default {
             // 加载系统配置（名称和Logo）
             this.loadSystemConfig()
             
-            this.$router.push('/dashboard/workplace')
+            const target = await this.prepareTenantContext(user)
+            this.$router.push(target)
             this.$message.success(loginRes.message || this.$t('loginSuccess'), 1)
           } catch (e) {
             // 路由加载失败时也至少完成登录并进入首页
-            this.$router.push('/dashboard/workplace')
+            this.$router.push(user && user.role === 'admin' ? '/system/tenants' : '/tenant-select')
             this.$message.success(loginRes && loginRes.message ? loginRes.message : '登录成功', 1)
           }
         }).catch(() => {
           // 路由配置接口异常时，至少完成基本登录跳转
-          this.$router.push('/dashboard/workplace')
+          this.$router.push(user && user.role === 'admin' ? '/system/tenants' : '/tenant-select')
           this.$message.success(loginRes && loginRes.message ? loginRes.message : '登录成功', 1)
         })
       } else {
