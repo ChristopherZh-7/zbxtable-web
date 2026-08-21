@@ -37,6 +37,7 @@
         <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
 		<a-button v-auth="'export'" style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openPipeline">{{ $t('pipeline_config') }}</a-button>
       </a-form-model-item>
     </a-form-model>
 
@@ -69,6 +70,10 @@
         </span>
         <span slot="handling_status" slot-scope="record">
           <a-tag :color="handlingStatusColor(record.handling_status)">{{ handlingStatusLabel(record.handling_status) }}</a-tag>
+        </span>
+        <span slot="pipeline_assignment" slot-scope="record">
+          <div>{{ $t('pipeline_duty') }}：{{ record.dispatched_username || $t('handling_unassigned') }}</div>
+          <a-tag v-if="record.escalation_username" color="orange">{{ $t('pipeline_escalated_to') }} {{ record.escalation_username }}</a-tag>
         </span>
         <span slot="operation" slot-scope="record">
 		  <a-button class="pd20 paddingleft0" type="link" size="small" @click="openHandling(record)">{{ $t('btn_alarm_handling') }}</a-button>
@@ -107,6 +112,12 @@
             <a-descriptions-item :label="$t('handling_assignee')">
               {{ handlingDetail.assignee_username || $t('handling_unassigned') }}
             </a-descriptions-item>
+            <a-descriptions-item :label="$t('pipeline_duty')">
+              {{ handlingDetail.dispatched_username || $t('handling_unassigned') }}
+            </a-descriptions-item>
+            <a-descriptions-item :label="$t('pipeline_escalation')">
+              {{ handlingDetail.escalation_username || $t('pipeline_not_escalated') }}
+            </a-descriptions-item>
           </a-descriptions>
 
           <h3 class="handling-section-title">{{ $t('handling_timeline') }}</h3>
@@ -142,6 +153,65 @@
             </template>
           </div>
         </template>
+      </a-spin>
+    </a-drawer>
+
+    <a-drawer
+      :title="$t('pipeline_config_title')"
+      placement="right"
+      :visible="pipelineVisible"
+      :width="760"
+      :closable="true"
+      @close="closePipeline">
+      <a-spin :spinning="pipelineLoading">
+        <a-alert type="info" show-icon :message="$t('pipeline_scope_hint')" />
+        <a-card size="small" :title="$t('pipeline_policy')" class="pipeline-card">
+          <a-form-model layout="inline">
+            <a-form-model-item :label="$t('pipeline_enabled')">
+              <a-switch v-model="pipelineConfig.policy.enabled" />
+            </a-form-model-item>
+            <a-form-model-item :label="$t('pipeline_delay')">
+              <a-input-number v-model="pipelineConfig.policy.delay_minutes" :min="1" :max="1440" />
+            </a-form-model-item>
+            <a-form-model-item :label="$t('pipeline_escalation_user')">
+              <a-select v-model="pipelineConfig.policy.escalation_user_id" style="width: 180px" :placeholder="$t('pipeline_select_admin')">
+                <a-select-option v-for="user in pipelineConfig.candidates" :key="user.user_id" :value="user.user_id">{{ user.username }}</a-select-option>
+              </a-select>
+            </a-form-model-item>
+          </a-form-model>
+        </a-card>
+
+        <div class="pipeline-shift-header">
+          <h3>{{ $t('pipeline_shifts') }}</h3>
+          <a-button type="dashed" icon="plus" @click="addPipelineShift">{{ $t('pipeline_add_shift') }}</a-button>
+        </div>
+        <a-empty v-if="!pipelineConfig.shifts.length" :description="$t('pipeline_no_shifts')" />
+        <a-card v-for="(shift, index) in pipelineConfig.shifts" :key="shift.client_key || shift.id || index" size="small" class="pipeline-card">
+          <a-row :gutter="12">
+            <a-col :span="6"><a-input v-model.trim="shift.name" :placeholder="$t('pipeline_shift_name')" /></a-col>
+            <a-col :span="9">
+              <a-select v-model="shift.weekdays" mode="multiple" style="width: 100%" :placeholder="$t('pipeline_weekdays')">
+                <a-select-option v-for="day in pipelineWeekdays" :key="day.value" :value="day.value">{{ day.label }}</a-select-option>
+              </a-select>
+            </a-col>
+            <a-col :span="7">
+              <a-select v-model="shift.duty_user_id" style="width: 100%" :placeholder="$t('pipeline_select_admin')">
+                <a-select-option v-for="user in pipelineConfig.candidates" :key="user.user_id" :value="user.user_id">{{ user.username }}</a-select-option>
+              </a-select>
+            </a-col>
+            <a-col :span="2"><a-switch v-model="shift.enabled" /></a-col>
+          </a-row>
+          <a-row :gutter="12" class="pipeline-time-row">
+            <a-col :span="8"><a-input v-model="shift.start_time" type="time" :addon-before="$t('pipeline_start')" /></a-col>
+            <a-col :span="8"><a-input v-model="shift.end_time" type="time" :addon-before="$t('pipeline_end')" /></a-col>
+            <a-col :span="8"><a-button type="danger" ghost icon="delete" @click="removePipelineShift(index)">{{ $t('btn_delete') }}</a-button></a-col>
+          </a-row>
+        </a-card>
+
+        <div v-if="$can('tenant.alarms', 'operate')" class="pipeline-actions">
+          <a-button :loading="pipelineRunning" @click="runPipelineCheck">{{ $t('pipeline_run') }}</a-button>
+          <a-button type="primary" :loading="pipelineSaving" @click="savePipeline">{{ $t('pipeline_save') }}</a-button>
+        </div>
       </a-spin>
     </a-drawer>
 
@@ -237,7 +307,7 @@
 
 <script>
 import PageLayout from "@/layouts/PageLayout";
-import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm } from "@/services/admin";
+import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
 import { parseTimeFun } from "@/utils/formatter";
 import { buildAlarmTimeRanges, getDefaultAlarmTimeRange } from "./timeRange";
@@ -384,9 +454,25 @@ export default {
       handlingRecord: null,
       handlingDetail: null,
       handlingNote: '',
+	  pipelineVisible: false,
+	  pipelineLoading: false,
+	  pipelineSaving: false,
+	  pipelineRunning: false,
+	  pipelineConfig: { shifts: [], policy: { enabled: false, delay_minutes: 15, escalation_user_id: null }, candidates: [] },
     };
   },
   computed: {
+	pipelineWeekdays() {
+	  return [
+		{ value: 1, label: this.$t('week_monday') },
+		{ value: 2, label: this.$t('week_tuesday') },
+		{ value: 3, label: this.$t('week_wednesday') },
+		{ value: 4, label: this.$t('week_thursday') },
+		{ value: 5, label: this.$t('week_friday') },
+		{ value: 6, label: this.$t('week_saturday') },
+		{ value: 7, label: this.$t('week_sunday') },
+	  ]
+	},
     contextSummary() {
       if (!this.currentAlarmContext) return ''
       const hostname = this.currentAlarmContext.hostname || '-'
@@ -445,6 +531,7 @@ export default {
         { title: this.$t('col_notification_status'), key: "notify_status", align: "left", scopedSlots: { customRender: "notify_status" } },
         { title: this.$t('handling_status'), key: "handling_status", align: "left", width: 100, scopedSlots: { customRender: "handling_status" } },
         { title: this.$t('handling_assignee'), dataIndex: "assignee_username", align: "left", width: 110, customRender: value => value || this.$t('handling_unassigned') },
+		{ title: this.$t('pipeline_assignment'), key: "pipeline_assignment", align: "left", width: 170, scopedSlots: { customRender: "pipeline_assignment" } },
         { title: this.$t('col_operation'), key: "operation", align: "center", scopedSlots: { customRender: "operation" } },
       ];
       this.innerColumns = [
@@ -589,11 +676,105 @@ export default {
       return ({ unclaimed: 'default', processing: 'blue', resolved: 'green', closed: 'purple' })[status || 'unclaimed'] || 'default'
     },
     handlingActionLabel(action) {
-      return ({ claim: this.$t('handling_claim'), note: this.$t('handling_add_note'), resolve: this.$t('handling_resolve'), close: this.$t('handling_close') })[action] || action
+	  return ({ dispatch: this.$t('pipeline_dispatch'), escalate: this.$t('pipeline_escalate'), claim: this.$t('handling_claim'), note: this.$t('handling_add_note'), resolve: this.$t('handling_resolve'), close: this.$t('handling_close') })[action] || action
     },
     handlingEventColor(action) {
-      return ({ claim: 'blue', note: 'gray', resolve: 'green', close: 'purple' })[action] || 'gray'
+	  return ({ dispatch: 'cyan', escalate: 'orange', claim: 'blue', note: 'gray', resolve: 'green', close: 'purple' })[action] || 'gray'
     },
+	minuteToPipelineTime(value) {
+	  const minute = Number(value || 0)
+	  const hours = String(Math.floor(minute / 60)).padStart(2, '0')
+	  const minutes = String(minute % 60).padStart(2, '0')
+	  return `${hours}:${minutes}`
+	},
+	pipelineTimeToMinute(value) {
+	  const match = /^(\d{2}):(\d{2})$/.exec(value || '')
+	  if (!match) return -1
+	  return Number(match[1]) * 60 + Number(match[2])
+	},
+	openPipeline() {
+	  this.pipelineVisible = true
+	  this.loadPipeline()
+	},
+	closePipeline() {
+	  this.pipelineVisible = false
+	},
+	loadPipeline() {
+	  this.pipelineLoading = true
+	  getAlarmPipeline().then(resp => {
+		const res = resp.data
+		if (res.code !== 200) {
+		  this.$message.error(res.message || this.$t('pipeline_load_failed'))
+		  return
+		}
+		const data = res.data || {}
+		this.pipelineConfig = {
+		  candidates: data.candidates || [],
+		  policy: Object.assign({ enabled: false, delay_minutes: 15, escalation_user_id: null }, data.policy || {}),
+		  shifts: (data.shifts || []).map(shift => Object.assign({}, shift, {
+			start_time: this.minuteToPipelineTime(shift.start_minute),
+			end_time: this.minuteToPipelineTime(shift.end_minute),
+		  })),
+		}
+	  }).catch(() => this.$message.error(this.$t('pipeline_load_failed'))).finally(() => {
+		this.pipelineLoading = false
+	  })
+	},
+	addPipelineShift() {
+	  this.pipelineConfig.shifts.push({
+		client_key: `shift-${Date.now()}`,
+		name: '', weekdays: [], start_time: '09:00', end_time: '18:00',
+		duty_user_id: null, enabled: true,
+	  })
+	},
+	removePipelineShift(index) {
+	  this.pipelineConfig.shifts.splice(index, 1)
+	},
+	buildPipelinePayload() {
+	  return {
+		policy: {
+		  enabled: !!this.pipelineConfig.policy.enabled,
+		  delay_minutes: Number(this.pipelineConfig.policy.delay_minutes),
+		  escalation_user_id: Number(this.pipelineConfig.policy.escalation_user_id || 0),
+		},
+		shifts: this.pipelineConfig.shifts.map(shift => ({
+		  name: shift.name,
+		  weekdays: shift.weekdays || [],
+		  start_minute: this.pipelineTimeToMinute(shift.start_time),
+		  end_minute: this.pipelineTimeToMinute(shift.end_time),
+		  duty_user_id: Number(shift.duty_user_id || 0),
+		  enabled: !!shift.enabled,
+		})),
+	  }
+	},
+	savePipeline() {
+	  this.pipelineSaving = true
+	  updateAlarmPipeline(this.buildPipelinePayload()).then(resp => {
+		const res = resp.data
+		if (res.code !== 200) {
+		  this.$message.error(res.message || this.$t('pipeline_save_failed'))
+		  return
+		}
+		this.$message.success(this.$t('pipeline_save_success'))
+		this.loadPipeline()
+	  }).catch(() => this.$message.error(this.$t('pipeline_save_failed'))).finally(() => {
+		this.pipelineSaving = false
+	  })
+	},
+	runPipelineCheck() {
+	  this.pipelineRunning = true
+	  runAlarmPipeline().then(resp => {
+		const res = resp.data
+		if (res.code !== 200) {
+		  this.$message.error(res.message || this.$t('pipeline_run_failed'))
+		  return
+		}
+		this.$message.success(this.$t('pipeline_run_success', { count: (res.data && res.data.escalated) || 0 }))
+		this.init()
+	  }).catch(() => this.$message.error(this.$t('pipeline_run_failed'))).finally(() => {
+		this.pipelineRunning = false
+	  })
+	},
     openHandling(record) {
       this.handlingRecord = record
       this.handlingVisible = true
@@ -1451,5 +1632,23 @@ export default {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 12px;
+}
+.pipeline-card {
+  margin-top: 16px;
+}
+.pipeline-shift-header,
+.pipeline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.pipeline-time-row {
+  margin-top: 12px;
+}
+.pipeline-actions {
+  justify-content: flex-end;
+  gap: 12px;
+  padding-bottom: 24px;
 }
 </style>

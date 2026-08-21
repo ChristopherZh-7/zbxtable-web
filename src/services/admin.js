@@ -92,6 +92,15 @@ export async function claimAlarm(id) {
 export async function handleAlarm(id, action, note) {
 	return request(ALARM + '/' + id + '/handling', METHOD.POST, { action, note })
 }
+export async function getAlarmPipeline() {
+	return request(ALARM + '/pipeline', METHOD.GET)
+}
+export async function updateAlarmPipeline(params) {
+	return request(ALARM + '/pipeline', METHOD.PUT, params)
+}
+export async function runAlarmPipeline() {
+	return request(ALARM + '/pipeline/run', METHOD.POST, {})
+}
 export async function alarmAnalysis(params) {
 	return request(ALARM_ANALYSIS, METHOD.GET, { ...params })
 }

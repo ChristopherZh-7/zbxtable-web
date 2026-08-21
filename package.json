@@ -20,6 +20,7 @@
 		"test:rules": "node --test tests/rules/*.test.js",
 		"test:alarm-analysis": "node --test tests/alarm-analysis/*.test.js",
 		"test:alarm-handling": "node --test tests/alarm-handling/*.test.js",
+		"test:alarm-pipeline": "node --test tests/alarm-pipeline/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
