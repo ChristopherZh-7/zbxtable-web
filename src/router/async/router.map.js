@@ -47,6 +47,9 @@ const routerMap = {
 	customDashboardDesigner: {
 		component: () => import('@/pages/dashboard/custom/designer'),
 	},
+	dynamicBaselines: {
+		component: () => import('@/pages/dashboard/baseline'),
+	},
 	// host/net/server 父容器保留：仅用于挂载各设备详情路由（列表已并入“资产管理”）
 	host: {
 		component: view.blank,

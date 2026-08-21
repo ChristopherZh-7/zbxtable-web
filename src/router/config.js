@@ -70,6 +70,11 @@ const options = {
               meta: { highlight: "/dashboard/custom-dashboards", invisible: true },
               component: () => import("@/pages/dashboard/custom/designer"),
             },
+            {
+              path: "baselines",
+              name: "动态基线",
+              component: () => import("@/pages/dashboard/baseline"),
+            },
           ],
         },
         {

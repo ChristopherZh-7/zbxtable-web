@@ -39,6 +39,7 @@ import {
 	ASSET_GROUP,
 	SYSTEM_BINDING,
 	DASHBOARD,
+	BASELINE_RULE,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -126,6 +127,27 @@ export async function updateDashboard(id, params) {
 }
 export async function deleteDashboard(id) {
 	return request(DASHBOARD + '/' + id, METHOD.DELETE)
+}
+export async function baselineRuleList() {
+	return request(BASELINE_RULE, METHOD.GET)
+}
+export async function baselineRuleDetail(id, zid) {
+	return request(BASELINE_RULE + '/' + id, METHOD.GET, {zid})
+}
+export async function createBaselineRule(params) {
+	return request(BASELINE_RULE, METHOD.POST, params)
+}
+export async function updateBaselineRule(id, zid, params) {
+	return request(BASELINE_RULE + '/' + id + '?zid=' + encodeURIComponent(zid), METHOD.PUT, params)
+}
+export async function deleteBaselineRule(id, zid) {
+	return request(BASELINE_RULE + '/' + id + '?zid=' + encodeURIComponent(zid), METHOD.DELETE)
+}
+export async function baselineRulePreview(id, zid) {
+	return request(BASELINE_RULE + '/' + id + '/preview', METHOD.GET, {zid})
+}
+export async function baselineRuleEvents(id, zid) {
+	return request(BASELINE_RULE + '/' + id + '/events', METHOD.GET, {zid})
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
