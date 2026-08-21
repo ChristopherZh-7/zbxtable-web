@@ -101,6 +101,12 @@ export async function updateAlarmPipeline(params) {
 export async function runAlarmPipeline() {
 	return request(ALARM + '/pipeline/run', METHOD.POST, {})
 }
+export async function getAlarmAggregation() {
+	return request(ALARM + '/aggregation', METHOD.GET)
+}
+export async function updateAlarmAggregation(params) {
+	return request(ALARM + '/aggregation', METHOD.PUT, params)
+}
 export async function alarmAnalysis(params) {
 	return request(ALARM_ANALYSIS, METHOD.GET, { ...params })
 }

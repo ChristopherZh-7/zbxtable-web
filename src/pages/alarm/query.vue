@@ -38,6 +38,7 @@
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
 		<a-button v-auth="'export'" style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
 		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openPipeline">{{ $t('pipeline_config') }}</a-button>
+		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openAggregation">{{ $t('aggregation_config') }}</a-button>
       </a-form-model-item>
     </a-form-model>
 
@@ -60,6 +61,14 @@
           <a-tag v-else-if="record.level==5" color="#f50000">{{ $t('level_disaster') }}</a-tag>
         </div>
         <span slot="occur_time" slot-scope="record">{{ record.occur_time | parsetime }}</span>
+        <span slot="aggregation" slot-scope="record">
+          <a-tag :color="Number(record.repeat_count || 1) > 1 ? 'purple' : 'default'">
+            {{ $t('aggregation_repeat_count', { count: Number(record.repeat_count || 1) }) }}
+          </a-tag>
+          <div v-if="Number(record.repeat_count || 1) > 1" class="aggregation-last-time">
+            {{ $t('aggregation_latest') }}：{{ record.last_occurrence_at | parsetime }}
+          </div>
+        </span>
         <span slot="notify_status" slot-scope="record">
           <a-badge v-if="record.notify_status==0" status="success"></a-badge>
           <a-badge v-else-if="record.notify_status==1" status="default"></a-badge>
@@ -118,6 +127,9 @@
             <a-descriptions-item :label="$t('pipeline_escalation')">
               {{ handlingDetail.escalation_username || $t('pipeline_not_escalated') }}
             </a-descriptions-item>
+            <a-descriptions-item :label="$t('aggregation_count')">
+              {{ $t('aggregation_repeat_count', { count: Number(handlingDetail.repeat_count || 1) }) }}
+            </a-descriptions-item>
           </a-descriptions>
 
           <h3 class="handling-section-title">{{ $t('handling_timeline') }}</h3>
@@ -131,6 +143,18 @@
               <div class="handling-event-time">{{ event.created_at | parsetime }}</div>
             </a-timeline-item>
           </a-timeline>
+
+          <h3 class="handling-section-title">
+            {{ $t('aggregation_occurrences') }} ({{ (handlingDetail.occurrences || []).length }})
+          </h3>
+          <a-empty v-if="!handlingDetail.occurrences || !handlingDetail.occurrences.length" :description="$t('aggregation_no_occurrences')" />
+          <a-list v-else size="small" bordered :data-source="handlingDetail.occurrences">
+            <a-list-item slot="renderItem" slot-scope="occurrence">
+              <span>#{{ occurrence.event_id }}</span>
+              <span>{{ occurrence.occur_time | parsetime }}</span>
+              <span>{{ $t('aggregation_item_value') }}：{{ occurrence.item_value }}</span>
+            </a-list-item>
+          </a-list>
 
           <div v-if="$can('tenant.alarms', 'operate')" class="handling-actions">
             <a-button
@@ -153,6 +177,29 @@
             </template>
           </div>
         </template>
+      </a-spin>
+    </a-drawer>
+
+    <a-drawer
+      :title="$t('aggregation_config_title')"
+      placement="right"
+      :visible="aggregationVisible"
+      :width="480"
+      :closable="true"
+      @close="closeAggregation">
+      <a-spin :spinning="aggregationLoading">
+        <a-alert type="info" show-icon :message="$t('aggregation_scope_hint')" />
+        <a-form-model layout="vertical" class="aggregation-form">
+          <a-form-model-item :label="$t('aggregation_enabled')">
+            <a-switch v-model="aggregationConfig.enabled" />
+          </a-form-model-item>
+          <a-form-model-item :label="$t('aggregation_window')">
+            <a-input-number v-model="aggregationConfig.window_minutes" :min="1" :max="1440" />
+          </a-form-model-item>
+          <a-button v-if="$can('tenant.alarms', 'operate')" type="primary" :loading="aggregationSaving" @click="saveAggregation">
+            {{ $t('aggregation_save') }}
+          </a-button>
+        </a-form-model>
       </a-spin>
     </a-drawer>
 
@@ -307,7 +354,7 @@
 
 <script>
 import PageLayout from "@/layouts/PageLayout";
-import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline } from "@/services/admin";
+import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline, getAlarmAggregation, updateAlarmAggregation } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
 import { parseTimeFun } from "@/utils/formatter";
 import { buildAlarmTimeRanges, getDefaultAlarmTimeRange } from "./timeRange";
@@ -459,6 +506,10 @@ export default {
 	  pipelineSaving: false,
 	  pipelineRunning: false,
 	  pipelineConfig: { shifts: [], policy: { enabled: false, delay_minutes: 15, escalation_user_id: null }, candidates: [] },
+	  aggregationVisible: false,
+	  aggregationLoading: false,
+	  aggregationSaving: false,
+	  aggregationConfig: { enabled: false, window_minutes: 5 },
     };
   },
   computed: {
@@ -528,6 +579,7 @@ export default {
         { title: this.$t('col_alarm_description'), dataIndex: "message", align: "left" },
         { title: this.$t('col_alarm_detail'), dataIndex: "detail", align: "left" },
         { title: this.$t('col_occurrence_time'), key: "occur_time", align: "left", scopedSlots: { customRender: "occur_time" } },
+		{ title: this.$t('aggregation_column'), key: "aggregation", align: "left", width: 150, scopedSlots: { customRender: "aggregation" } },
         { title: this.$t('col_notification_status'), key: "notify_status", align: "left", scopedSlots: { customRender: "notify_status" } },
         { title: this.$t('handling_status'), key: "handling_status", align: "left", width: 100, scopedSlots: { customRender: "handling_status" } },
         { title: this.$t('handling_assignee'), dataIndex: "assignee_username", align: "left", width: 110, customRender: value => value || this.$t('handling_unassigned') },
@@ -773,6 +825,43 @@ export default {
 		this.init()
 	  }).catch(() => this.$message.error(this.$t('pipeline_run_failed'))).finally(() => {
 		this.pipelineRunning = false
+	  })
+	},
+	openAggregation() {
+	  this.aggregationVisible = true
+	  this.loadAggregation()
+	},
+	closeAggregation() {
+	  this.aggregationVisible = false
+	},
+	loadAggregation() {
+	  this.aggregationLoading = true
+	  getAlarmAggregation().then(resp => {
+		const res = resp.data
+		if (res.code !== 200) {
+		  this.$message.error(res.message || this.$t('aggregation_load_failed'))
+		  return
+		}
+		this.aggregationConfig = Object.assign({ enabled: false, window_minutes: 5 }, res.data || {})
+	  }).catch(() => this.$message.error(this.$t('aggregation_load_failed'))).finally(() => {
+		this.aggregationLoading = false
+	  })
+	},
+	saveAggregation() {
+	  this.aggregationSaving = true
+	  updateAlarmAggregation({
+		enabled: !!this.aggregationConfig.enabled,
+		window_minutes: Number(this.aggregationConfig.window_minutes),
+	  }).then(resp => {
+		const res = resp.data
+		if (res.code !== 200) {
+		  this.$message.error(res.message || this.$t('aggregation_save_failed'))
+		  return
+		}
+		this.aggregationConfig = Object.assign({}, res.data || this.aggregationConfig)
+		this.$message.success(this.$t('aggregation_save_success'))
+	  }).catch(() => this.$message.error(this.$t('aggregation_save_failed'))).finally(() => {
+		this.aggregationSaving = false
 	  })
 	},
     openHandling(record) {
@@ -1650,5 +1739,13 @@ export default {
   justify-content: flex-end;
   gap: 12px;
   padding-bottom: 24px;
+}
+.aggregation-form {
+  margin-top: 20px;
+}
+.aggregation-last-time {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
 }
 </style>
