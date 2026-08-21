@@ -17,6 +17,22 @@
               <a-select-option value="2">异常</a-select-option>
             </a-select>
           </a-form-model-item>
+          <a-form-model-item label="租户">
+            <a-input :value="currentTenant.code || ''" disabled style="width: 130px" />
+          </a-form-model-item>
+          <a-form-model-item label="环境">
+            <a-select v-model="tagFilters.env" allow-clear placeholder="全部环境" style="width: 120px">
+              <a-select-option v-for="item in envOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item label="业务系统">
+            <a-input v-model.trim="tagFilters.app" allow-clear placeholder="小写 slug" style="width: 140px" />
+          </a-form-model-item>
+          <a-form-model-item label="重要级别">
+            <a-select v-model="tagFilters.level" allow-clear placeholder="全部级别" style="width: 120px">
+              <a-select-option v-for="item in levelOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+            </a-select>
+          </a-form-model-item>
           <a-form-model-item>
             <a-button type="primary" @click="onQuery">查询</a-button>
             <a-button style="margin-left: 10px" @click="resetSearch">重置</a-button>
@@ -118,6 +134,18 @@
           <a-tag v-else color="#808080">未知</a-tag>
         </span>
 
+        <div slot="standard_tags" slot-scope="record" class="standard-tags">
+          <template v-if="tagState(record).compliant">
+            <a-tag color="blue">tenant={{ tagState(record).values.tenant }}</a-tag>
+            <a-tag color="green">env={{ optionLabel(envOptions, tagState(record).values.env) }}</a-tag>
+            <a-tag color="purple">app={{ tagState(record).values.app }}</a-tag>
+            <a-tag color="orange">level={{ optionLabel(levelOptions, tagState(record).values.level) }}</a-tag>
+          </template>
+          <a-tooltip v-else :title="`缺失或非法维度：${tagState(record).missing.join(', ')}`">
+            <a-tag color="red">待规范</a-tag>
+          </a-tooltip>
+        </div>
+
         <span slot="operation" slot-scope="record">
           <template v-if="isEditing(record)">
             <a-button type="link" size="small" @click="saveRow(record)">保存</a-button>
@@ -126,12 +154,43 @@
             </a-popconfirm>
           </template>
           <template v-else>
-            <a-button v-if="hasEditableColumn" type="link" size="small" @click="editRow(record)">编辑</a-button>
+            <a-button v-if="hasEditableColumn && $can('tenant.monitoring', 'update')" type="link" size="small" @click="editRow(record)">编辑</a-button>
+            <a-button v-if="$can('tenant.monitoring', 'update')" type="link" size="small" @click="openTagEditor(record)">编辑标签</a-button>
             <a-button type="link" size="small" @click="seeGraph(record)">查看图形</a-button>
             <a-button type="link" size="small" @click="seeInfo(record)">详细信息</a-button>
           </template>
         </span>
       </a-table>
+
+      <a-modal
+        :visible="tagEditorVisible"
+        :title="`编辑标准标签 - ${tagRecord.name || ''}`"
+        :confirm-loading="tagSaving"
+        ok-text="保存"
+        cancel-text="取消"
+        @ok="saveTags"
+        @cancel="closeTagEditor"
+      >
+        <a-alert message="tenant 由平台强制为当前租户，非标准 Zabbix 标签会保留。" type="info" show-icon style="margin-bottom: 16px" />
+        <a-form-model layout="vertical">
+          <a-form-model-item label="租户">
+            <a-input :value="currentTenant.code || ''" disabled />
+          </a-form-model-item>
+          <a-form-model-item label="环境" required>
+            <a-select v-model="tagForm.env" placeholder="请选择环境">
+              <a-select-option v-for="item in envOptions" :key="item.value" :value="item.value">{{ item.label }} ({{ item.value }})</a-select-option>
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item label="业务系统" required extra="2–64 位小写字母开头，可使用数字、下划线和连字符">
+            <a-input v-model.trim="tagForm.app" placeholder="例：billing-api" />
+          </a-form-model-item>
+          <a-form-model-item label="重要级别" required>
+            <a-select v-model="tagForm.level" placeholder="请选择重要级别">
+              <a-select-option v-for="item in levelOptions" :key="item.value" :value="item.value">{{ item.label }} ({{ item.value }})</a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-form-model>
+      </a-modal>
 
       <!-- 查看图形弹窗（复用原列表页“查看图形”内容） -->
       <a-modal
@@ -228,6 +287,15 @@ import moment from 'moment'
 import { hostList, hostExport, hostUpdate, hostGraph, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import AssetTypeFieldDrawer from '@/pages/system/asset-type-fields.vue'
+import {
+  APP_PATTERN,
+  ENV_OPTIONS,
+  LEVEL_OPTIONS,
+  buildStandardTagFilters,
+  buildStandardTagPayload,
+  optionLabel,
+  standardTagState,
+} from './asset-tags'
 
 // 专用 slot key（有单独的 template slot，不走通用文本 slot）
 const DEDICATED_SLOTS = new Set([
@@ -262,6 +330,9 @@ export default {
       hosts: '',
       interfaces: '',
       available: '',
+      tagFilters: {env: undefined, app: '', level: undefined},
+      envOptions: ENV_OPTIONS,
+      levelOptions: LEVEL_OPTIONS,
       page: 1,
       pageSize: 10,
       loading: false,
@@ -275,6 +346,10 @@ export default {
       graphVisible: false,
       infoVisible: false,
       detailRecord: {},
+      tagEditorVisible: false,
+      tagSaving: false,
+      tagRecord: {},
+      tagForm: {env: undefined, app: '', level: undefined},
       // 图形弹窗（复用原“查看图形”弹窗逻辑）
       graphLoading: false,
       pngData: [],
@@ -292,6 +367,9 @@ export default {
     }
   },
   computed: {
+    currentTenant() {
+      return this.$store.getters['account/currentTenant'] || {}
+    },
     // 独立模式用 page-layout 包裹，嵌入模式用普通 div
     wrapper() {
       return this.embedded ? 'div' : PageLayout
@@ -323,7 +401,8 @@ export default {
         if (f.width) col.width = f.width
         return col
       })
-      const opWidth = this.hasEditableColumn ? 220 : 170
+      cols.push({ title: '标准标签', key: 'standard_tags', align: 'left', width: 360, scopedSlots: { customRender: 'standard_tags' } })
+      const opWidth = this.hasEditableColumn ? 300 : 250
       cols.push({ title: '操作', key: 'operation', align: 'left', width: opWidth, fixed: 'right', scopedSlots: { customRender: 'operation' } })
       return cols
     },
@@ -365,6 +444,7 @@ export default {
     },
     resetAndLoad() {
       this.hosts = ''; this.interfaces = ''; this.available = ''
+      this.tagFilters = {env: undefined, app: '', level: undefined}
       this.page = 1; this.fieldConfigs = []
       this.loadTypeConfig()
     },
@@ -391,6 +471,7 @@ export default {
         page: this.page, limit: this.pageSize,
         hosttype: this.effectiveTypeCode,
         hosts: this.hosts, ip: this.interfaces, available: this.available,
+        tags: buildStandardTagFilters(this.tagFilters),
       }).then((resp) => {
         const res = resp.data
         if (res.code == 200) {
@@ -442,7 +523,50 @@ export default {
     },
     resetSearch() {
       this.hosts = ''; this.interfaces = ''; this.available = ''
+      this.tagFilters = {env: undefined, app: '', level: undefined}
       this.page = 1; this.fetchList()
+    },
+    tagState(record) {
+      return standardTagState(record && record.tags, this.currentTenant.code)
+    },
+    optionLabel,
+    openTagEditor(record) {
+      const state = this.tagState(record)
+      this.tagRecord = record
+      this.tagForm = {
+        env: state.values.env || undefined,
+        app: state.values.app || '',
+        level: state.values.level || undefined,
+      }
+      this.tagEditorVisible = true
+    },
+    closeTagEditor() {
+      this.tagEditorVisible = false
+      this.tagSaving = false
+      this.tagRecord = {}
+      this.tagForm = {env: undefined, app: '', level: undefined}
+    },
+    saveTags() {
+      if (!this.tagForm.env || !APP_PATTERN.test(this.tagForm.app || '') || !this.tagForm.level) {
+        this.$message.warning('请按标准完整填写环境、业务系统和重要级别')
+        return
+      }
+      this.tagSaving = true
+      const tags = buildStandardTagPayload(this.currentTenant.code, this.tagForm)
+      hostUpdate({...this.tagRecord, tags}).then((resp) => {
+        const res = resp.data
+        if (res && res.code === 200) {
+          this.$set(this.tagRecord, 'tags', (res.data && res.data.tags) || tags)
+          this.$message.success('标签保存成功')
+          this.closeTagEditor()
+          this.fetchList()
+        } else {
+          this.$message.error((res && res.message) || '标签保存失败')
+        }
+      }).catch((error) => {
+        const message = error && error.response && error.response.data && error.response.data.message
+        this.$message.error(message || '标签保存失败')
+      }).finally(() => { this.tagSaving = false })
     },
     handleExport() {
       hostExport(
@@ -569,6 +693,13 @@ export default {
 .field-config-btn {
   margin-left: 12px;
   flex-shrink: 0;
+}
+.standard-tags {
+  min-width: 320px;
+  line-height: 26px;
+}
+.standard-tags .ant-tag {
+  margin-bottom: 4px;
 }
 /* 长文本单元格：单行省略，超出部分悬浮显示全文 */
 .cell-ellipsis {
