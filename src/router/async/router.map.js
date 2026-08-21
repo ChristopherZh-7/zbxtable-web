@@ -133,6 +133,9 @@ const routerMap = {
 	zabbix: {
 		component: () => import('@/pages/system/zabbix'),
 	},
+	proxyManagement: {
+		component: () => import('@/pages/system/proxy-management'),
+	},
 	analysis: {
 		name: '分析页',
 		component: () => import('@/pages/dashboard/analysis'),

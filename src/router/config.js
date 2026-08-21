@@ -227,6 +227,11 @@ const options = {
               component: () => import("@/pages/system/zabbix"),
             },
             {
+              path: "proxy-management",
+              name: "代理管理",
+              component: () => import("@/pages/system/proxy-management"),
+            },
+            {
               path: "config",
               name: "参数配置",
               component: () => import("@/pages/system/config"),

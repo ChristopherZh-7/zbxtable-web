@@ -15,6 +15,13 @@ export function listZabbixInstance() {
 }
 
 /**
+ * 获取所有已启用 Zabbix 实例的只读 Proxy / Proxy Group 观测快照
+ */
+export function getProxyManagement() {
+  return request('/v1/zabbix/proxy-management', METHOD.GET)
+}
+
+/**
  * 获取单个租户
  * @param {number} id - 租户ID
  */
@@ -142,6 +149,5 @@ export function getWebhookInfo(id) {
 export function uninstallWebhook(id) {
   return request(`/v1/zabbix/instance/${id}/uninstall-webhook`, METHOD.DELETE)
 }
-
 
 
