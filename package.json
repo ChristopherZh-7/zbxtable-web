@@ -19,6 +19,7 @@
 		"test:webhook": "node --test tests/webhook/*.test.js",
 		"test:rules": "node --test tests/rules/*.test.js",
 		"test:alarm-analysis": "node --test tests/alarm-analysis/*.test.js",
+		"test:alarm-handling": "node --test tests/alarm-handling/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",

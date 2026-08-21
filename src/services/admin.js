@@ -83,6 +83,15 @@ export async function indexInfo() {
 export async function alarm(params) {
 	return request(ALARM, METHOD.GET, { ...params })
 }
+export async function alarmHandlingDetail(id) {
+	return request(ALARM + '/' + id + '/handling', METHOD.GET)
+}
+export async function claimAlarm(id) {
+	return request(ALARM + '/' + id + '/claim', METHOD.POST, {})
+}
+export async function handleAlarm(id, action, note) {
+	return request(ALARM + '/' + id + '/handling', METHOD.POST, { action, note })
+}
 export async function alarmAnalysis(params) {
 	return request(ALARM_ANALYSIS, METHOD.GET, { ...params })
 }

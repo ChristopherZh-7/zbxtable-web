@@ -67,7 +67,11 @@
           <template v-else-if="record.notify_status==1">{{ $t('notify_status_muted') }}</template>
           <template v-else-if="record.notify_status==2">{{ $t('notify_status_default_rule') }}</template>
         </span>
+        <span slot="handling_status" slot-scope="record">
+          <a-tag :color="handlingStatusColor(record.handling_status)">{{ handlingStatusLabel(record.handling_status) }}</a-tag>
+        </span>
         <span slot="operation" slot-scope="record">
+		  <a-button class="pd20 paddingleft0" type="link" size="small" @click="openHandling(record)">{{ $t('btn_alarm_handling') }}</a-button>
 		  <a-button v-if="record.notify_status!=1" v-auth="'operate'" class="pd20 paddingleft0" type="link" size="small" @click="addMutes(record)">{{ $t('btn_mute') }}</a-button>
 		  <a-button v-auth="'operate'" class="pd20" type="link" size="small" @click="analyzeWithDeepseek(record)">{{ $t('btn_ai_analysis') }}</a-button>
         </span>
@@ -86,6 +90,60 @@
         </a-table>
       </a-table>
     </div>
+
+    <a-drawer
+      :title="$t('handling_drawer_title')"
+      placement="right"
+      :visible="handlingVisible"
+      :width="560"
+      :closable="true"
+      @close="closeHandling">
+      <a-spin :spinning="handlingLoading">
+        <template v-if="handlingDetail">
+          <a-descriptions bordered size="small" :column="1">
+            <a-descriptions-item :label="$t('handling_status')">
+              <a-tag :color="handlingStatusColor(handlingDetail.handling_status)">{{ handlingStatusLabel(handlingDetail.handling_status) }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item :label="$t('handling_assignee')">
+              {{ handlingDetail.assignee_username || $t('handling_unassigned') }}
+            </a-descriptions-item>
+          </a-descriptions>
+
+          <h3 class="handling-section-title">{{ $t('handling_timeline') }}</h3>
+          <a-empty v-if="!handlingDetail.events || !handlingDetail.events.length" :description="$t('handling_no_events')" />
+          <a-timeline v-else>
+            <a-timeline-item v-for="event in handlingDetail.events" :key="event.id" :color="handlingEventColor(event.action)">
+              <strong>{{ handlingActionLabel(event.action) }}</strong>
+              <span class="handling-event-user">{{ event.actor_username }}</span>
+              <div class="handling-event-transition">{{ handlingStatusLabel(event.from_status) }} → {{ handlingStatusLabel(event.to_status) }}</div>
+              <div class="handling-event-note">{{ event.note }}</div>
+              <div class="handling-event-time">{{ event.created_at | parsetime }}</div>
+            </a-timeline-item>
+          </a-timeline>
+
+          <div v-if="$can('tenant.alarms', 'operate')" class="handling-actions">
+            <a-button
+              v-if="handlingDetail.handling_status === 'unclaimed'"
+              type="primary"
+              :loading="handlingSubmitting"
+              @click="claimHandling">{{ $t('handling_claim') }}</a-button>
+            <template v-else-if="handlingDetail.handling_status === 'processing'">
+              <a-textarea v-model.trim="handlingNote" :maxLength="2000" :rows="4" :placeholder="$t('handling_note_placeholder')" />
+              <div class="handling-action-buttons">
+                <a-button :loading="handlingSubmitting" @click="submitHandling('note')">{{ $t('handling_add_note') }}</a-button>
+                <a-button type="primary" :loading="handlingSubmitting" @click="submitHandling('resolve')">{{ $t('handling_resolve') }}</a-button>
+              </div>
+            </template>
+            <template v-else-if="handlingDetail.handling_status === 'resolved'">
+              <a-textarea v-model.trim="handlingNote" :maxLength="2000" :rows="4" :placeholder="$t('handling_close_placeholder')" />
+              <div class="handling-action-buttons">
+                <a-button type="primary" :loading="handlingSubmitting" @click="submitHandling('close')">{{ $t('handling_close') }}</a-button>
+              </div>
+            </template>
+          </div>
+        </template>
+      </a-spin>
+    </a-drawer>
 
     <!-- AI 助手 Drawer -->
     <a-drawer
@@ -179,7 +237,7 @@
 
 <script>
 import PageLayout from "@/layouts/PageLayout";
-import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList } from "@/services/admin";
+import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
 import { parseTimeFun } from "@/utils/formatter";
 import { buildAlarmTimeRanges, getDefaultAlarmTimeRange } from "./timeRange";
@@ -320,6 +378,12 @@ export default {
       alarmAnalysisPrompt: '',
       contextExpanded: false,
       hostIp: "",
+      handlingVisible: false,
+      handlingLoading: false,
+      handlingSubmitting: false,
+      handlingRecord: null,
+      handlingDetail: null,
+      handlingNote: '',
     };
   },
   computed: {
@@ -379,6 +443,8 @@ export default {
         { title: this.$t('col_alarm_detail'), dataIndex: "detail", align: "left" },
         { title: this.$t('col_occurrence_time'), key: "occur_time", align: "left", scopedSlots: { customRender: "occur_time" } },
         { title: this.$t('col_notification_status'), key: "notify_status", align: "left", scopedSlots: { customRender: "notify_status" } },
+        { title: this.$t('handling_status'), key: "handling_status", align: "left", width: 100, scopedSlots: { customRender: "handling_status" } },
+        { title: this.$t('handling_assignee'), dataIndex: "assignee_username", align: "left", width: 110, customRender: value => value || this.$t('handling_unassigned') },
         { title: this.$t('col_operation'), key: "operation", align: "center", scopedSlots: { customRender: "operation" } },
       ];
       this.innerColumns = [
@@ -509,6 +575,85 @@ export default {
     },
     handleLevelChange(value) {
       this.level = value
+    },
+    handlingStatusLabel(status) {
+      const labels = {
+        unclaimed: this.$t('handling_unclaimed'),
+        processing: this.$t('handling_processing'),
+        resolved: this.$t('handling_resolved'),
+        closed: this.$t('handling_closed'),
+      }
+      return labels[status || 'unclaimed'] || status || this.$t('handling_unclaimed')
+    },
+    handlingStatusColor(status) {
+      return ({ unclaimed: 'default', processing: 'blue', resolved: 'green', closed: 'purple' })[status || 'unclaimed'] || 'default'
+    },
+    handlingActionLabel(action) {
+      return ({ claim: this.$t('handling_claim'), note: this.$t('handling_add_note'), resolve: this.$t('handling_resolve'), close: this.$t('handling_close') })[action] || action
+    },
+    handlingEventColor(action) {
+      return ({ claim: 'blue', note: 'gray', resolve: 'green', close: 'purple' })[action] || 'gray'
+    },
+    openHandling(record) {
+      this.handlingRecord = record
+      this.handlingVisible = true
+      this.handlingNote = ''
+      this.loadHandling()
+    },
+    closeHandling() {
+      this.handlingVisible = false
+      this.handlingRecord = null
+      this.handlingDetail = null
+      this.handlingNote = ''
+    },
+    loadHandling() {
+      if (!this.handlingRecord) return
+      this.handlingLoading = true
+      alarmHandlingDetail(this.handlingRecord.id).then(resp => {
+        const res = resp.data
+        if (res.code === 200) {
+          this.handlingDetail = res.data
+        } else {
+          this.$message.error(res.message || this.$t('msg_get_data_failed'))
+        }
+      }).catch(() => {
+        this.$message.error(this.$t('msg_get_data_failed'))
+      }).finally(() => {
+        this.handlingLoading = false
+      })
+    },
+    claimHandling() {
+      if (!this.handlingRecord) return
+      this.handlingSubmitting = true
+      claimAlarm(this.handlingRecord.id).then(resp => this.finishHandlingAction(resp, 'handling_claim_success')).catch(() => {
+        this.$message.error(this.$t('handling_action_failed'))
+      }).finally(() => {
+        this.handlingSubmitting = false
+      })
+    },
+    submitHandling(action) {
+      if (!this.handlingRecord) return
+      if (!this.handlingNote) {
+        this.$message.warning(this.$t('handling_note_required'))
+        return
+      }
+      this.handlingSubmitting = true
+      handleAlarm(this.handlingRecord.id, action, this.handlingNote).then(resp => this.finishHandlingAction(resp, 'handling_action_success')).catch(() => {
+        this.$message.error(this.$t('handling_action_failed'))
+      }).finally(() => {
+        this.handlingSubmitting = false
+      })
+    },
+    finishHandlingAction(resp, successKey) {
+      const res = resp.data
+      if (res.code !== 200) {
+        this.$message.error(res.message || this.$t('handling_action_failed'))
+        return
+      }
+      this.handlingDetail = res.data
+      this.handlingNote = ''
+      this.$message.success(this.$t(successKey))
+      this.init()
     },
     addMutes(record) {
       console.log(record)
@@ -1278,5 +1423,33 @@ export default {
 .markdown-body blockquote strong {
   color: #2c3e50;  // 思考过程标题加粗
   font-size: 16px;  // 标题字体稍大
+}
+
+.handling-section-title {
+  margin: 24px 0 16px;
+}
+.handling-event-user {
+  margin-left: 8px;
+  color: #666;
+}
+.handling-event-transition,
+.handling-event-time {
+  color: #999;
+  font-size: 12px;
+}
+.handling-event-note {
+  margin: 6px 0;
+  white-space: pre-wrap;
+}
+.handling-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+}
+.handling-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
 }
 </style>
