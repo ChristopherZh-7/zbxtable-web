@@ -313,21 +313,14 @@
               <a-button size="small" icon="copy" @click="copyToClipboard(webhookInfo.instance, $t('webhook_instance'))">{{ $t('btn_copy') }}</a-button>
             </div>
           </a-descriptions-item>
-          <a-descriptions-item :label="$t('webhook_token')">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <code style="flex: 1; word-break: break-all;">{{ webhookInfo.webhook_token }}</code>
-              <a-button size="small" icon="copy" @click="copyToClipboard(webhookInfo.webhook_token, $t('webhook_token'))">{{ $t('btn_copy') }}</a-button>
-            </div>
+          <a-descriptions-item :label="$t('webhook_authentication')">
+            <a-tag color="green">{{ webhookInfo.authentication }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('webhook_method')">
             <a-tag color="blue">{{ webhookInfo.method }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('webhook_content_type')">
             <code>{{ webhookInfo.content_type }}</code>
-          </a-descriptions-item>
-          <a-descriptions-item :label="$t('webhook_headers')">
-            <pre :style="{ background: hexToRgba($themeColor, 0.08), padding: '8px', borderRadius: '4px', margin: 0, border: `1px solid ${hexToRgba($themeColor, 0.2)}` }">{{ webhookInfo.headers }}</pre>
-            <a-button size="small" icon="copy" style="margin-top: 8px;" @click="copyToClipboard(webhookInfo.headers, $t('webhook_headers'))">{{ $t('btn_copy') }}</a-button>
           </a-descriptions-item>
         </a-descriptions>
 
