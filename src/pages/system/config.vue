@@ -122,9 +122,24 @@
                     {{ opt.label }}
                   </a-select-option>
                 </a-select>
-                <a-input-password v-else-if="item.config_key === 'email_secret'" v-model="emailForm[item.config_key]" :placeholder="item.comment" />
+                <a-input-group v-else-if="isSecretConfigKey(item.config_key)" compact class="secret-input-group">
+                  <a-input-password
+                    v-model="emailForm[item.config_key]"
+                    :placeholder="secretPlaceholder(item.config_key)"
+                    @input="onSecretInput(item.config_key)" />
+                  <a-button
+                    v-if="secretConfigured[item.config_key] && !secretClearPending[item.config_key]"
+                    type="danger"
+                    ghost
+                    @click="confirmClearSecret(item.config_key)">{{$t('clearSecret')}}</a-button>
+                  <a-button
+                    v-else-if="secretClearPending[item.config_key]"
+                    @click="undoClearSecret(item.config_key)">{{$t('undoClear')}}</a-button>
+                </a-input-group>
                 <a-input v-else v-model="emailForm[item.config_key]" :placeholder="item.comment" />
-                <div class="config-hint">{{ item.comment }}</div>
+                <div class="config-hint">
+                  {{ isSecretConfigKey(item.config_key) ? secretStatus(item.config_key) : item.comment }}
+                </div>
               </a-form-model-item>
               <a-form-model-item :wrapper-col="{ span: 14, offset: 6 }">
                 <a-space>
@@ -146,9 +161,24 @@
                     {{ opt.label }}
                   </a-select-option>
                 </a-select>
-                <a-input-password v-else-if="item.config_key === 'wechat_secret'" v-model="wechatForm[item.config_key]" :placeholder="item.comment" />
+                <a-input-group v-else-if="isSecretConfigKey(item.config_key)" compact class="secret-input-group">
+                  <a-input-password
+                    v-model="wechatForm[item.config_key]"
+                    :placeholder="secretPlaceholder(item.config_key)"
+                    @input="onSecretInput(item.config_key)" />
+                  <a-button
+                    v-if="secretConfigured[item.config_key] && !secretClearPending[item.config_key]"
+                    type="danger"
+                    ghost
+                    @click="confirmClearSecret(item.config_key)">{{$t('clearSecret')}}</a-button>
+                  <a-button
+                    v-else-if="secretClearPending[item.config_key]"
+                    @click="undoClearSecret(item.config_key)">{{$t('undoClear')}}</a-button>
+                </a-input-group>
                 <a-input v-else v-model="wechatForm[item.config_key]" :placeholder="item.comment" />
-                <div class="config-hint">{{ item.comment }}</div>
+                <div class="config-hint">
+                  {{ isSecretConfigKey(item.config_key) ? secretStatus(item.config_key) : item.comment }}
+                </div>
               </a-form-model-item>
               <a-form-model-item :wrapper-col="{ span: 14, offset: 6 }">
                 <a-space>
@@ -253,7 +283,13 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import { parseTimeFun } from '@/utils/formatter'
-import { configGetList, configUpdate } from '@/services/admin'
+import { configGetList, configUpdate, configUpdateGroup } from '@/services/admin'
+import {
+  buildAtomicGroupRequest,
+  isAtomicCategory,
+  isSecretConfigKey,
+  normalizeSecretValue
+} from './system-management-policy'
 export default {
   name: 'edit',
   i18n: require('./config-i18n'),
@@ -267,6 +303,8 @@ export default {
       taskForm: {},
       emailForm: {},
       wechatForm: {},
+      secretConfigured: {},
+      secretClearPending: {},
       aiForm: {},
       securityForm: {},
       saveLoading: false,
@@ -284,8 +322,6 @@ export default {
   computed: {
     systemOnlyConfigs() {
       return this.list.filter(item => 
-        item.config_key === 'zbx_dash' || 
-        item.config_key === 'dash_id' || 
         item.config_key === 'dash_top_lin_num' ||
         item.config_key === 'dash_top_win_num' ||
         item.config_key === 'webhook_url'
@@ -296,8 +332,6 @@ export default {
         item.config_key === 'system_name' || 
         item.config_key === 'system_subtitle' ||
         item.config_key === 'system_logo' ||
-        item.config_key === 'zbx_dash' || 
-        item.config_key === 'dash_id' || 
         item.config_key === 'dash_top_lin_num' ||
         item.config_key === 'dash_top_win_num' ||
         item.config_key === 'webhook_url'
@@ -464,7 +498,7 @@ export default {
     },
     init() {
       this.loading = true
-      configGetList()
+      return configGetList()
         .then((resp) => {
           let res = resp.data
           if (res.code == 200) {
@@ -480,6 +514,14 @@ export default {
     },
     initForms() {
       // 初始化各个表单的数据
+      this.systemForm = {}
+      this.taskForm = {}
+      this.emailForm = {}
+      this.wechatForm = {}
+      this.aiForm = {}
+      this.securityForm = {}
+      this.secretConfigured = {}
+      this.secretClearPending = {}
       this.allSystemConfigs.forEach(item => {
         this.$set(this.systemForm, item.config_key, item.config_value)
       })
@@ -487,10 +529,20 @@ export default {
         this.$set(this.taskForm, item.config_key, item.config_value)
       })
       this.emailConfigs.forEach(item => {
-        this.$set(this.emailForm, item.config_key, item.config_value)
+        const normalized = normalizeSecretValue(item.config_key, item.config_value)
+        this.$set(this.emailForm, item.config_key, normalized.value)
+        if (isSecretConfigKey(item.config_key)) {
+          this.$set(this.secretConfigured, item.config_key, normalized.configured)
+          this.$set(this.secretClearPending, item.config_key, false)
+        }
       })
       this.wechatConfigs.forEach(item => {
-        this.$set(this.wechatForm, item.config_key, item.config_value)
+        const normalized = normalizeSecretValue(item.config_key, item.config_value)
+        this.$set(this.wechatForm, item.config_key, normalized.value)
+        if (isSecretConfigKey(item.config_key)) {
+          this.$set(this.secretConfigured, item.config_key, normalized.configured)
+          this.$set(this.secretClearPending, item.config_key, false)
+        }
       })
       this.aiConfigs.forEach(item => {
         this.$set(this.aiForm, item.config_key, item.config_value)
@@ -536,12 +588,17 @@ export default {
             break
         }
         
-        // 批量更新配置
-        const promises = configs.map(item => {
-          return configUpdate(item.id, { config_value: form[item.config_key] || '' })
-        })
-        
-        await Promise.all(promises)
+        if (isAtomicCategory(category)) {
+          const request = buildAtomicGroupRequest(category, configs, form, this.secretClearPending)
+          const response = await configUpdateGroup(category, request)
+          this.ensureSuccessfulResponse(response)
+        } else {
+          // F05 不扩展计划任务和 AI，保留现有单项保存契约。
+          const responses = await Promise.all(configs.map(item =>
+            configUpdate(item.id, { config_value: form[item.config_key] || '' })
+          ))
+          responses.forEach(this.ensureSuccessfulResponse)
+        }
         this.$message.success(this.$t('saveSuccess'))
         
         // 如果是系统配置，更新 Vuex 中的系统名称和Logo
@@ -551,12 +608,51 @@ export default {
           this.$store.commit('setting/setSystemLogo', form.system_logo || '/logo.png')
         }
         
-        this.init()
+        await this.init()
       } catch (error) {
-        this.$message.error(this.$t('saveFailed'))
+        this.$message.error(error.message || this.$t('saveFailed'))
       } finally {
         this.saveLoading = false
       }
+    },
+    ensureSuccessfulResponse(response) {
+      const payload = response && response.data
+      if (!payload || payload.code !== 200) {
+        throw new Error((payload && payload.message) || this.$t('saveFailed'))
+      }
+      return payload
+    },
+    isSecretConfigKey,
+    secretPlaceholder(key) {
+      if (this.secretClearPending[key]) return this.$t('secretWillClear')
+      if (this.secretConfigured[key]) return this.$t('secretKeepPlaceholder')
+      return this.$t('secretNewPlaceholder')
+    },
+    secretStatus(key) {
+      if (this.secretClearPending[key]) return this.$t('secretWillClear')
+      if (this.secretConfigured[key]) return this.$t('secretConfigured')
+      return this.$t('secretNotConfigured')
+    },
+    onSecretInput(key) {
+      const form = key === 'email_secret' ? this.emailForm : this.wechatForm
+      if (form[key]) this.$set(this.secretClearPending, key, false)
+    },
+    confirmClearSecret(key) {
+      this.$confirm({
+        title: this.$t('clearSecretTitle'),
+        content: this.$t('clearSecretContent'),
+        okText: this.$t('clearSecret'),
+        okType: 'danger',
+        cancelText: this.$t('cancel'),
+        onOk: () => {
+          const form = key === 'email_secret' ? this.emailForm : this.wechatForm
+          this.$set(form, key, '')
+          this.$set(this.secretClearPending, key, true)
+        }
+      })
+    },
+    undoClearSecret(key) {
+      this.$set(this.secretClearPending, key, false)
     },
     // 获取显示的值（加密密钥部分隐藏）
     getDisplayValue(key) {
@@ -776,6 +872,14 @@ export default {
   font-size: 12px;
   margin-top: 4px;
   line-height: 1.5;
+}
+
+.secret-input-group {
+  display: flex;
+}
+
+.secret-input-group /deep/ .ant-input-password {
+  flex: 1;
 }
 
 /deep/ .ant-card {

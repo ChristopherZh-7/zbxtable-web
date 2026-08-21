@@ -183,6 +183,9 @@ export async function configGetOne(id) {
 export async function configUpdate(id, params) {
 	return request(SYSTEM_LIST + '/config/' + id, METHOD.PUT, params)
 }
+export async function configUpdateGroup(category, params) {
+	return request(SYSTEM_LIST + '/config/group/' + category, METHOD.PUT, params)
+}
 export async function hostgroupList(id) {
 	return request(HOST_GROUP, METHOD.GET, { zid: id })
 }
@@ -355,10 +358,6 @@ export async function systemCheckUpdate() {
 	return request(SYSTEM_UPDATE + '/check-update', METHOD.GET)
 }
 
-export async function systemDoUpdate() {
-	return request(SYSTEM_UPDATE + '/update', METHOD.POST)
-}
-
 // 获取系统公开信息（无需认证）
 export async function getPublicSystemInfo() {
 	return request('/v1/info', METHOD.GET)
@@ -472,6 +471,7 @@ export default {
 	configGetList,
 	configGetOne,
 	configUpdate,
+	configUpdateGroup,
 	hostgroupList,
 	hostgroupHosts,
 	hostFilterByTag,
@@ -516,7 +516,6 @@ export default {
 	metricMappingHistory,
 	systemVersion,
 	systemCheckUpdate,
-	systemDoUpdate,
 	getPublicSystemInfo,
 	getAssetTypes,
 	createAssetType,

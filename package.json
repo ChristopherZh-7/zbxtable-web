@@ -10,6 +10,7 @@
 		"test:users": "node --test tests/users/*.test.js",
 		"test:tenants": "node --test tests/tenants/*.test.js",
 		"test:permissions": "node --test tests/permissions/*.test.js",
+		"test:system-management": "node --test tests/system-management/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
