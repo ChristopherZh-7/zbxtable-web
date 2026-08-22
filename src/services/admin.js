@@ -43,6 +43,7 @@ import {
 	CONFIG_CONSUMPTION,
 	NETWORK_DISCOVERY,
 	RESOURCE_DISCOVERY,
+	SCRIPT_DISCOVERY,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -225,6 +226,12 @@ export async function deleteNetworkDiscoveryRule(id) {
 }
 export async function resourceDiscoveryOverview() {
 	return request(RESOURCE_DISCOVERY, METHOD.GET)
+}
+export async function scriptDiscoveryList() {
+	return request(SCRIPT_DISCOVERY, METHOD.GET)
+}
+export async function applyScriptDiscovery(itemid) {
+	return request(SCRIPT_DISCOVERY + '/' + encodeURIComponent(itemid) + '/apply', METHOD.POST, {})
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -582,6 +589,8 @@ export default {
 	createNetworkDiscoveryRule,
 	deleteNetworkDiscoveryRule,
 	resourceDiscoveryOverview,
+	scriptDiscoveryList,
+	applyScriptDiscovery,
 	itemList,
 	triggerList,
 	deployTopology,
