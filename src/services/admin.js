@@ -56,6 +56,14 @@ export async function hostDetail(id, zid) {
 	const params = zid ? { zid } : {}
 	return request(HOST_LIST + '/' + id, METHOD.GET, params)
 }
+export async function getHostAssetAttributes(id, zid) {
+	const params = zid ? { zid } : {}
+	return request(HOST_LIST + '/' + id + '/attributes', METHOD.GET, params)
+}
+export async function updateHostAssetAttributes(id, zid, values) {
+	const suffix = zid ? '?zid=' + encodeURIComponent(zid) : ''
+	return request(HOST_LIST + '/' + id + '/attributes' + suffix, METHOD.PUT, { values })
+}
 export async function hostGraph(id, params) {
 	return request(HOST_LIST + '/graph/' + id, METHOD.POST, params)
 }
@@ -492,6 +500,8 @@ export async function getSystemBindingHistory(id, params) {
 export default {
 	hostList,
 	hostDetail,
+	getHostAssetAttributes,
+	updateHostAssetAttributes,
 	hostGraph,
 	hostMock,
 	hostMockd,

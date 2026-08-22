@@ -70,8 +70,23 @@
         <template v-for="col in textColumns" :slot="col.key" slot-scope="record">
           <span :key="col.key">
             <template v-if="isEditing(record) && isEditableField(col.key)">
+              <a-input-number
+                v-if="col.custom && col.field_type === 'number'"
+                v-model="editForm[col.key]"
+                size="small"
+                style="width: 100%;"
+              />
+              <a-select
+                v-else-if="col.custom && col.field_type === 'select'"
+                v-model="editForm[col.key]"
+                allow-clear
+                size="small"
+                style="width: 100%;"
+              >
+                <a-select-option v-for="option in col.options || []" :key="option" :value="option">{{ option }}</a-select-option>
+              </a-select>
               <a-date-picker
-                v-if="isDateField(col.key)"
+                v-else-if="isDateField(col.key)"
                 v-model="editForm[col.key]"
                 value-format="YYYY-MM-DD"
                 size="small"
@@ -79,8 +94,8 @@
               />
               <a-input v-else v-model.trim="editForm[col.key]" size="small" />
             </template>
-            <a-tooltip v-else-if="record[col.key]" :title="record[col.key]" placement="topLeft">
-              <span class="cell-ellipsis">{{ record[col.key] }}</span>
+            <a-tooltip v-else-if="fieldValue(record, col.key) !== '' && fieldValue(record, col.key) !== undefined" :title="fieldValue(record, col.key)" placement="topLeft">
+              <span class="cell-ellipsis">{{ fieldValue(record, col.key) }}</span>
             </a-tooltip>
             <template v-else>--</template>
           </span>
@@ -154,7 +169,7 @@
             </a-popconfirm>
           </template>
           <template v-else>
-            <a-button v-if="hasEditableColumn && $can('tenant.monitoring', 'update')" type="link" size="small" @click="editRow(record)">编辑</a-button>
+            <a-button v-if="hasEditableColumn && canEditAsset" type="link" size="small" @click="editRow(record)">编辑</a-button>
             <a-button v-if="$can('tenant.monitoring', 'update')" type="link" size="small" @click="openTagEditor(record)">编辑标签</a-button>
             <a-button type="link" size="small" @click="seeGraph(record)">查看图形</a-button>
             <a-button type="link" size="small" @click="seeInfo(record)">详细信息</a-button>
@@ -284,7 +299,7 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import moment from 'moment'
-import { hostList, hostExport, hostUpdate, hostGraph, getAssetTypes, getAssetTypeFields } from '@/services/admin'
+import { hostList, hostExport, hostUpdate, hostGraph, updateHostAssetAttributes, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import AssetTypeFieldDrawer from '@/pages/system/asset-type-fields.vue'
 import {
@@ -389,7 +404,10 @@ export default {
     },
     // 当前可见字段中是否存在可编辑的资产字段（决定是否显示"编辑"按钮）
     hasEditableColumn() {
-      return this.visibleFields.some((f) => EDITABLE_FIELDS.has(f.key))
+      return this.visibleFields.some((field) => field.custom || EDITABLE_FIELDS.has(field.key))
+    },
+    canEditAsset() {
+      return this.$can('tenant.monitoring', 'update') || this.$can('tenant.assets', 'update')
     },
     tableColumns() {
       const cols = this.visibleFields.map((f) => {
@@ -491,16 +509,25 @@ export default {
     isEditing(record) {
       return this.editingId === this.rowId(record)
     },
+    fieldConfig(key) {
+      return this.fieldConfigs.find((field) => field.key === key) || {}
+    },
+    fieldValue(record, key) {
+      return this.fieldConfig(key).custom ? ((record.custom_attributes || {})[key]) : record[key]
+    },
     isEditableField(key) {
-      return EDITABLE_FIELDS.has(key)
+      return this.fieldConfig(key).custom || EDITABLE_FIELDS.has(key)
     },
     isDateField(key) {
-      return DATE_FIELDS.has(key)
+      const field = this.fieldConfig(key)
+      return (field.custom && field.field_type === 'date') || DATE_FIELDS.has(key)
     },
     editRow(record) {
       this.editingId = this.rowId(record)
       const form = {}
-      EDITABLE_FIELDS.forEach((k) => { form[k] = record[k] || '' })
+      this.visibleFields.filter((field) => this.isEditableField(field.key)).forEach((field) => {
+        form[field.key] = this.fieldValue(record, field.key) || ''
+      })
       this.editForm = form
     },
     cancelRow() {
@@ -508,16 +535,28 @@ export default {
       this.editForm = {}
     },
     saveRow(record) {
-      const payload = Object.assign({}, record, this.editForm)
-      hostUpdate(payload).then((resp) => {
-        const res = resp.data
-        if (res && res.code === 200) {
-          // 本地回填，避免整页刷新
-          EDITABLE_FIELDS.forEach((k) => { this.$set(record, k, this.editForm[k]) })
+      const builtinValues = {}
+      const customValues = {}
+      Object.keys(this.editForm).forEach((key) => {
+        if (this.fieldConfig(key).custom) customValues[key] = this.editForm[key]
+        else builtinValues[key] = this.editForm[key]
+      })
+      const requests = []
+      if (Object.keys(builtinValues).length) requests.push(hostUpdate(Object.assign({}, record, builtinValues)))
+      if (Object.keys(customValues).length) requests.push(updateHostAssetAttributes(record.hostid, record.zid, customValues))
+      Promise.all(requests).then((responses) => {
+        const failed = responses.find((resp) => {
+          const result = resp && resp.data ? resp.data : resp
+          return !result || result.code !== 200
+        })
+        if (!failed) {
+          Object.keys(builtinValues).forEach((key) => { this.$set(record, key, builtinValues[key]) })
+          this.$set(record, 'custom_attributes', { ...(record.custom_attributes || {}), ...customValues })
           this.cancelRow()
           this.$message.success('保存成功')
         } else {
-          this.$message.error((res && res.message) || '保存失败')
+          const result = failed && failed.data ? failed.data : failed
+          this.$message.error((result && result.message) || '保存失败')
         }
       }).catch(() => this.$message.error('保存失败'))
     },

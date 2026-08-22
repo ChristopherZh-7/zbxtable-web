@@ -2,19 +2,22 @@
   <a-drawer
     :title="`配置显示字段 — ${assetType ? assetType.name : ''}`"
     :visible="visible"
-    :width="600"
+    :width="980"
     :destroy-on-close="true"
     @close="$emit('close')"
   >
-    <div style="margin-bottom: 12px; color: #888; font-size: 12px;">
-      勾选需要在列表中显示的字段，修改列头名称，调整排列顺序。操作列固定在最后不可配置。
+    <div class="field-toolbar">
+      <div class="field-hint">
+        内置字段可调整显示方式；自定义属性支持文本、数字、日期和单选下拉，保存后立即生效。
+      </div>
+      <a-button type="primary" icon="plus" @click="addCustomField">新增自定义属性</a-button>
     </div>
 
     <a-spin :spinning="loading">
       <a-table
         :data-source="fields"
         :pagination="false"
-        row-key="key"
+        row-key="_rowKey"
         size="small"
         :columns="tableColumns"
       >
@@ -22,10 +25,34 @@
           <a-checkbox :checked="record.visible" @change="record.visible = !record.visible" />
         </span>
         <span slot="label" slot-scope="text, record">
-          <a-input v-model="record.label" size="small" style="width: 120px;" />
+          <a-input v-model.trim="record.label" size="small" style="width: 140px;" />
+        </span>
+        <span slot="fieldType" slot-scope="text, record">
+          <a-select
+            v-if="record.custom"
+            v-model="record.field_type"
+            :disabled="!!record.key"
+            size="small"
+            style="width: 100px;"
+          >
+            <a-select-option v-for="opt in fieldTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</a-select-option>
+          </a-select>
+          <a-tag v-else>内置</a-tag>
+        </span>
+        <span slot="options" slot-scope="text, record">
+          <a-select
+            v-if="record.custom && record.field_type === 'select'"
+            v-model="record.options"
+            mode="tags"
+            size="small"
+            placeholder="输入后回车"
+            style="width: 220px;"
+          />
+          <span v-else class="muted">--</span>
         </span>
         <span slot="render" slot-scope="text, record">
           <a-select
+            v-if="!record.custom"
             v-model="record.render"
             size="small"
             style="width: 100px;"
@@ -38,8 +65,9 @@
               <a-tag :color="opt.color" style="margin: 0;">{{ opt.label }}</a-tag>
             </a-select-option>
           </a-select>
+          <a-tag v-else>text</a-tag>
         </span>
-        <span slot="sort" slot-scope="text, record, index">
+        <span slot="actions" slot-scope="text, record, index">
           <a-button
             icon="up"
             size="small"
@@ -53,6 +81,13 @@
             :disabled="index === fields.length - 1"
             @click="moveDown(index)"
           />
+          <a-popconfirm
+            v-if="record.custom"
+            title="移除后不再展示该字段，历史值会保留。确定移除？"
+            @confirm="removeCustomField(index)"
+          >
+            <a-button icon="delete" size="small" type="danger" ghost style="margin-left: 4px;" />
+          </a-popconfirm>
         </span>
       </a-table>
     </a-spin>
@@ -101,6 +136,13 @@ const RENDER_OPTIONS = [
   { value: 'link',     label: 'link',     color: 'purple'  },
 ];
 
+const FIELD_TYPE_OPTIONS = [
+  { value: 'text', label: '文本' },
+  { value: 'number', label: '数字' },
+  { value: 'date', label: '日期' },
+  { value: 'select', label: '单选下拉' },
+];
+
 export default {
   name: 'AssetTypeFieldDrawer',
   props: {
@@ -113,12 +155,15 @@ export default {
       saving: false,
       fields: [],
       renderOptions: RENDER_OPTIONS,
+      fieldTypeOptions: FIELD_TYPE_OPTIONS,
       tableColumns: [
         { title: '显示', key: 'visible', width: 60,  scopedSlots: { customRender: 'visible' } },
-        { title: '字段', dataIndex: 'key', key: 'key', width: 150 },
-        { title: '列头名称', key: 'label', scopedSlots: { customRender: 'label' } },
-        { title: '渲染', key: 'render', dataIndex: 'render', width: 80, scopedSlots: { customRender: 'render' } },
-        { title: '排序', key: 'sort', width: 90, scopedSlots: { customRender: 'sort' } },
+        { title: '字段键', dataIndex: 'key', key: 'key', width: 190, ellipsis: true },
+        { title: '显示名称', key: 'label', width: 160, scopedSlots: { customRender: 'label' } },
+        { title: '字段类型', key: 'field_type', width: 120, scopedSlots: { customRender: 'fieldType' } },
+        { title: '下拉选项', key: 'options', width: 240, scopedSlots: { customRender: 'options' } },
+        { title: '渲染', key: 'render', dataIndex: 'render', width: 110, scopedSlots: { customRender: 'render' } },
+        { title: '操作', key: 'actions', width: 150, scopedSlots: { customRender: 'actions' } },
       ],
     };
   },
@@ -137,12 +182,16 @@ export default {
         const keyToServer = {};
         serverFields.forEach((f) => { keyToServer[f.key] = f; });
         // 合并：服务端配置优先，未配置的字段补充为不可见
-        const merged = ALL_FIELDS.map((meta, idx) => {
+        const builtins = ALL_FIELDS.map((meta, idx) => {
           if (keyToServer[meta.key]) {
-            return { ...meta, ...keyToServer[meta.key] };
+            return { ...meta, ...keyToServer[meta.key], custom: false, _rowKey: meta.key };
           }
-          return { ...meta, visible: false, width: 0, sortable: false, order: 100 + idx };
+          return { ...meta, custom: false, visible: false, width: 0, sortable: false, order: 100 + idx, _rowKey: meta.key };
         });
+        const custom = serverFields
+          .filter((field) => field.custom)
+          .map((field) => ({ ...field, options: field.options || [], _rowKey: field.key }));
+        const merged = [...builtins, ...custom];
         merged.sort((a, b) => a.order - b.order);
         this.fields = merged;
       } catch {
@@ -150,6 +199,17 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    addCustomField() {
+      this.fields.push({
+        _rowKey: `new_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        key: '', label: '', render: 'text', visible: true, sortable: false,
+        width: 0, order: this.fields.length, custom: true, field_type: 'text', options: [],
+      });
+    },
+    removeCustomField(index) {
+      this.fields.splice(index, 1);
+      this.fields.forEach((field, order) => { field.order = order; });
     },
     moveUp(idx) {
       if (idx === 0) return;
@@ -166,6 +226,11 @@ export default {
       this.fields = arr;
     },
     async handleSave() {
+      const invalid = this.fields.find((field) => !field.label || (field.custom && field.field_type === 'select' && (!field.options || !field.options.length)));
+      if (invalid) {
+        this.$message.warning('请填写字段名称，并为单选下拉配置至少一个选项');
+        return;
+      }
       this.saving = true;
       try {
         const payload = this.fields.map((f, i) => ({
@@ -176,6 +241,9 @@ export default {
           visible:  !!f.visible,
           sortable: !!f.sortable,
           order:    i,
+          custom:   !!f.custom,
+          field_type: f.custom ? f.field_type : '',
+          options:  f.custom && f.field_type === 'select' ? (f.options || []) : [],
         }));
         const res = await updateAssetTypeFields(this.assetType.id, payload);
         const biz = res && res.data ? res.data : res;
@@ -206,5 +274,15 @@ export default {
   padding: 10px 16px;
   text-align: right;
   background: #fff;
+}
+.field-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.field-hint, .muted {
+  color: #888;
+  font-size: 12px;
 }
 </style>

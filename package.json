@@ -23,6 +23,7 @@
 		"test:alarm-pipeline": "node --test tests/alarm-pipeline/*.test.js",
 		"test:alarm-aggregation": "node --test tests/alarm-aggregation/*.test.js",
 		"test:notification-channels": "node --test tests/notification-channels/*.test.js",
+		"test:dynamic-asset-model": "node --test tests/dynamic-asset-model/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",

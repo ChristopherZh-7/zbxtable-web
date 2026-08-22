@@ -12,14 +12,14 @@
               <a-descriptions-item :key="field.key" :label="field.label">
                 <!-- progress -->
                 <template v-if="field.render === 'progress'">
-                  <span v-if="detail[field.key]">
+                  <span v-if="fieldValue(detail, field.key)">
                     <a-progress
-                      :percent="parseFieldPercent(detail[field.key])"
+                      :percent="parseFieldPercent(fieldValue(detail, field.key))"
                       size="small"
                       status="active"
                       style="width: 140px; display: inline-block; margin-right: 8px;"
                     />
-                    {{ fmtPercent(detail[field.key]) }}
+                    {{ fmtPercent(fieldValue(detail, field.key)) }}
                   </span>
                   <span v-else>--</span>
                 </template>
@@ -27,8 +27,8 @@
                 <template v-else-if="field.render === 'status'">
                   <a-tooltip>
                     <template slot="title">{{ detail.error }}</template>
-                    <a-tag v-if="detail[field.key] == 1" color="#34af67">正常</a-tag>
-                    <a-tag v-else-if="detail[field.key] == 2" color="#DC143C">异常</a-tag>
+                  <a-tag v-if="fieldValue(detail, field.key) == 1" color="#34af67">正常</a-tag>
+                  <a-tag v-else-if="fieldValue(detail, field.key) == 2" color="#DC143C">异常</a-tag>
                     <a-tag v-else color="#808080">未知</a-tag>
                   </a-tooltip>
                 </template>
@@ -43,18 +43,33 @@
                 </template>
                 <!-- tag -->
                 <template v-else-if="field.render === 'tag'">
-                  <a-tag :color="$themeColor">{{ detail[field.key] || '未知' }}</a-tag>
+                  <a-tag :color="$themeColor">{{ fieldValue(detail, field.key) || '未知' }}</a-tag>
                 </template>
                 <!-- link -->
                 <template v-else-if="field.render === 'link'">
-                  <a v-if="detail[field.key]" :href="detail[field.key]" target="_blank">{{ detail[field.key] }}</a>
+                  <a v-if="fieldValue(detail, field.key)" :href="fieldValue(detail, field.key)" target="_blank">{{ fieldValue(detail, field.key) }}</a>
                   <span v-else>--</span>
                 </template>
                 <!-- text / default -->
                 <template v-else>
                   <template v-if="isEditing && isEditableField(field.key)">
+                    <a-input-number
+                      v-if="field.custom && field.field_type === 'number'"
+                      v-model="editForm[field.key]"
+                      size="small"
+                      style="width: 200px;"
+                    />
+                    <a-select
+                      v-else-if="field.custom && field.field_type === 'select'"
+                      v-model="editForm[field.key]"
+                      allow-clear
+                      size="small"
+                      style="width: 200px;"
+                    >
+                      <a-select-option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</a-select-option>
+                    </a-select>
                     <a-date-picker
-                      v-if="isDateField(field.key)"
+                      v-else-if="isDateField(field.key)"
                       v-model="editForm[field.key]"
                       value-format="YYYY-MM-DD"
                       size="small"
@@ -70,7 +85,7 @@
                       </a-tag>
                     </a-tooltip>
                   </template>
-                  <span v-else>{{ detail[field.key] || '--' }}</span>
+                  <span v-else>{{ fieldValue(detail, field.key) || '--' }}</span>
                 </template>
               </a-descriptions-item>
             </template>
@@ -124,7 +139,7 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import moment from 'moment'
-import { hostDetail, hostGraph, hostUpdate, getAssetTypes, getAssetTypeFields } from '@/services/admin'
+import { hostDetail, hostGraph, hostUpdate, updateHostAssetAttributes, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import themeMixin from '@/mixins/themeMixin'
 
@@ -167,7 +182,10 @@ export default {
         .sort((a, b) => a.order - b.order)
     },
     hasEditableField() {
-      return this.visibleFields.some((f) => EDITABLE_FIELDS.has(f.key))
+      return this.visibleFields.some((field) => (
+        (field.custom && this.$can('tenant.assets', 'update')) ||
+        (!field.custom && EDITABLE_FIELDS.has(field.key) && this.$can('tenant.monitoring', 'update'))
+      ))
     },
   },
   created() {
@@ -204,12 +222,27 @@ export default {
       this.fetchGraph()
     },
 
-    isEditableField: (key) => EDITABLE_FIELDS.has(key),
-    isDateField: (key) => DATE_FIELDS.has(key),
+    fieldConfig(key) {
+      return this.fieldConfigs.find((field) => field.key === key) || {}
+    },
+    fieldValue(record, key) {
+      const field = this.fieldConfig(key)
+      return field.custom ? ((record.custom_attributes || {})[key]) : record[key]
+    },
+    isEditableField(key) {
+      const field = this.fieldConfig(key)
+      return field.custom || EDITABLE_FIELDS.has(key)
+    },
+    isDateField(key) {
+      const field = this.fieldConfig(key)
+      return (field.custom && field.field_type === 'date') || DATE_FIELDS.has(key)
+    },
 
     startEdit() {
       const form = {}
-      EDITABLE_FIELDS.forEach((k) => { form[k] = this.detail[k] || '' })
+      this.visibleFields.filter((field) => this.isEditableField(field.key)).forEach((field) => {
+        form[field.key] = this.fieldValue(this.detail, field.key) || ''
+      })
       this.editForm = form
       this.isEditing = true
     },
@@ -220,11 +253,21 @@ export default {
     async handleSave() {
       this.saving = true
       try {
-        const payload = Object.assign({}, this.detail, this.editForm)
-        const res = await hostUpdate(payload)
-        const biz = res && res.data ? res.data : res
-        if (biz && biz.code === 200) {
-          EDITABLE_FIELDS.forEach((k) => { this.$set(this.detail, k, this.editForm[k]) })
+        const builtinValues = {}
+        const customValues = {}
+        Object.keys(this.editForm).forEach((key) => {
+          if (this.fieldConfig(key).custom) customValues[key] = this.editForm[key]
+          else builtinValues[key] = this.editForm[key]
+        })
+        const requests = []
+        if (Object.keys(builtinValues).length) requests.push(hostUpdate(Object.assign({}, this.detail, builtinValues)))
+        if (Object.keys(customValues).length) requests.push(updateHostAssetAttributes(this.id, this.zid, customValues))
+        const responses = await Promise.all(requests)
+        const failed = responses.find((res) => !((res && res.data ? res.data : res) || {}).code || ((res && res.data ? res.data : res) || {}).code !== 200)
+        if (!failed) {
+          Object.keys(builtinValues).forEach((key) => { this.$set(this.detail, key, builtinValues[key]) })
+          const currentCustom = { ...(this.detail.custom_attributes || {}), ...customValues }
+          this.$set(this.detail, 'custom_attributes', currentCustom)
           this.cancelEdit()
           this.$message.success('保存成功')
         } else {
