@@ -47,6 +47,11 @@ const routerMap = {
 	customDashboardDesigner: {
 		component: () => import('@/pages/dashboard/custom/designer'),
 	},
+	dashboardShare: {
+		authority: '*',
+		path: '/share/dashboard/:token',
+		component: () => import('@/pages/dashboard/custom/share'),
+	},
 	dynamicBaselines: {
 		component: () => import('@/pages/dashboard/baseline'),
 	},

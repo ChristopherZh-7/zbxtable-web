@@ -15,6 +15,11 @@ const routesConfig = [
     path: '/screen/dashboard',
     name: '运维大屏'
   },
+  {
+    router: 'dashboardShare',
+    path: '/share/dashboard/:token',
+    name: '场景分享'
+  },
   'root',
   {
     router: 'exp404',

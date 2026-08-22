@@ -34,6 +34,11 @@
         </a-tag>
       </span>
       <span slot="chartCount" slot-scope="record">{{ chartCount(record) }}</span>
+      <span slot="shareStatus" slot-scope="record">
+        <a-tag :color="record.share_enabled ? 'green' : 'default'">
+          {{ record.share_enabled ? '已开启' : '未开启' }}
+        </a-tag>
+      </span>
       <span slot="updatedAt" slot-scope="record">{{ formatTime(record.updated_at) }}</span>
       <span slot="operation" slot-scope="record">
         <a-button type="link" size="small" @click="view(record)">查看</a-button>
@@ -71,7 +76,8 @@ export default {
       columns: [
         {title: '名称', dataIndex: 'name', key: 'name'},
         {title: '可见范围', key: 'visibility', scopedSlots: {customRender: 'visibility'}, width: 130},
-        {title: '图表数', key: 'chartCount', scopedSlots: {customRender: 'chartCount'}, width: 90},
+        {title: '组件数', key: 'chartCount', scopedSlots: {customRender: 'chartCount'}, width: 90},
+        {title: '分享', key: 'shareStatus', scopedSlots: {customRender: 'shareStatus'}, width: 100},
         {title: '更新时间', key: 'updatedAt', scopedSlots: {customRender: 'updatedAt'}, width: 180},
         {title: '操作', key: 'operation', scopedSlots: {customRender: 'operation'}, width: 220},
       ],

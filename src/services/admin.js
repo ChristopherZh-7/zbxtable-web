@@ -164,6 +164,12 @@ export async function updateDashboard(id, params) {
 export async function deleteDashboard(id) {
 	return request(DASHBOARD + '/' + id, METHOD.DELETE)
 }
+export async function generateDashboardShare(id) {
+	return request(DASHBOARD + '/' + id + '/share', METHOD.POST)
+}
+export async function revokeDashboardShare(id) {
+	return request(DASHBOARD + '/' + id + '/share', METHOD.DELETE)
+}
 export async function baselineRuleList() {
 	return request(BASELINE_RULE, METHOD.GET)
 }
@@ -575,6 +581,8 @@ export default {
 	createDashboard,
 	updateDashboard,
 	deleteDashboard,
+	generateDashboardShare,
+	revokeDashboardShare,
 	configurationResources,
 	configurationScenarioList,
 	createConfigurationScenario,

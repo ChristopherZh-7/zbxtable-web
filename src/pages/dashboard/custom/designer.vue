@@ -9,10 +9,25 @@
             <a-select-option value="personal">仅自己可见</a-select-option>
             <a-select-option value="tenant">租户可见</a-select-option>
           </a-select>
-          <a-tag color="blue">{{ nodes.length }} 个图表</a-tag>
+          <a-tag color="blue">{{ nodes.length }} 个组件</a-tag>
         </div>
         <div>
           <a-button :loading="refreshing" @click="refreshAll"><a-icon type="sync" /> 刷新数据</a-button>
+          <a-button
+            v-if="dashboardId && !isReadonly"
+            :loading="shareLoading"
+            style="margin-left: 8px"
+            @click="generateShare"
+          >
+            <a-icon type="share-alt" /> {{ dashboard && dashboard.share_enabled ? '重新生成分享' : '生成分享' }}
+          </a-button>
+          <a-popconfirm
+            v-if="dashboardId && !isReadonly && dashboard && dashboard.share_enabled"
+            title="撤销后当前分享链接将立即失效，确认撤销？"
+            @confirm="revokeShare"
+          >
+            <a-button :loading="shareRevoking" style="margin-left: 8px"><a-icon type="stop" /> 撤销分享</a-button>
+          </a-popconfirm>
           <a-button v-if="!isReadonly" type="primary" :loading="saving" style="margin-left: 8px" @click="save">
             <a-icon type="save" /> 保存仪表盘
           </a-button>
@@ -29,7 +44,7 @@
       />
 
       <div v-if="!isReadonly" class="custom-dashboard-designer__palette">
-        <strong>图表组件</strong>
+        <strong>展示组件</strong>
         <span class="palette-hint">拖入画布，或单击快速添加</span>
         <div
           v-for="item in chartTypes"
@@ -58,15 +73,15 @@
 
         <aside v-if="!isReadonly" class="custom-dashboard-designer__editor">
           <template v-if="selectedNode">
-            <h3>图表配置</h3>
+            <h3>组件配置</h3>
             <a-form-model layout="vertical">
-              <a-form-model-item label="图表类型">
+              <a-form-model-item label="组件类型">
                 <a-select v-model="editor.chart_type" @change="applyEditor">
                   <a-select-option v-for="item in chartTypes" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
                 </a-select>
               </a-form-model-item>
-              <a-form-model-item label="图表标题">
-                <a-input v-model.trim="editor.title" placeholder="图表标题" @change="applyEditor" />
+              <a-form-model-item label="组件标题">
+                <a-input v-model.trim="editor.title" placeholder="组件标题" @change="applyEditor" />
               </a-form-model-item>
               <a-form-model-item label="主机">
                 <a-select
@@ -96,12 +111,39 @@
                   </a-select-option>
                 </a-select>
               </a-form-model-item>
+              <div class="dashboard-style-grid">
+                <a-form-model-item label="前景色">
+                  <input v-model="editor.style.color" type="color" aria-label="组件前景色" @input="applyEditor">
+                </a-form-model-item>
+                <a-form-model-item label="背景色">
+                  <input v-model="editor.style.background" type="color" aria-label="组件背景色" @input="applyEditor">
+                </a-form-model-item>
+              </div>
+              <a-form-model-item label="数值小数位">
+                <a-select v-model="editor.style.precision" @change="applyEditor">
+                  <a-select-option v-for="precision in [0, 1, 2, 3, 4]" :key="precision" :value="precision">
+                    {{ precision }} 位
+                  </a-select-option>
+                </a-select>
+              </a-form-model-item>
             </a-form-model>
-            <a-button type="danger" ghost block @click="removeSelected"><a-icon type="delete" /> 删除图表</a-button>
+            <a-button type="danger" ghost block @click="removeSelected"><a-icon type="delete" /> 删除组件</a-button>
           </template>
-          <a-empty v-else description="选择画布中的图表后配置数据源" />
+          <a-empty v-else description="选择画布中的组件后配置数据源" />
         </aside>
       </div>
+
+      <a-modal v-model="shareVisible" title="只读分享链接" :footer="null" width="640px">
+        <a-alert
+          message="此链接无需登录，仅展示当前场景和最近 24 小时数据。重新生成后旧链接立即失效。"
+          type="warning"
+          show-icon
+          style="margin-bottom: 16px"
+        />
+        <a-input :value="shareUrl" readonly aria-label="只读分享链接">
+          <a-button slot="addonAfter" @click="openShare">打开投屏页</a-button>
+        </a-input>
+      </a-modal>
     </div>
   </page-layout>
 </template>
@@ -117,6 +159,8 @@ import {
   hostList,
   hostMockd,
   itemList,
+  generateDashboardShare,
+  revokeDashboardShare,
   updateDashboard,
 } from '@/services/admin'
 import {
@@ -152,6 +196,10 @@ export default {
       itemsLoading: false,
       saving: false,
       refreshing: false,
+      shareLoading: false,
+      shareRevoking: false,
+      shareVisible: false,
+      shareUrl: '',
       loadingDashboard: false,
       addIndex: 0,
     }
@@ -235,6 +283,7 @@ export default {
       this.selectedNode = node
       this.editor = clone(node.getData() || defaultNodeData('line'))
       if (!this.editor.data_source) this.editor.data_source = defaultNodeData('line').data_source
+      if (!this.editor.style) this.editor.style = defaultNodeData('line').style
       const source = this.editor.data_source
       this.selectedHostKey = source.zid && source.hostid ? `${source.zid}:${source.hostid}` : ''
       this.numericItems = []
@@ -294,6 +343,34 @@ export default {
       this.graph.removeNode(this.selectedNode)
       this.selectedNode = null
       this.selectedHostKey = ''
+    },
+    generateShare() {
+      if (!this.dashboardId) return
+      this.shareLoading = true
+      generateDashboardShare(this.dashboardId).then((response) => {
+        const result = response.data
+        if (result.code !== 200 || !result.data || !result.data.token) throw new Error(result.message || '分享链接生成失败')
+        this.dashboard = {...this.dashboard, share_enabled: true, shared_at: result.data.shared_at}
+        this.shareUrl = `${window.location.origin}${window.location.pathname}#/share/dashboard/${result.data.token}`
+        this.shareVisible = true
+        this.$message.success('新的只读分享链接已生成')
+      }).catch((error) => this.$message.error(error.message || '分享链接生成失败'))
+        .finally(() => { this.shareLoading = false })
+    },
+    revokeShare() {
+      this.shareRevoking = true
+      revokeDashboardShare(this.dashboardId).then((response) => {
+        const result = response.data
+        if (result.code !== 200) throw new Error(result.message || '撤销分享失败')
+        this.dashboard = {...this.dashboard, share_enabled: false, shared_at: null}
+        this.shareVisible = false
+        this.shareUrl = ''
+        this.$message.success('分享链接已撤销')
+      }).catch((error) => this.$message.error(error.message || '撤销分享失败'))
+        .finally(() => { this.shareRevoking = false })
+    },
+    openShare() {
+      if (this.shareUrl) window.open(this.shareUrl, '_blank', 'noopener')
     },
     loadDashboard() {
       this.loadingDashboard = true
@@ -451,6 +528,19 @@ export default {
 .custom-dashboard-designer__editor h3 {
   margin-bottom: 16px;
 }
+.dashboard-style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dashboard-style-grid input[type='color'] {
+  width: 100%;
+  height: 34px;
+  padding: 2px 4px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+}
 .dashboard-chart-node {
   width: 100%;
   height: 100%;
@@ -468,7 +558,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2px solid var(--dashboard-accent, #1677ff);
 }
 .dashboard-chart-node__header strong,
 .dashboard-chart-node__header span {
@@ -483,5 +573,53 @@ export default {
 .dashboard-chart-node__plot {
   width: 100%;
   height: calc(100% - 48px);
+  overflow: auto;
+}
+.dashboard-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.dashboard-data-table th,
+.dashboard-data-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #edf0f5;
+  text-align: left;
+}
+.dashboard-data-table th {
+  color: var(--dashboard-accent, #1677ff);
+}
+.dashboard-mini-topology {
+  min-width: 320px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.dashboard-mini-topology__node {
+  min-width: 90px;
+  max-width: 130px;
+  padding: 12px;
+  border: 2px solid var(--dashboard-accent, #1677ff);
+  border-radius: 8px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-mini-topology__node--metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dashboard-mini-topology__node--metric strong {
+  color: var(--dashboard-accent, #1677ff);
+  font-size: 18px;
+}
+.dashboard-mini-topology__edge {
+  color: #8c8c8c;
+  white-space: nowrap;
 }
 </style>

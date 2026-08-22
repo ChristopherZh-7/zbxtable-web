@@ -21,6 +21,11 @@ const options = {
       component: () => import("@/pages/system/tenants/select"),
     },
     {
+      path: "/share/dashboard/:token",
+      name: "场景分享",
+      component: () => import("@/pages/dashboard/custom/share"),
+    },
+    {
       path: "*",
       name: "404",
       component: () => import("@/pages/exception/404"),

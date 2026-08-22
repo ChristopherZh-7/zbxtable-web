@@ -3,6 +3,8 @@ const CHART_TYPES = Object.freeze([
   {value: 'bar', label: '柱状图', icon: 'bar-chart'},
   {value: 'pie', label: '饼图', icon: 'pie-chart'},
   {value: 'gauge', label: '仪表盘', icon: 'dashboard'},
+  {value: 'table', label: '表格', icon: 'table'},
+  {value: 'topology', label: '拓扑', icon: 'share-alt'},
 ])
 
 const CHART_LABELS = CHART_TYPES.reduce((result, item) => {
@@ -22,6 +24,11 @@ function defaultNodeData(chartType) {
       item_name: '',
       history: '',
       units: '',
+    },
+    style: {
+      color: '#1677ff',
+      background: '#ffffff',
+      precision: 2,
     },
     series: [],
   }
@@ -44,8 +51,12 @@ function chartOption(data) {
   })
   const latest = values.length ? values[values.length - 1] : 0
   const units = source.units || ''
+  const style = data && data.style || {}
+  const color = style.color || '#1677ff'
   const common = {
     animation: false,
+    color: [color],
+    backgroundColor: style.background || '#ffffff',
     textStyle: {fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'},
     tooltip: {trigger: data.chart_type === 'pie' ? 'item' : 'axis'},
   }
@@ -69,6 +80,70 @@ function chartOption(data) {
   }
 }
 
+function formatDashboardValue(value, data) {
+  const precision = Number(data && data.style && data.style.precision)
+  const digits = Number.isInteger(precision) && precision >= 0 && precision <= 4 ? precision : 2
+  return `${Number(value || 0).toFixed(digits)}${data && data.data_source && data.data_source.units || ''}`
+}
+
+function renderTable(plot, data) {
+  const rows = normalizeSeries(data.series).slice(-8).reverse()
+  const table = document.createElement('table')
+  table.className = 'dashboard-data-table'
+  const head = document.createElement('thead')
+  head.innerHTML = '<tr><th>时间</th><th>数值</th></tr>'
+  table.appendChild(head)
+  const body = document.createElement('tbody')
+  if (!rows.length) {
+    const row = document.createElement('tr')
+    const cell = document.createElement('td')
+    cell.colSpan = 2
+    cell.textContent = '暂无数据'
+    row.appendChild(cell)
+    body.appendChild(row)
+  } else {
+    rows.forEach((point) => {
+      const row = document.createElement('tr')
+      const time = document.createElement('td')
+      const value = document.createElement('td')
+      const stamp = Number(point.clock) * 1000
+      time.textContent = Number.isFinite(stamp) ? new Date(stamp).toLocaleString() : point.clock
+      value.textContent = formatDashboardValue(point.value, data)
+      row.appendChild(time)
+      row.appendChild(value)
+      body.appendChild(row)
+    })
+  }
+  table.appendChild(body)
+  plot.appendChild(table)
+}
+
+function renderTopology(plot, data) {
+  const source = data.data_source || {}
+  const series = normalizeSeries(data.series)
+  const latest = series.length ? series[series.length - 1].value : 0
+  const topology = document.createElement('div')
+  topology.className = 'dashboard-mini-topology'
+  const host = document.createElement('div')
+  host.className = 'dashboard-mini-topology__node'
+  host.textContent = source.host_name || '未命名主机'
+  const edge = document.createElement('div')
+  edge.className = 'dashboard-mini-topology__edge'
+  edge.textContent = '实时采集 →'
+  const metric = document.createElement('div')
+  metric.className = 'dashboard-mini-topology__node dashboard-mini-topology__node--metric'
+  const name = document.createElement('span')
+  name.textContent = source.item_name || '未绑定监控项'
+  const value = document.createElement('strong')
+  value.textContent = formatDashboardValue(latest, data)
+  metric.appendChild(name)
+  metric.appendChild(value)
+  topology.appendChild(host)
+  topology.appendChild(edge)
+  topology.appendChild(metric)
+  plot.appendChild(topology)
+}
+
 function registerDashboardChartNode(Graph, echarts) {
   Graph.registerNode('dashboard-chart', {
     inherit: 'html',
@@ -78,6 +153,9 @@ function registerDashboardChartNode(Graph, echarts) {
       const data = node.getData() || defaultNodeData('line')
       const wrap = document.createElement('div')
       wrap.className = 'dashboard-chart-node'
+      const style = data.style || defaultNodeData('line').style
+      wrap.style.background = style.background || '#ffffff'
+      wrap.style.setProperty('--dashboard-accent', style.color || '#1677ff')
       const header = document.createElement('div')
       header.className = 'dashboard-chart-node__header'
       const title = document.createElement('strong')
@@ -92,8 +170,14 @@ function registerDashboardChartNode(Graph, echarts) {
       wrap.appendChild(plot)
       const render = () => {
         if (!plot.isConnected) return
-        const chart = echarts.init(plot)
-        chart.setOption(chartOption(data), true)
+        if (data.chart_type === 'table') {
+          renderTable(plot, data)
+        } else if (data.chart_type === 'topology') {
+          renderTopology(plot, data)
+        } else {
+          const chart = echarts.init(plot)
+          chart.setOption(chartOption(data), true)
+        }
       }
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(render)
       else setTimeout(render, 0)
@@ -111,6 +195,7 @@ function normalizeDashboardNodes(nodes) {
     const node = nodeJSON(candidate)
     const data = node.data || {}
     const source = data.data_source || {}
+    const style = data.style || {}
     const position = node.position || {x: node.x || 0, y: node.y || 0}
     const size = node.size || {width: node.width || 360, height: node.height || 240}
     return {
@@ -130,6 +215,11 @@ function normalizeDashboardNodes(nodes) {
           history: String(source.history || ''),
           units: String(source.units || ''),
         },
+        style: {
+          color: String(style.color || '#1677ff').toLowerCase(),
+          background: String(style.background || '#ffffff').toLowerCase(),
+          precision: Number.isInteger(Number(style.precision)) ? Number(style.precision) : 2,
+        },
       },
     }
   })
@@ -146,6 +236,10 @@ function validateDashboardNodes(nodes) {
     if (!source.zid || !source.hostid || !source.itemid || !['0', '3'].includes(source.history)) {
       return `请为「${node.data.title}」绑定数值监控项`
     }
+    const style = node.data.style
+    if (!/^#[0-9a-f]{6}$/.test(style.color) || !/^#[0-9a-f]{6}$/.test(style.background) || style.precision < 0 || style.precision > 4) {
+      return `请检查「${node.data.title}」的组件样式`
+    }
   }
   return ''
 }
@@ -154,6 +248,7 @@ module.exports = {
   CHART_TYPES,
   chartOption,
   defaultNodeData,
+  formatDashboardValue,
   normalizeDashboardNodes,
   registerDashboardChartNode,
   validateDashboardNodes,
