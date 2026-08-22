@@ -190,6 +190,9 @@ const routerMap = {
 	networkDiscovery: {
 		component: () => import('@/pages/host/NetworkDiscovery'),
 	},
+	resourceDiscovery: {
+		component: () => import('@/pages/host/ResourceDiscovery'),
+	},
 	// 自定义设备分组 父菜单占位（group_key 作为 router name）
 	custom: {
 		component: view.blank,

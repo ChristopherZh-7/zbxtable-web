@@ -42,6 +42,7 @@ import {
 	BASELINE_RULE,
 	CONFIG_CONSUMPTION,
 	NETWORK_DISCOVERY,
+	RESOURCE_DISCOVERY,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -221,6 +222,9 @@ export async function createNetworkDiscoveryRule(params) {
 }
 export async function deleteNetworkDiscoveryRule(id) {
 	return request(NETWORK_DISCOVERY + '/rules/' + id, METHOD.DELETE)
+}
+export async function resourceDiscoveryOverview() {
+	return request(RESOURCE_DISCOVERY, METHOD.GET)
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -577,6 +581,7 @@ export default {
 	networkDiscoveryResults,
 	createNetworkDiscoveryRule,
 	deleteNetworkDiscoveryRule,
+	resourceDiscoveryOverview,
 	itemList,
 	triggerList,
 	deployTopology,

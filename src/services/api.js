@@ -19,6 +19,7 @@ module.exports = {
 	BASELINE_RULE: '/v1/baseline-rule',
 	CONFIG_CONSUMPTION: '/v1/config-consumption',
 	NETWORK_DISCOVERY: '/v1/network-discovery',
+	RESOURCE_DISCOVERY: '/v1/resource-discovery',
 	TRIGGER_LIST: '/v1/trigger/list',
 	ALARM: '/v1/alarm',
 	ALARM_ANALYSIS: '/v1/alarm/analysis',

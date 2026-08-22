@@ -26,6 +26,7 @@
 		"test:dynamic-asset-model": "node --test tests/dynamic-asset-model/*.test.js",
 		"test:config-consumption": "node --test tests/config-consumption/*.test.js",
 		"test:network-discovery": "node --test tests/network-discovery/*.test.js",
+		"test:resource-discovery": "node --test tests/resource-discovery/*.test.js",
 		"lint": "vue-cli-service lint",
 		"predeploy": "yarn build",
 		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
