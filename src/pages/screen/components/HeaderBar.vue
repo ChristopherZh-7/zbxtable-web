@@ -11,10 +11,14 @@
       <span class="clock-date">{{ dateText }}</span>
       <span class="clock-time">{{ timeText }}</span>
 
+      <span class="screen-status"><a-icon type="desktop" />{{ viewportLabel }}</span>
+      <span class="screen-status"><a-icon type="history" />{{ $t('screen_last_refresh') }} {{ lastUpdated || '--' }}</span>
+
       <!-- 刷新间隔设置 -->
       <div class="refresh-wrap">
         <a-icon type="sync" class="refresh-icon" :spin="spinning" />
-        <select class="refresh-select" :value="interval" @change="onIntervalChange">
+        <span class="refresh-label">{{ $t('screen_auto_refresh') }}</span>
+        <select class="refresh-select" :aria-label="$t('screen_refresh_interval')" :value="interval" @change="onIntervalChange">
           <option v-for="opt in intervalOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
       </div>
@@ -32,7 +36,9 @@ export default {
   name: 'HeaderBar',
   i18n: require('../i18n'),
   props: {
-    interval: { type: Number, default: 30 }
+    interval: { type: Number, default: 30 },
+    lastUpdated: { type: String, default: '' },
+    viewportLabel: { type: String, default: '1920×1080' }
   },
   data() {
     return {

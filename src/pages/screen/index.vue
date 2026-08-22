@@ -1,8 +1,14 @@
 <template>
   <div class="screen-root">
-    <session-overlay :visible="sessionExpired" :default-username="currentUser" @success="onSessionRestored" />
-    <header-bar :interval="refreshInterval" @interval-change="onIntervalChange" />
-    <div class="screen-body">
+    <div class="screen-stage" :style="stageStyle">
+      <session-overlay :visible="sessionExpired" :default-username="currentUser" @success="onSessionRestored" />
+      <header-bar
+        :interval="refreshInterval"
+        :last-updated="lastUpdated"
+        :viewport-label="viewportLabel"
+        @interval-change="onIntervalChange"
+      />
+      <div class="screen-body">
 
       <!-- 行 1 左：主机类型分布 -->
       <screen-panel class="area-host-pie" :title="$t('panel_host_type')">
@@ -40,7 +46,7 @@
       </screen-panel>
 
       <!-- 行 3 中：实时告警动态 -->
-      <screen-panel class="area-alert" :title="$t('panel_alert_list')" :extra="updateTime">
+      <screen-panel class="area-alert" :title="$t('panel_alert_list')" :extra="lastUpdated">
         <alert-marquee :list="triggerList" />
       </screen-panel>
 
@@ -55,6 +61,7 @@
         <resource-top-bar :rows="winMetric === 'cpu' ? winCpuTop : winMemTop" :metric="winMetric" />
       </screen-panel>
 
+      </div>
     </div>
   </div>
 </template>
@@ -92,14 +99,23 @@ export default {
       winMemTop: [],
       linMetric: 'cpu',
       winMetric: 'mem',
-      updateTime: '',
+      lastUpdated: '',
       refreshInterval: 30,
       timers: [],
       sessionExpired: false,
-      currentUser: ''
+      currentUser: '',
+      viewportWidth: 1920,
+      viewportHeight: 1080
     }
   },
   computed: {
+    stageStyle() {
+      const scale = Math.min(this.viewportWidth / 1920, this.viewportHeight / 1080)
+      return { transform: `translate(-50%, -50%) scale(${scale})` }
+    },
+    viewportLabel() {
+      return `${this.viewportWidth}×${this.viewportHeight}`
+    },
     kpi() {
       const dynamicCounts = Array.isArray(this.info.asset_type_counts) ? this.info.asset_type_counts : []
       const total = dynamicCounts.length
@@ -113,6 +129,8 @@ export default {
     }
   },
   mounted() {
+    this.syncViewport()
+    window.addEventListener('resize', this.syncViewport)
     this._origLoginNoAuth = window.loginNoAuth
     window.loginNoAuth = () => {
       this.sessionExpired = true
@@ -123,9 +141,14 @@ export default {
   },
   beforeDestroy() {
     this.clearTimers()
+    window.removeEventListener('resize', this.syncViewport)
     window.loginNoAuth = this._origLoginNoAuth
   },
   methods: {
+    syncViewport() {
+      this.viewportWidth = Math.max(1, window.innerWidth || 1920)
+      this.viewportHeight = Math.max(1, window.innerHeight || 1080)
+    },
     startTimers() {
       this.clearTimers()
       const ms = this.refreshInterval * 1000
@@ -143,14 +166,17 @@ export default {
       this.fetchAll()
       this.startTimers()
     },
-    fetchAll() {
-      this.fetchInfo()
-      this.fetchAlarms()
-      this.fetchEgress()
-      this.fetchTop()
+    async fetchAll() {
+      await Promise.allSettled([
+        this.fetchInfo(),
+        this.fetchAlarms(),
+        this.fetchEgress(),
+        this.fetchTop()
+      ])
+      this.lastUpdated = parseTimeFun(new Date())
     },
     fetchInfo() {
-      indexInfo().then(resp => {
+      return indexInfo().then(resp => {
         const d = (resp && resp.data && resp.data.data) || {}
         this.info = {
           net_count: d.net_count || 0,
@@ -163,14 +189,13 @@ export default {
       }).catch(() => {})
     },
     fetchAlarms() {
-      indexTrigger().then(resp => {
+      return indexTrigger().then(resp => {
         const items = resp && resp.data && resp.data.data && resp.data.data.items
         this.triggerList = Array.isArray(items) ? items : []
-        this.updateTime = parseTimeFun(new Date())
       }).catch(() => {})
     },
     fetchEgress() {
-      indexEgress().then(resp => {
+      return indexEgress().then(resp => {
         const d = resp && resp.data && resp.data.data
         if (Array.isArray(d)) {
           this.egressData = d.filter(Boolean).map(item => ({
@@ -199,14 +224,16 @@ export default {
         const arr = resp && resp.data && resp.data.data
         return Array.isArray(arr) ? arr.filter(Boolean) : []
       }
-      indexRestop({ host_type: 'VM_LIN', metrics_type: 'CPU', top_num: '10' })
-        .then(r => { this.linCpuTop = parse(r) }).catch(() => { this.linCpuTop = [] })
-      indexRestop({ host_type: 'VM_LIN', metrics_type: 'MEM', top_num: '10' })
-        .then(r => { this.linMemTop = parse(r) }).catch(() => { this.linMemTop = [] })
-      indexRestop({ host_type: 'VM_WIN', metrics_type: 'CPU', top_num: '10' })
-        .then(r => { this.winCpuTop = parse(r) }).catch(() => { this.winCpuTop = [] })
-      indexRestop({ host_type: 'VM_WIN', metrics_type: 'MEM', top_num: '10' })
-        .then(r => { this.winMemTop = parse(r) }).catch(() => { this.winMemTop = [] })
+      return Promise.allSettled([
+        indexRestop({ host_type: 'VM_LIN', metrics_type: 'CPU', top_num: '10' })
+          .then(r => { this.linCpuTop = parse(r) }).catch(() => { this.linCpuTop = [] }),
+        indexRestop({ host_type: 'VM_LIN', metrics_type: 'MEM', top_num: '10' })
+          .then(r => { this.linMemTop = parse(r) }).catch(() => { this.linMemTop = [] }),
+        indexRestop({ host_type: 'VM_WIN', metrics_type: 'CPU', top_num: '10' })
+          .then(r => { this.winCpuTop = parse(r) }).catch(() => { this.winCpuTop = [] }),
+        indexRestop({ host_type: 'VM_WIN', metrics_type: 'MEM', top_num: '10' })
+          .then(r => { this.winMemTop = parse(r) }).catch(() => { this.winMemTop = [] })
+      ])
     }
   }
 }

@@ -49,9 +49,22 @@
   }
 }
 
+// 1920×1080 设计画布：按视口等比缩放，避免宽屏或高分屏把图表拉伸变形。
+.screen-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: center center;
+}
+
 // 顶栏
 .screen-header {
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -71,6 +84,7 @@
 
   .header-right {
     justify-content: flex-end;
+    min-width: 760px;
   }
 
   .header-title {
@@ -110,6 +124,15 @@
     margin-right: 12px;
   }
 
+  .screen-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-size: 11px;
+    color: @screen-text-dim;
+  }
+
   .refresh-wrap {
     display: flex;
     align-items: center;
@@ -122,6 +145,12 @@
     .refresh-icon {
       font-size: 13px;
       color: @screen-cyan;
+    }
+
+    .refresh-label {
+      white-space: nowrap;
+      color: @screen-text-dim;
+      font-size: 11px;
     }
 
     .refresh-select {
@@ -166,12 +195,14 @@
 //  行 2：CPU TOP | 中央告警列表 | 内存 TOP
 .screen-body {
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
   display: grid;
   grid-template-columns: 22% 1fr 22%;
   grid-template-rows: 1fr 1fr;
   grid-gap: 14px;
   padding: 14px 18px;
-  height: calc(100vh - 80px);
+  height: 1000px;
   z-index: 2;
 
   .area-host-pie { grid-column: 1; grid-row: 1; }
