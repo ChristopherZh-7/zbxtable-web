@@ -40,6 +40,7 @@ import {
 	SYSTEM_BINDING,
 	DASHBOARD,
 	BASELINE_RULE,
+	CONFIG_CONSUMPTION,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -180,6 +181,30 @@ export async function baselineRulePreview(id, zid) {
 }
 export async function baselineRuleEvents(id, zid) {
 	return request(BASELINE_RULE + '/' + id + '/events', METHOD.GET, {zid})
+}
+export async function configurationResources(zid) {
+	return request(CONFIG_CONSUMPTION + '/resources', METHOD.GET, zid ? {zid} : {})
+}
+export async function configurationScenarioList() {
+	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.GET)
+}
+export async function createConfigurationScenario(params) {
+	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.POST, params)
+}
+export async function updateConfigurationScenario(id, params) {
+	return request(CONFIG_CONSUMPTION + '/scenarios/' + id, METHOD.PUT, params)
+}
+export async function deleteConfigurationScenario(id) {
+	return request(CONFIG_CONSUMPTION + '/scenarios/' + id, METHOD.DELETE)
+}
+export async function configurationTaskList() {
+	return request(CONFIG_CONSUMPTION + '/tasks', METHOD.GET)
+}
+export async function applyConfigurationScenario(hostid, params) {
+	return request(CONFIG_CONSUMPTION + '/hosts/' + hostid, METHOD.PUT, params)
+}
+export async function retryConfigurationTask(id) {
+	return request(CONFIG_CONSUMPTION + '/tasks/' + id + '/retry', METHOD.POST, {})
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -523,6 +548,14 @@ export default {
 	createDashboard,
 	updateDashboard,
 	deleteDashboard,
+	configurationResources,
+	configurationScenarioList,
+	createConfigurationScenario,
+	updateConfigurationScenario,
+	deleteConfigurationScenario,
+	configurationTaskList,
+	applyConfigurationScenario,
+	retryConfigurationTask,
 	itemList,
 	triggerList,
 	deployTopology,

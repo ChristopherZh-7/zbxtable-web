@@ -17,6 +17,7 @@ module.exports = {
 	INDEX_SESSION: '/v1/index/session',
 	DASHBOARD: '/v1/dashboard',
 	BASELINE_RULE: '/v1/baseline-rule',
+	CONFIG_CONSUMPTION: '/v1/config-consumption',
 	TRIGGER_LIST: '/v1/trigger/list',
 	ALARM: '/v1/alarm',
 	ALARM_ANALYSIS: '/v1/alarm/analysis',

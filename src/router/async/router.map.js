@@ -184,6 +184,9 @@ const routerMap = {
 	assetBrowser: {
 		component: () => import('@/pages/host/AssetBrowser'),
 	},
+	configConsumption: {
+		component: () => import('@/pages/host/ConfigConsumption'),
+	},
 	// 自定义设备分组 父菜单占位（group_key 作为 router name）
 	custom: {
 		component: view.blank,
