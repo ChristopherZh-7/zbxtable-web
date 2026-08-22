@@ -191,6 +191,45 @@
             </a-form-model>
           </a-tab-pane>
 
+          <!-- 钉钉机器人配置 -->
+          <a-tab-pane key="dingtalk" :tab="$t('dingtalkTab')">
+            <a-form-model ref="dingtalkForm" :model="dingtalkForm" :label-col="{ span: 6 }" :wrapper-col="{ span: 14 }">
+              <a-form-model-item v-for="item in dingtalkConfigs" :key="item.id" :label="item.name">
+                <a-select v-if="isBooleanConfig(item.config_key)" v-model="dingtalkForm[item.config_key]" :placeholder="item.comment" style="width: 100%">
+                  <a-select-option v-for="opt in getBooleanOptions(item.config_key)" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </a-select-option>
+                </a-select>
+                <a-input-group v-else-if="isSecretConfigKey(item.config_key)" compact class="secret-input-group">
+                  <a-input-password
+                    v-model="dingtalkForm[item.config_key]"
+                    :placeholder="secretPlaceholder(item.config_key)"
+                    @input="onSecretInput(item.config_key)" />
+                  <a-button
+                    v-if="secretConfigured[item.config_key] && !secretClearPending[item.config_key]"
+                    type="danger"
+                    ghost
+                    @click="confirmClearSecret(item.config_key)">{{$t('clearSecret')}}</a-button>
+                  <a-button
+                    v-else-if="secretClearPending[item.config_key]"
+                    @click="undoClearSecret(item.config_key)">{{$t('undoClear')}}</a-button>
+                </a-input-group>
+                <div class="config-hint">
+                  {{ isSecretConfigKey(item.config_key) ? secretStatus(item.config_key) : item.comment }}
+                </div>
+              </a-form-model-item>
+              <a-form-model-item :wrapper-col="{ span: 14, offset: 6 }">
+                <a-space>
+                  <a-button type="primary" @click="saveCategory('dingtalk')" :loading="saveLoading">{{$t('save')}}</a-button>
+                  <a-button @click="handleTestDingTalk" :loading="testingDingTalk">
+                    <a-icon type="notification" /> {{$t('testDingTalk')}}
+                  </a-button>
+                </a-space>
+                <div class="config-hint">{{$t('testDingTalkHint')}}</div>
+              </a-form-model-item>
+            </a-form-model>
+          </a-tab-pane>
+
           <!-- AI 配置 -->
           <a-tab-pane key="ai" :tab="$t('aiTab')">
             <a-form-model ref="aiForm" :model="aiForm" :label-col="{ span: 6 }" :wrapper-col="{ span: 14 }">
@@ -303,6 +342,7 @@ export default {
       taskForm: {},
       emailForm: {},
       wechatForm: {},
+      dingtalkForm: {},
       secretConfigured: {},
       secretClearPending: {},
       aiForm: {},
@@ -316,7 +356,8 @@ export default {
       testingEmail: false,  // 测试邮件加载状态
       testWechatVisible: false,  // 测试企业微信对话框
       testWechatUserId: '',  // 测试企业微信用户ID
-      testingWechat: false  // 测试企业微信加载状态
+      testingWechat: false,  // 测试企业微信加载状态
+      testingDingTalk: false
     }
   },
   computed: {
@@ -381,6 +422,11 @@ export default {
     wechatConfigs() {
       return this.list.filter(item => 
         item.config_key && item.config_key.startsWith('wechat_')
+      )
+    },
+    dingtalkConfigs() {
+      return this.list.filter(item =>
+        item.config_key && item.config_key.startsWith('dingtalk_')
       )
     },
     aiConfigs() {
@@ -518,6 +564,7 @@ export default {
       this.taskForm = {}
       this.emailForm = {}
       this.wechatForm = {}
+      this.dingtalkForm = {}
       this.aiForm = {}
       this.securityForm = {}
       this.secretConfigured = {}
@@ -539,6 +586,14 @@ export default {
       this.wechatConfigs.forEach(item => {
         const normalized = normalizeSecretValue(item.config_key, item.config_value)
         this.$set(this.wechatForm, item.config_key, normalized.value)
+        if (isSecretConfigKey(item.config_key)) {
+          this.$set(this.secretConfigured, item.config_key, normalized.configured)
+          this.$set(this.secretClearPending, item.config_key, false)
+        }
+      })
+      this.dingtalkConfigs.forEach(item => {
+        const normalized = normalizeSecretValue(item.config_key, item.config_value)
+        this.$set(this.dingtalkForm, item.config_key, normalized.value)
         if (isSecretConfigKey(item.config_key)) {
           this.$set(this.secretConfigured, item.config_key, normalized.configured)
           this.$set(this.secretClearPending, item.config_key, false)
@@ -581,6 +636,10 @@ export default {
           case 'wechat':
             configs = this.wechatConfigs
             form = this.wechatForm
+            break
+          case 'dingtalk':
+            configs = this.dingtalkConfigs
+            form = this.dingtalkForm
             break
           case 'ai':
             configs = this.aiConfigs
@@ -634,8 +693,14 @@ export default {
       return this.$t('secretNotConfigured')
     },
     onSecretInput(key) {
-      const form = key === 'email_secret' ? this.emailForm : this.wechatForm
+      const form = this.secretFormForKey(key)
       if (form[key]) this.$set(this.secretClearPending, key, false)
+    },
+    secretFormForKey(key) {
+      if (key.startsWith('email_')) return this.emailForm
+      if (key.startsWith('wechat_')) return this.wechatForm
+      if (key.startsWith('dingtalk_')) return this.dingtalkForm
+      return {}
     },
     confirmClearSecret(key) {
       this.$confirm({
@@ -645,7 +710,7 @@ export default {
         okType: 'danger',
         cancelText: this.$t('cancel'),
         onOk: () => {
-          const form = key === 'email_secret' ? this.emailForm : this.wechatForm
+          const form = this.secretFormForKey(key)
           this.$set(form, key, '')
           this.$set(this.secretClearPending, key, true)
         }
@@ -854,6 +919,22 @@ export default {
         this.$message.error(this.$t('testFailed') + ': ' + (error.response?.data?.message || error.message))
       } finally {
         this.testingWechat = false
+      }
+    },
+    async handleTestDingTalk() {
+      this.testingDingTalk = true
+      try {
+        const axios = require('axios')
+        const response = await axios.post('/v1/system/test-dingtalk', {})
+        if (response.data.code === 200) {
+          this.$message.success(this.$t('testDingTalkSuccess'))
+        } else {
+          this.$message.error(response.data.message || this.$t('testFailed'))
+        }
+      } catch (error) {
+        this.$message.error(this.$t('testFailed') + ': ' + (error.response?.data?.message || error.message))
+      } finally {
+        this.testingDingTalk = false
       }
     }
   }

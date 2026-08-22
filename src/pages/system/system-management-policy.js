@@ -23,9 +23,14 @@ const GROUP_KEYS = {
     'wechat_corpid',
     'wechat_secret',
   ],
+  dingtalk: [
+    'dingtalk_enabled',
+    'dingtalk_access_token',
+    'dingtalk_secret',
+  ],
 }
 
-const SECRET_CONFIG_KEYS = ['email_secret', 'wechat_secret']
+const SECRET_CONFIG_KEYS = ['email_secret', 'wechat_secret', 'dingtalk_access_token', 'dingtalk_secret']
 
 function isAtomicCategory(category) {
   return Object.prototype.hasOwnProperty.call(GROUP_KEYS, category)

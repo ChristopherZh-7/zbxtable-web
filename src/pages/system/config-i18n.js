@@ -134,6 +134,9 @@ module.exports = {
         name: '企业微信 Secret',
         comment: '企业微信应用的 Secret'
       },
+      dingtalk_enabled: { name: '钉钉机器人开关', comment: '是否启用钉钉群机器人：1 启用,0 禁用' },
+      dingtalk_access_token: { name: '钉钉 Access Token', comment: '钉钉群机器人的 Access Token，仅服务端加密保存' },
+      dingtalk_secret: { name: '钉钉加签 Secret', comment: '钉钉群机器人的加签 Secret，仅服务端加密保存' },
       ai_type: {
         name: 'AI 类型',
         comment: '选择使用的 AI 服务类型：ollama、deepseek 或 custom'
@@ -316,6 +319,9 @@ module.exports = {
         name: '企業微信 Secret',
         comment: '企業微信應用的 Secret'
       },
+      dingtalk_enabled: { name: '釘釘機器人開關', comment: '是否啟用釘釘群機器人：1 啟用,0 禁用' },
+      dingtalk_access_token: { name: '釘釘 Access Token', comment: '釘釘群機器人的 Access Token，僅服務端加密保存' },
+      dingtalk_secret: { name: '釘釘加簽 Secret', comment: '釘釘群機器人的加簽 Secret，僅服務端加密保存' },
       ai_type: {
         name: 'AI 類型',
         comment: '選擇使用的 AI 服務類型：ollama、deepseek 或 custom'
@@ -498,6 +504,9 @@ module.exports = {
         name: 'WeChat Work Secret',
         comment: 'Secret of WeChat Work application'
       },
+      dingtalk_enabled: { name: 'DingTalk Robot Switch', comment: 'Enable DingTalk group robot: 1 enabled, 0 disabled' },
+      dingtalk_access_token: { name: 'DingTalk Access Token', comment: 'DingTalk robot access token, encrypted on the server' },
+      dingtalk_secret: { name: 'DingTalk Signing Secret', comment: 'DingTalk robot signing secret, encrypted on the server' },
       ai_type: {
         name: 'AI Type',
         comment: 'Select AI service type: ollama, deepseek, or custom'
@@ -555,6 +564,7 @@ module.exports = {
       taskTab: '计划任务',
       emailTab: '邮件配置',
       wechatTab: '企业微信配置',
+      dingtalkTab: '钉钉配置',
       aiTab: 'AI 配置',
       securityTab: '安全配置',
       
@@ -625,6 +635,8 @@ module.exports = {
       // 测试功能
       testEmail: '测试邮件',
       testWechat: '测试企业微信',
+      testDingTalk: '测试钉钉',
+      testDingTalkHint: '仅使用已成功保存的钉钉配置发送测试消息；当前未保存的表单不会被提交',
       testEmailTitle: '测试邮件配置',
       testWechatTitle: '测试企业微信配置',
       testEmailPlaceholder: '请输入接收测试邮件的邮箱地址',
@@ -639,6 +651,7 @@ module.exports = {
       pleaseInputTestUserId: '请输入测试用户ID',
       testEmailSuccess: '测试邮件发送成功，请检查邮箱',
       testWechatSuccess: '测试消息发送成功，请检查企业微信',
+      testDingTalkSuccess: '测试消息发送成功，请检查钉钉群机器人',
       secretConfigured: '已配置；留空并保存会保留原值',
       secretNotConfigured: '未配置',
       secretKeepPlaceholder: '已配置，留空保持原值',
@@ -657,6 +670,7 @@ module.exports = {
       taskTab: '計劃任務',
       emailTab: '郵件配置',
       wechatTab: '企業微信配置',
+      dingtalkTab: '釘釘配置',
       aiTab: 'AI 配置',
       securityTab: '安全配置',
       
@@ -727,6 +741,8 @@ module.exports = {
       // 測試功能
       testEmail: '測試郵件',
       testWechat: '測試企業微信',
+      testDingTalk: '測試釘釘',
+      testDingTalkHint: '僅使用已成功保存的釘釘配置發送測試消息；當前未保存的表單不會被提交',
       testEmailTitle: '測試郵件配置',
       testWechatTitle: '測試企業微信配置',
       testEmailPlaceholder: '請輸入接收測試郵件的郵箱地址',
@@ -741,6 +757,7 @@ module.exports = {
       pleaseInputTestUserId: '請輸入測試用戶ID',
       testEmailSuccess: '測試郵件發送成功，請檢查郵箱',
       testWechatSuccess: '測試消息發送成功，請檢查企業微信',
+      testDingTalkSuccess: '測試消息發送成功，請檢查釘釘群機器人',
       secretConfigured: '已配置；留空並保存會保留原值',
       secretNotConfigured: '未配置',
       secretKeepPlaceholder: '已配置，留空保持原值',
@@ -759,6 +776,7 @@ module.exports = {
       taskTab: 'Tasks',
       emailTab: 'Email',
       wechatTab: 'WeChat',
+      dingtalkTab: 'DingTalk',
       aiTab: 'AI',
       securityTab: 'Security',
       
@@ -829,6 +847,8 @@ module.exports = {
       // Test Features
       testEmail: 'Test Email',
       testWechat: 'Test WeChat',
+      testDingTalk: 'Test DingTalk',
+      testDingTalkHint: 'Send with the last successfully saved DingTalk configuration only; unsaved form values are not submitted',
       testEmailTitle: 'Test Email Configuration',
       testWechatTitle: 'Test WeChat Configuration',
       testEmailPlaceholder: 'Please enter the email address to receive test email',
@@ -843,6 +863,7 @@ module.exports = {
       pleaseInputTestUserId: 'Please enter test user ID',
       testEmailSuccess: 'Test email sent successfully, please check your inbox',
       testWechatSuccess: 'Test message sent successfully, please check WeChat Work',
+      testDingTalkSuccess: 'Test message sent successfully, please check the DingTalk robot',
       secretConfigured: 'Configured; leave blank when saving to keep the current value',
       secretNotConfigured: 'Not configured',
       secretKeepPlaceholder: 'Configured; leave blank to keep it',
