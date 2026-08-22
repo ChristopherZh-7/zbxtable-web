@@ -187,6 +187,9 @@ const routerMap = {
 	configConsumption: {
 		component: () => import('@/pages/host/ConfigConsumption'),
 	},
+	networkDiscovery: {
+		component: () => import('@/pages/host/NetworkDiscovery'),
+	},
 	// 自定义设备分组 父菜单占位（group_key 作为 router name）
 	custom: {
 		component: view.blank,

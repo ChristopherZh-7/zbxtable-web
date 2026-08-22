@@ -41,6 +41,7 @@ import {
 	DASHBOARD,
 	BASELINE_RULE,
 	CONFIG_CONSUMPTION,
+	NETWORK_DISCOVERY,
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
@@ -205,6 +206,21 @@ export async function applyConfigurationScenario(hostid, params) {
 }
 export async function retryConfigurationTask(id) {
 	return request(CONFIG_CONSUMPTION + '/tasks/' + id + '/retry', METHOD.POST, {})
+}
+export async function networkDiscoveryResources() {
+	return request(NETWORK_DISCOVERY + '/resources', METHOD.GET)
+}
+export async function networkDiscoveryRules() {
+	return request(NETWORK_DISCOVERY + '/rules', METHOD.GET)
+}
+export async function networkDiscoveryResults() {
+	return request(NETWORK_DISCOVERY + '/results', METHOD.GET)
+}
+export async function createNetworkDiscoveryRule(params) {
+	return request(NETWORK_DISCOVERY + '/rules', METHOD.POST, params)
+}
+export async function deleteNetworkDiscoveryRule(id) {
+	return request(NETWORK_DISCOVERY + '/rules/' + id, METHOD.DELETE)
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -556,6 +572,11 @@ export default {
 	configurationTaskList,
 	applyConfigurationScenario,
 	retryConfigurationTask,
+	networkDiscoveryResources,
+	networkDiscoveryRules,
+	networkDiscoveryResults,
+	createNetworkDiscoveryRule,
+	deleteNetworkDiscoveryRule,
 	itemList,
 	triggerList,
 	deployTopology,
