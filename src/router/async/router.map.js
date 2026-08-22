@@ -92,6 +92,9 @@ const routerMap = {
 	topology: {
 		component: view.blank,
 	},
+	visualizationTemplates: {
+		component: () => import('@/pages/visualization/Templates'),
+	},
 	topologyList: {
 		component: () => import('@/pages/topology/index'),
 	},
