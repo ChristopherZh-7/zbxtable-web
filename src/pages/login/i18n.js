@@ -11,8 +11,7 @@ module.exports = {
       loginSuccess: '登录成功',
       loginFailed: '登录失败',
       systemSubtitle: 'Zabbix 监控数据可视化平台',
-      githubTooltip: 'Star on GitHub',
-      copyright: '© 2026 ZbxTable. All rights reserved.',
+      copyright: '© 2026 SmartOps. All rights reserved.',
     },
     HK: {
       title: '登錄',
@@ -25,8 +24,7 @@ module.exports = {
       loginSuccess: '登錄成功',
       loginFailed: '登錄失敗',
       systemSubtitle: 'Zabbix 監控數據可視化平台',
-      githubTooltip: 'Star on GitHub',
-      copyright: '© 2026 ZbxTable. All rights reserved.',
+      copyright: '© 2026 SmartOps. All rights reserved.',
     },
     US: {
       title: 'Login',
@@ -39,8 +37,7 @@ module.exports = {
       loginSuccess: 'Login Success',
       loginFailed: 'Login Failed',
       systemSubtitle: 'Zabbix Monitoring Data Visualization Platform',
-      githubTooltip: 'Star on GitHub',
-      copyright: '© 2026 ZbxTable. All rights reserved.',
+      copyright: '© 2026 SmartOps. All rights reserved.',
     }
   }
 }

@@ -32,7 +32,7 @@ Mock.mock(`${process.env.VUE_APP_API_BASE_URL}/routes`, 'get', () => {
         path: 'document',
         name: '使用文档',
         icon: 'file-word',
-        link: 'https://iczer.gitee.io/vue-antd-admin-docs/'
+        link: '/'
       }
     ]
   }]

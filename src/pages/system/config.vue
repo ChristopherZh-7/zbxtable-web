@@ -662,7 +662,7 @@ export default {
         
         // 如果是系统配置，更新 Vuex 中的系统名称和Logo
         if (category === 'system') {
-          this.$store.commit('setting/setSystemName', form.system_name || 'ZbxTable')
+          this.$store.commit('setting/setSystemName', form.system_name || '智能运维管理系统')
           this.$store.commit('setting/setSystemSubtitle', form.system_subtitle || this.$t('systemSubtitleDefault'))
           this.$store.commit('setting/setSystemLogo', form.system_logo || '/logo.png')
         }

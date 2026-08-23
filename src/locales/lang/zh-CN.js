@@ -52,8 +52,7 @@ export default {
     pleaseInputUsername: '请输入用户名',
     pleaseInputPassword: '请输入密码',
     systemSubtitle: 'Zabbix 监控数据可视化平台',
-    githubTooltip: 'Star on GitHub',
-    copyright: '© 2026 ZbxTable. All rights reserved.',
+    copyright: '© 2026 SmartOps. All rights reserved.',
   },
 
   // 系统配置

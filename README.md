@@ -1,10 +1,6 @@
-[English](./README.md) | 简体中文
+# SmartOps Web
 
-# zbxtable-web
-
-ZbxTable 前端页面
-
-[![Build Status](https://drone.cactifans.org/api/badges/canghai908/zbxtable-web/status.svg?ref=refs/heads/2.1)](https://drone.cactifans.org/canghai908/zbxtable-web)
+智能运维管理系统前端。
 
 ## 开发
 
@@ -17,13 +13,13 @@ yarn serve
 
 ## 构建
 
-环境：nodejs>10
+使用仓库固定的 Node.js 工具链构建：
 
 构建
 
 ``` 
-yarn install
-yarn build
+npm ci
+npm run build
 ```
 
-构建后的代码默认会存放到 web 文件夹
+构建产物位于 `web/`，并由后端构建流程嵌入发布二进制。

@@ -1,7 +1,7 @@
 export default {
   'zh-CN': {
-    title: 'ZbxTable 安装向导',
-    subtitle: '欢迎使用 ZbxTable，请按照以下步骤完成安装配置',
+    title: 'SmartOps 安装向导',
+    subtitle: '欢迎使用 SmartOps，请按照以下步骤完成安装配置',
     
     // 步骤
     steps: {
@@ -19,14 +19,14 @@ export default {
       hostPlaceholder: 'localhost',
       port: '数据库端口',
       name: '数据库名称',
-      namePlaceholder: 'zbxtable',
+      namePlaceholder: 'smartops',
       user: '数据库用户',
-      userPlaceholder: 'zbxtable',
+      userPlaceholder: 'smartops',
       password: '数据库密码',
       passwordPlaceholder: '请输入数据库密码',
       path: '数据库路径',
-      pathPlaceholder: './data/zbxtable.db',
-      pathHint: 'SQLite 数据库文件路径，支持相对路径和绝对路径。例如：./data/zbxtable.db',
+      pathPlaceholder: './data/smartops.db',
+      pathHint: 'SQLite 数据库文件路径，支持相对路径和绝对路径。例如：./data/smartops.db',
       testConnection: '测试连接',
       testSuccess: '数据库连接成功',
       testFailed: '数据库连接失败',
@@ -76,7 +76,7 @@ export default {
       portChanged: 'HTTP 端口',
       restartCommand: '请使用 systemd 重启程序：',
       restartHint: '重启完成后，点击下方按钮跳转到登录页面',
-      defaultAccount: '提示：默认管理员账号 admin，密码 Zbxtable',
+      defaultAccount: '提示：默认管理员账号 admin，密码 SmartOps-Local-Only!',
       goToLogin: '前往登录页面',
       loginAddress: '登录地址',
     },
@@ -118,8 +118,8 @@ export default {
   },
   
   'en-US': {
-    title: 'ZbxTable Installation Wizard',
-    subtitle: 'Welcome to ZbxTable, please follow the steps below to complete the installation',
+    title: 'SmartOps Installation Wizard',
+    subtitle: 'Welcome to SmartOps, please follow the steps below to complete the installation',
     
     // Steps
     steps: {
@@ -137,14 +137,14 @@ export default {
       hostPlaceholder: 'localhost',
       port: 'Database Port',
       name: 'Database Name',
-      namePlaceholder: 'zbxtable',
+      namePlaceholder: 'smartops',
       user: 'Database User',
-      userPlaceholder: 'zbxtable',
+      userPlaceholder: 'smartops',
       password: 'Database Password',
       passwordPlaceholder: 'Please input database password',
       path: 'Database Path',
-      pathPlaceholder: './data/zbxtable.db',
-      pathHint: 'SQLite database file path, supports relative and absolute paths. Example: ./data/zbxtable.db',
+      pathPlaceholder: './data/smartops.db',
+      pathHint: 'SQLite database file path, supports relative and absolute paths. Example: ./data/smartops.db',
       testConnection: 'Test Connection',
       testSuccess: 'Database connection successful',
       testFailed: 'Database connection failed',
@@ -194,7 +194,7 @@ export default {
       portChanged: 'HTTP Port',
       restartCommand: 'Please use systemd to restart the program:',
       restartHint: 'After restarting, click the button below to go to the login page',
-      defaultAccount: 'Tip: Default admin account is admin, password is Zbxtable',
+      defaultAccount: 'Tip: Default admin account is admin, password is SmartOps-Local-Only!',
       goToLogin: 'Go to Login Page',
       loginAddress: 'Login Address',
     },
@@ -236,8 +236,8 @@ export default {
   },
   
   'zh-TW': {
-    title: 'ZbxTable 安裝嚮導',
-    subtitle: '歡迎使用 ZbxTable，請按照以下步驟完成安裝配置',
+    title: 'SmartOps 安裝嚮導',
+    subtitle: '歡迎使用 SmartOps，請按照以下步驟完成安裝配置',
     
     // 步驟
     steps: {
@@ -255,14 +255,14 @@ export default {
       hostPlaceholder: 'localhost',
       port: '數據庫端口',
       name: '數據庫名稱',
-      namePlaceholder: 'zbxtable',
+      namePlaceholder: 'smartops',
       user: '數據庫用戶',
-      userPlaceholder: 'zbxtable',
+      userPlaceholder: 'smartops',
       password: '數據庫密碼',
       passwordPlaceholder: '請輸入數據庫密碼',
       path: '數據庫路徑',
-      pathPlaceholder: './data/zbxtable.db',
-      pathHint: 'SQLite 數據庫文件路徑，支持相對路徑和絕對路徑。例如：./data/zbxtable.db',
+      pathPlaceholder: './data/smartops.db',
+      pathHint: 'SQLite 數據庫文件路徑，支持相對路徑和絕對路徑。例如：./data/smartops.db',
       testConnection: '測試連接',
       testSuccess: '數據庫連接成功',
       testFailed: '數據庫連接失敗',
@@ -312,7 +312,7 @@ export default {
       portChanged: 'HTTP 端口',
       restartCommand: '請使用 systemd 重啟程序：',
       restartHint: '重啟完成後，點擊下方按鈕跳轉到登錄頁面',
-      defaultAccount: '提示：默認管理員賬號 admin，密碼 Zbxtable',
+      defaultAccount: '提示：默認管理員賬號 admin，密碼 SmartOps-Local-Only!',
       goToLogin: '前往登錄頁面',
       loginAddress: '登錄地址',
     },

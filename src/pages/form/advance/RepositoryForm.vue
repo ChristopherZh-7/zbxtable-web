@@ -89,8 +89,8 @@ export default {
       })
     },
     validate (rule, value, f) {
-      if (value !== undefined && value !== 'iczer') {
-        f('输入\'iczer\'试下？')
+      if (value !== undefined && value !== 'demo-user') {
+        f('输入\'demo-user\'试下？')
       }
       f()
     }

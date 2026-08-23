@@ -32,7 +32,7 @@ export function logout() {
     process.env.VUE_APP_PERMISSIONS_KEY,
     process.env.VUE_APP_ROLES_KEY,
     process.env.VUE_APP_ROUTES_KEY,
-    'zbxtable.tenants'
+    'smartops.tenants'
   ].filter(Boolean).forEach((key) => localStorage.removeItem(key))
   ;[
     process.env.VUE_APP_TBAS_KEY,

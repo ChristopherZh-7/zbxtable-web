@@ -4,7 +4,7 @@ import Cookie from 'js-cookie'
 // 跨域认证信息 header 名
 const xsrfHeaderName = 'X-Token'
 const tenantHeaderName = 'X-Tenant-ID'
-const tenantStorageKey = 'zbxtable.currentTenant'
+const tenantStorageKey = 'smartops.currentTenant'
 const zbxSessionName = 'zbx_session'
 
 axios.defaults.timeout = 20000

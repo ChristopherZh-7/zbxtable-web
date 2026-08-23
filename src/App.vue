@@ -114,7 +114,8 @@ export default {
       const lastMatched = route && route.matched && route.matched.length > 0 ? route.matched[route.matched.length - 1] : null
       const key = route.path === '/' ? 'home.name' : lastMatched ? getI18nKey(lastMatched.path) : 'home.name'
       const appName = this.systemName || process.env.VUE_APP_NAME
-      document.title = appName + ' | ' + this.$t(key)
+      const pageName = String(this.$t(key) || '').trim()
+      document.title = pageName ? `${appName} | ${pageName}` : appName
     },
     popContainer() {
       return document.getElementById("popContainer")

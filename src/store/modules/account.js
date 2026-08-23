@@ -59,7 +59,7 @@ export default {
     tenants: state => {
       if (!state.tenants) {
         try {
-          state.tenants = JSON.parse(localStorage.getItem('zbxtable.tenants')) || []
+          state.tenants = JSON.parse(localStorage.getItem('smartops.tenants')) || []
         } catch (e) {
           state.tenants = []
         }
@@ -69,7 +69,7 @@ export default {
     currentTenant: state => {
       if (!state.currentTenant) {
         try {
-          state.currentTenant = JSON.parse(localStorage.getItem('zbxtable.currentTenant'))
+          state.currentTenant = JSON.parse(localStorage.getItem('smartops.currentTenant'))
         } catch (e) {
           state.currentTenant = null
         }
@@ -96,7 +96,7 @@ export default {
     },
     setTenants(state, tenants) {
       state.tenants = tenants || []
-      localStorage.setItem('zbxtable.tenants', JSON.stringify(state.tenants))
+      localStorage.setItem('smartops.tenants', JSON.stringify(state.tenants))
     },
     setCurrentTenant(state, tenant) {
       state.currentTenant = tenant || null

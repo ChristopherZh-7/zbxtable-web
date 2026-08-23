@@ -207,7 +207,7 @@
                       <p style="margin-bottom: 12px; font-weight: bold; color: #d63031; font-size: 15px;">⚠️ {{ t('complete.restartCommand') }}</p>
                       <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
                         <code style="font-size: 16px; color: #d63031; font-weight: bold;">
-                          systemctl restart zbxtable
+                          systemctl restart smartops
                         </code>
                       </div>
                       
@@ -270,8 +270,8 @@ export default {
         dbtype: 'mysql',
         dbhost: 'localhost',
         dbport: 3306,
-        dbname: 'zbxtable',
-        dbuser: 'zbxtable',
+        dbname: 'smartops',
+        dbuser: 'smartops',
         dbpass: ''
       },
       dbRules: {},
@@ -406,14 +406,14 @@ export default {
       if (value === 'mysql') {
         this.dbForm.dbport = 3306
         this.dbForm.dbhost = 'localhost'
-        this.dbForm.dbuser = 'zbxtable'
-        this.dbForm.dbname = 'zbxtable'
+        this.dbForm.dbuser = 'smartops'
+        this.dbForm.dbname = 'smartops'
         this.dbForm.dbpass = ''
       } else if (value === 'postgresql') {
         this.dbForm.dbport = 5432
         this.dbForm.dbhost = 'localhost'
-        this.dbForm.dbuser = 'zbxtable'
-        this.dbForm.dbname = 'zbxtable'
+        this.dbForm.dbuser = 'smartops'
+        this.dbForm.dbname = 'smartops'
         this.dbForm.dbpass = ''
       }
     },

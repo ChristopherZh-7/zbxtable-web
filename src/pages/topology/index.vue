@@ -1,8 +1,5 @@
 <template>
   <page-layout :noTitle="true">
-    <!-- <div class="tuopu" :style="`height: ${minHeight}px;`">
-      <iframe src="https://dl.cactifans.com/pia/1.html" frameborder="0" style="width: 100%;border:none;height: 100%;"></iframe>
-    </div> -->
     <a-form-model class="home-search" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('label_search')">
         <a-input v-model.trim="topology" :placeholder="$t('placeholder_topology_name')" />

@@ -37,18 +37,6 @@
           <a-tag color="orange" class="header-item demo-tag">演示模式</a-tag>
         </a-tooltip>
 
-        <!-- GitHub 链接（仅演示模式显示） -->
-        <a
-          v-if="demoMode"
-          class="header-item github-link"
-          href="https://github.com/canghai908/zbxtable"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="GitHub"
-        >
-          <a-icon type="github" />
-        </a>
-
         <a-button
           v-if="showEnterScreen"
           class="header-item enter-screen-btn"

@@ -52,8 +52,7 @@ export default {
     pleaseInputUsername: 'Please input username',
     pleaseInputPassword: 'Please input password',
     systemSubtitle: 'Zabbix Monitoring Data Visualization Platform',
-    githubTooltip: 'Star on GitHub',
-    copyright: '© 2026 ZbxTable. All rights reserved.',
+    copyright: '© 2026 SmartOps. All rights reserved.',
   },
 
   // System Configuration

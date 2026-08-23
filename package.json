@@ -1,7 +1,6 @@
 {
-	"name": "vue-antd-admin",
+	"name": "smart-ops-web",
 	"version": "3.0.4",
-	"homepage": "https://iczer.github.io/vue-antd-admin",
 	"private": true,
 	"scripts": {
 		"serve": "vue-cli-service serve",
@@ -30,12 +29,8 @@
 		"test:script-discovery": "node --test tests/script-discovery/*.test.js",
 		"test:visualization-templates": "node --test tests/visualization-templates/*.test.js",
 		"test:big-screen": "node --test tests/big-screen/*.test.js",
-		"lint": "vue-cli-service lint",
-		"predeploy": "yarn build",
-		"deploy": "gh-pages -d dist -b pages -r https://gitee.com/iczer/vue-antd-admin.git",
-		"docs:dev": "vuepress dev docs",
-		"docs:build": "vuepress build docs",
-		"docs:deploy": "vuepress build docs && gh-pages -d docs/.vuepress/dist -b master -r https://gitee.com/iczer/vue-antd-admin-docs.git"
+		"test:all": "node --test tests/*/*.test.js",
+		"lint": "vue-cli-service lint"
 	},
 	"dependencies": {
 		"@antv/data-set": "^0.11.4",

@@ -18,9 +18,9 @@ module.exports = {
 	multiPage: true, //运维门户默认启用多页签，并在同一登录会话内恢复
 	cachePage: true, //是否缓存页面数据，仅多页签模式下生效，true 缓存, false 不缓存
 	hideSetting: false, //隐藏设置抽屉，true:隐藏，false:不隐藏
-	systemName: 'ZbxTable', //系统名称
+	systemName: '智能运维管理系统', //系统名称
 	systemSubtitle: 'Zabbix 监控数据可视化平台', //登录页副标题
-	copyright: 'ZbxTable 2.1.8', //copyright
+	copyright: '© 2026 SmartOps', //copyright
 	asyncRoutes: false, //异步加载路由，true:开启，false:不开启
 	showPageTitle: true, //是否显示页面标题（PageLayout 布局中的页面标题），true:显示，false:不显示
 	filterMenu: true, //根据权限过滤菜单，true:过滤，false:不过滤
@@ -30,13 +30,4 @@ module.exports = {
 		name: 'bounce', //动画效果，支持的动画效果可参考 ./animate.config.js
 		direction: 'left', //动画方向，切换页面时动画的方向，参考 ./animate.config.js
 	},
-	// footerLinks: [
-	// 	//页面底部链接，{link: '链接地址', name: '名称/显示文字', icon: '图标，支持 ant design vue 图标库'}
-	// 	{ link: 'https://www.zbxtable.com', name: 'ZbxTable文档' },
-	// 	{
-	// 		link: 'https://github.com/canghai908/zbxtable',
-	// 		name: 'Github',
-	// 	},
-	// 	{ link: 'https://blog.cactifans.com', name: '技术Blog' },
-	// ],
 }
