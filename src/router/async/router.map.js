@@ -192,6 +192,9 @@ const routerMap = {
 	assetBrowser: {
 		component: () => import('@/pages/host/AssetBrowser'),
 	},
+	cmdbCenter: {
+		component: () => import('@/pages/cmdb'),
+	},
 	configConsumption: {
 		component: () => import('@/pages/host/ConfigConsumption'),
 	},

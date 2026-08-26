@@ -44,6 +44,8 @@ module.exports = {
 	TENANT_CONTEXT: '/v1/tenant/context',
 	TENANT_CURRENT: '/v1/tenant/current',
 	TENANT_CURRENT_MEMBERS: '/v1/tenant/current/members',
+	CMDB: '/v1/cmdb',
+	CMDB_ADMIN: '/v1/cmdb/admin',
 	GROUP: '/v1/group',
 	AI: '/v1/ai',
 	API_WS: '/ws/auth',
