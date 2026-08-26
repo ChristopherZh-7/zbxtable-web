@@ -1,26 +1,55 @@
 <template>
   <div class="login-container">
-    <!-- 背景装饰 -->
-    <div class="background-decoration">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
-      <div class="grid-pattern"></div>
-    </div>
-
-    <!-- 登录卡片 -->
-    <div class="login-card">
-      <!-- Logo和标题区域 -->
-      <div class="logo-section">
-        <div class="logo-wrapper">
-          <img :src="logoUrl" alt="Logo" class="logo-image" />
-        </div>
-        <h1 class="system-title">{{ systemName }}</h1>
-        <p class="system-subtitle">{{ systemSubtitle }}</p>
+    <section class="smartops-login-story" aria-label="系统介绍">
+      <div class="smartops-login-context">
+        <span></span>
+        智能运维运行中枢
       </div>
 
-      <!-- 登录表单 -->
-      <div class="form-section">
+      <div class="smartops-login-statement">
+        <p class="smartops-login-kicker">运行脉络</p>
+        <h1>让资产、告警与处置<br />沿一条线清晰呈现</h1>
+        <p class="smartops-login-description">
+          面向日常运维值守与管理决策，把分散状态收拢为可追踪、可核对的运行视图。
+        </p>
+      </div>
+
+      <div class="smartops-login-rail" aria-label="核心能力">
+        <div class="smartops-login-rail-item">
+          <span class="rail-index">01</span>
+          <span class="rail-node is-active"></span>
+          <span>资产状态</span>
+        </div>
+        <div class="smartops-login-rail-item">
+          <span class="rail-index">02</span>
+          <span class="rail-node is-warning"></span>
+          <span>告警影响</span>
+        </div>
+        <div class="smartops-login-rail-item">
+          <span class="rail-index">03</span>
+          <span class="rail-node"></span>
+          <span>处置进度</span>
+        </div>
+      </div>
+    </section>
+
+    <main class="smartops-login-workbench">
+      <div class="smartops-login-panel">
+        <div class="smartops-login-brand">
+          <img
+            :src="logoUrl"
+            class="smartops-login-brand-image"
+            alt="奇安信 新一代网络安全领军者"
+          />
+        </div>
+
+        <header class="smartops-login-heading">
+          <p>安全登录</p>
+          <h2>{{ systemName }}</h2>
+          <span>{{ systemSubtitle }}</span>
+        </header>
+
+        <div class="form-section">
         <a-form @submit="onSubmit" :form="form">
           <a-alert 
             type="error" 
@@ -38,6 +67,7 @@
               :placeholder="$t('pleaseInputUsername')"
               v-decorator="['name', {rules: [{ required: true, message: $t('pleaseInputUsername'), whitespace: true}]}]"
               class="custom-input"
+              aria-label="用户名"
             >
               <a-icon slot="prefix" type="user" class="input-icon" />
             </a-input>
@@ -51,6 +81,7 @@
               :placeholder="$t('pleaseInputPassword')"
               v-decorator="['password', {rules: [{ required: true, message: $t('pleaseInputPassword'), whitespace: true}]}]"
               class="custom-input"
+              aria-label="密码"
             >
               <a-icon slot="prefix" type="lock" class="input-icon" />
             </a-input>
@@ -70,13 +101,14 @@
             </a-button>
           </a-form-item>
         </a-form>
-      </div>
+        </div>
 
-      <!-- 页脚信息 -->
-      <div class="footer-section">
-        <p class="footer-text">{{$t('copyright')}}</p>
+        <footer class="smartops-login-footer">
+          <span class="smartops-login-security"><i></i>授权用户访问</span>
+          <span>{{$t('copyright')}}</span>
+        </footer>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -125,13 +157,6 @@ export default {
       })
     }
 
-    // 添加入场动画
-    this.$nextTick(() => {
-      const card = document.querySelector('.login-card')
-      if (card) {
-        card.style.animation = 'slideInUp 0.6s ease-out'
-      }
-    })
   },
   methods: {
     ...mapMutations('account', ['setUser', 'setPermissions', 'setRoles', 'setTenants', 'setCurrentTenant']),
@@ -216,20 +241,36 @@ export default {
             themeConfig = user.theme
           }
           
-          // 保存到 localStorage，这样刷新页面时会自动加载
-          localStorage.setItem(process.env.VUE_APP_SETTING_KEY, JSON.stringify(themeConfig))
+          const brandTheme = {
+            ...(themeConfig.theme || {}),
+            color: '#1b5a96',
+            mode: 'dark',
+            success: '#2f6f62',
+            warning: '#c68a2b',
+            error: '#c94b4b'
+          }
+          const brandConfig = {
+            ...themeConfig,
+            theme: brandTheme,
+            hideSetting: true,
+            pageWidth: 'fluid',
+            animate: { ...(themeConfig.animate || {}), disabled: true }
+          }
+
+          // 仅保留布局习惯，品牌色与动效由系统统一管理
+          localStorage.setItem(process.env.VUE_APP_SETTING_KEY, JSON.stringify(brandConfig))
           
           // 立即应用主题配置到 Vuex store
-          if (themeConfig.theme) {
-            this.$store.commit('setting/setTheme', themeConfig.theme)
+          if (brandConfig.theme) {
+            this.$store.commit('setting/setTheme', brandConfig.theme)
             // 应用主题颜色
             const themeUtil = require('@/utils/themeUtil')
-            themeUtil.changeThemeColor(themeConfig.theme.color, themeConfig.theme.mode)
+            themeUtil.changeThemeColor(brandConfig.theme.color, brandConfig.theme.mode)
           }
           
           // 应用动画配置
-          if (themeConfig.animate) {
-            this.$store.commit('setting/setAnimate', themeConfig.animate)
+          if (brandConfig.animate) {
+            this.$store.commit('setting/setAnimate', brandConfig.animate)
           }
           
           // 应用其他配置
@@ -248,14 +289,10 @@ export default {
           if (themeConfig.fixedSideBar !== undefined) {
             this.$store.commit('setting/setFixedSideBar', themeConfig.fixedSideBar)
           }
-          if (themeConfig.hideSetting !== undefined) {
-            this.$store.commit('setting/setHideSetting', themeConfig.hideSetting)
-          }
-          if (themeConfig.pageWidth) {
-            this.$store.commit('setting/setPageWidth', themeConfig.pageWidth)
-          }
+          this.$store.commit('setting/setHideSetting', true)
+          this.$store.commit('setting/setPageWidth', 'fluid')
           
-          console.log('用户主题配置已加载并应用:', themeConfig)
+          console.log('用户布局偏好已加载，系统品牌样式保持统一')
         }
       } catch (error) {
         console.warn('加载用户主题配置失败，使用默认配置:', error)
@@ -519,7 +556,7 @@ export default {
       transform: translate(-50%, -50%);
       width: 120px;
       height: 120px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1b5a96 0%, #163a63 100%);
       border-radius: 50%;
       opacity: 0.1;
       animation: pulse 2s ease-in-out infinite;
@@ -546,7 +583,7 @@ export default {
     color: #1a1a2e;
     margin: 0 0 8px 0;
     letter-spacing: -0.5px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1b5a96 0%, #163a63 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -602,8 +639,8 @@ export default {
 
     &:focus,
     &.ant-input-focused {
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      border-color: #1b5a96;
+      box-shadow: 0 0 0 2px rgba(27, 90, 150, 0.12);
     }
 
     /deep/ input {
@@ -631,15 +668,15 @@ export default {
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1b5a96 0%, #163a63 100%);
     border: none;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 15px rgba(27, 90, 150, 0.28);
     transition: all 0.3s ease;
 
     &:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-      background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+      box-shadow: 0 6px 20px rgba(27, 90, 150, 0.32);
+      background: linear-gradient(135deg, #1b5a96 0%, #163a63 100%);
     }
 
     &:active:not(:disabled) {
@@ -710,6 +747,394 @@ export default {
 
   .footer-section {
     margin-top: 24px;
+  }
+}
+</style>
+
+<style lang="less" scoped>
+.login-container {
+  display: grid;
+  grid-template-columns: minmax(420px, 58%) minmax(400px, 42%);
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 100vh;
+  overflow: auto;
+  background: #f3f6fa;
+  color: #14243a;
+  font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+.smartops-login-story {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  padding: 48px 7vw 58px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    #0a1f44;
+  background-size: 48px 48px;
+  color: #fff;
+}
+
+.smartops-login-story::after {
+  position: absolute;
+  right: -16vw;
+  bottom: -35vh;
+  width: 58vw;
+  height: 58vw;
+  border: 1px solid rgba(147, 190, 231, 0.16);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7vw rgba(27, 90, 150, 0.08),
+    0 0 0 14vw rgba(27, 90, 150, 0.045);
+  content: "";
+}
+
+.smartops-login-brand,
+.smartops-login-context,
+.smartops-login-statement,
+.smartops-login-rail {
+  position: relative;
+  z-index: 1;
+}
+
+.smartops-login-brand {
+  display: flex;
+  align-items: center;
+  width: 236px;
+  height: 68px;
+  margin-bottom: 34px;
+}
+
+.smartops-login-brand-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.smartops-login-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #82acd4;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.24em;
+}
+
+.smartops-login-context span {
+  width: 30px;
+  height: 2px;
+  background: #1b5a96;
+}
+
+.smartops-login-statement {
+  max-width: 640px;
+  margin: 10vh 0 8vh;
+}
+
+.smartops-login-kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+  color: #82acd4;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.28em;
+}
+
+.smartops-login-kicker::before {
+  width: 34px;
+  height: 2px;
+  background: #1b5a96;
+  content: "";
+}
+
+.smartops-login-statement h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(36px, 4.1vw, 62px);
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: 0.04em;
+}
+
+.smartops-login-description {
+  max-width: 540px;
+  margin: 26px 0 0;
+  color: #aebed0;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.smartops-login-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  max-width: 620px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.smartops-login-rail-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 0 0;
+  color: #d7e1ec;
+  font-size: 13px;
+}
+
+.smartops-login-rail-item::before {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 34px;
+  height: 3px;
+  background: #1b5a96;
+  content: "";
+}
+
+.rail-index {
+  color: #6f8eaf;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+}
+
+.rail-node {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #7591ae;
+  background: transparent;
+}
+
+.rail-node.is-active {
+  border-color: #4b8bc7;
+  background: #4b8bc7;
+}
+
+.rail-node.is-warning {
+  border-color: #c68a2b;
+  background: #c68a2b;
+}
+
+.smartops-login-workbench {
+  display: grid;
+  min-height: 100vh;
+  padding: 56px clamp(42px, 6vw, 92px);
+  place-items: center;
+  background: #fff;
+}
+
+.smartops-login-panel {
+  width: 100%;
+  max-width: 430px;
+}
+
+.smartops-login-heading {
+  margin-bottom: 38px;
+}
+
+.smartops-login-heading p {
+  margin: 0 0 12px;
+  color: #1b5a96;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.smartops-login-heading h2 {
+  margin: 0 0 10px;
+  color: #0a1f44;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.smartops-login-heading span {
+  color: #68778a;
+  font-size: 13px;
+}
+
+.form-section {
+  width: 100%;
+}
+
+.form-section .form-item {
+  margin-bottom: 20px;
+}
+
+.form-section /deep/ .custom-input.ant-input-affix-wrapper {
+  height: 50px;
+  border: 1px solid #cbd6e2;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.form-section /deep/ .custom-input.ant-input-affix-wrapper:hover {
+  border-color: #7890aa;
+  box-shadow: none;
+}
+
+.form-section /deep/ .custom-input.ant-input-affix-wrapper:focus-within,
+.form-section /deep/ .custom-input.ant-input-affix-wrapper-focused {
+  border-color: #1b5a96;
+  box-shadow: 0 0 0 2px rgba(27, 90, 150, 0.1);
+}
+
+.form-section /deep/ .custom-input.ant-input-affix-wrapper .ant-input,
+.form-section /deep/ .custom-input.ant-input-affix-wrapper .ant-input:hover,
+.form-section /deep/ .custom-input.ant-input-affix-wrapper .ant-input:focus {
+  height: 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.form-section /deep/ .custom-input.ant-input-affix-wrapper .ant-input:-webkit-autofill {
+  -webkit-text-fill-color: #14243a;
+  transition: background-color 9999s ease-out;
+}
+
+.form-section .input-icon {
+  color: #708399;
+}
+
+.form-section .submit-item {
+  margin: 30px 0 0;
+}
+
+.form-section .submit-button {
+  height: 50px;
+  border-color: #1b5a96;
+  border-radius: 2px;
+  background: #1b5a96;
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.form-section .submit-button:hover,
+.form-section .submit-button:focus {
+  border-color: #163a63;
+  background: #163a63;
+  transform: none;
+  box-shadow: none;
+}
+
+.error-alert {
+  margin-bottom: 18px;
+}
+
+.smartops-login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid #d7e0e9;
+  color: #8290a0;
+  font-size: 11px;
+}
+
+.smartops-login-security {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #51667d;
+}
+
+.smartops-login-security i {
+  width: 6px;
+  height: 6px;
+  background: #2f6f62;
+}
+
+@media screen and (max-width: 980px) {
+  .login-container {
+    grid-template-columns: 1fr;
+  }
+
+  .smartops-login-story {
+    min-height: auto;
+    padding: 28px 32px 36px;
+  }
+
+  .smartops-login-statement {
+    margin: 52px 0 42px;
+  }
+
+  .smartops-login-statement h1 {
+    font-size: clamp(30px, 7vw, 46px);
+  }
+
+  .smartops-login-description {
+    margin-top: 18px;
+  }
+
+  .smartops-login-workbench {
+    min-height: auto;
+    padding: 54px 32px;
+  }
+}
+
+@media screen and (max-width: 560px) {
+  .smartops-login-story {
+    padding: 22px 20px 28px;
+  }
+
+  .smartops-login-brand {
+    width: 214px;
+    height: 62px;
+    margin-bottom: 28px;
+  }
+
+  .smartops-login-statement {
+    margin: 42px 0 32px;
+  }
+
+  .smartops-login-statement h1 {
+    font-size: 29px;
+  }
+
+  .smartops-login-description {
+    font-size: 13px;
+  }
+
+  .smartops-login-rail {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    border-top: 0;
+  }
+
+  .smartops-login-rail-item {
+    padding-top: 0;
+  }
+
+  .smartops-login-rail-item::before {
+    display: none;
+  }
+
+  .smartops-login-workbench {
+    padding: 46px 20px;
+  }
+
+  .smartops-login-footer {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

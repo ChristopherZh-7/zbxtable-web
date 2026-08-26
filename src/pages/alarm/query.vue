@@ -1,6 +1,14 @@
 <template>
   <page-layout :noTitle="true">
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+    <div class="smartops-page-heading alarm-heading">
+      <div>
+        <p class="alarm-kicker">风险处置</p>
+        <h1>告警中心</h1>
+        <p>集中查看告警影响、通知结果与处置进度。</p>
+      </div>
+      <div class="smartops-heading-metric">告警记录<strong>{{ pagination.total || 0 }}</strong></div>
+    </div>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('label_search')">
         <a-input v-model.trim="hosts" :placeholder="$t('label_hostname')" />
       </a-form-model-item>
@@ -42,27 +50,27 @@
       </a-form-model-item>
     </a-form-model>
 
-    <div class="linux-list">
+    <div class="linux-list smartops-data-panel">
       <a-table :loading="loading" :columns="columns" :data-source="list" @expand="getEvent" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <!-- 主表格的插槽 -->
         <div slot="instance_name" slot-scope="record">
           <a-tag :color="themeColor">{{getInstanceName(record.zid)}}</a-tag>
         </div>
         <div slot="status" slot-scope="record">
-          <a-tag v-if="record.status==0" color="#87d068">{{ $t('alarm_type_recovery') }}</a-tag>
-          <a-tag v-else-if="record.status==1" color="#f50">{{ $t('alarm_type_alarm') }}</a-tag>
+          <a-tag v-if="record.status==0" color="#2f6f62">{{ $t('alarm_type_recovery') }}</a-tag>
+          <a-tag v-else-if="record.status==1" color="#c94b4b">{{ $t('alarm_type_alarm') }}</a-tag>
         </div>
         <div slot="level" slot-scope="record">
           <a-tag v-if="record.level==0" color="#97AAB3">{{ $t('level_unclassified') }}</a-tag>
-          <a-tag v-else-if="record.level==1" color=" #7499FF">{{ $t('level_information') }}</a-tag>
-          <a-tag v-else-if="record.level==2" color="#FFC859">{{ $t('level_warning') }}</a-tag>
-          <a-tag v-else-if="record.level==3" color="#FFA059">{{ $t('level_average') }}</a-tag>
-          <a-tag v-else-if="record.level==4" color="#E97659">{{ $t('level_high') }}</a-tag>
-          <a-tag v-else-if="record.level==5" color="#f50000">{{ $t('level_disaster') }}</a-tag>
+          <a-tag v-else-if="record.level==1" color="#1b5a96">{{ $t('level_information') }}</a-tag>
+          <a-tag v-else-if="record.level==2" color="#c68a2b">{{ $t('level_warning') }}</a-tag>
+          <a-tag v-else-if="record.level==3" color="#b9702b">{{ $t('level_average') }}</a-tag>
+          <a-tag v-else-if="record.level==4" color="#b95d45">{{ $t('level_high') }}</a-tag>
+          <a-tag v-else-if="record.level==5" color="#c94b4b">{{ $t('level_disaster') }}</a-tag>
         </div>
         <span slot="occur_time" slot-scope="record">{{ record.occur_time | parsetime }}</span>
         <span slot="aggregation" slot-scope="record">
-          <a-tag :color="Number(record.repeat_count || 1) > 1 ? 'purple' : 'default'">
+          <a-tag :color="Number(record.repeat_count || 1) > 1 ? '#1b5a96' : 'default'">
             {{ $t('aggregation_repeat_count', { count: Number(record.repeat_count || 1) }) }}
           </a-tag>
           <div v-if="Number(record.repeat_count || 1) > 1" class="aggregation-last-time">
@@ -296,7 +304,7 @@
         <div class="chat-messages" ref="chatMessages">
           <div v-for="(msg, index) in chatMessages" :key="index" :class="['chat-message', msg.role]">
             <div class="message-header">
-              <a-avatar :size="32" :style="{ backgroundColor: msg.role === 'user' ? '#1890ff' : '#52c41a' }">
+              <a-avatar :size="32" :style="{ backgroundColor: msg.role === 'user' ? '#1b5a96' : '#2f6f62' }">
                 <a-icon :type="msg.role === 'user' ? 'user' : 'robot'" />
               </a-avatar>
               <span class="message-sender">{{ msg.role === 'user' ? $t('chat_user') : $t('chat_assistant') }}</span>
@@ -1747,5 +1755,37 @@ export default {
   margin-top: 4px;
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+</style>
+
+<style lang="less" scoped>
+.alarm-heading {
+  margin-bottom: 14px;
+}
+
+.alarm-kicker {
+  margin: 0 0 4px !important;
+  color: #1b5a96 !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .24em;
+}
+
+.home-search.smartops-filter-panel {
+  margin-bottom: 12px;
+  padding: 14px 16px 2px;
+}
+
+.linux-list.smartops-data-panel {
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.linux-list.smartops-data-panel /deep/ .ant-table-wrapper {
+  margin: 0;
+}
+
+.linux-list.smartops-data-panel /deep/ .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 </style>

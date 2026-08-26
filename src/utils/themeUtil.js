@@ -83,9 +83,11 @@ function getLocalSetting(loadTheme) {
   let localSetting = {}
   try {
     const localSettingStr = localStorage.getItem(process.env.VUE_APP_SETTING_KEY)
-    localSetting = JSON.parse(localSettingStr)
+    const parsed = localSettingStr ? JSON.parse(localSettingStr) : null
+    localSetting = parsed && typeof parsed === 'object' ? parsed : {}
   } catch (e) {
     console.error(e)
+	localSetting = {}
   }
   if (loadTheme) {
     loadLocalTheme(localSetting)

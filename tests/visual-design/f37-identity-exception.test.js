@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const test = require('node:test')
+
+const root = path.resolve(__dirname, '../..')
+const source = relative => fs.readFileSync(path.join(root, relative), 'utf8')
+
+test('F37 replaces the generic avatar with a Chinese role identity', () => {
+  const header = source('src/layouts/header/HeaderAvatar.vue')
+  assert.doesNotMatch(header, /avatar\.gif/)
+  assert.doesNotMatch(header, /<a-avatar/)
+  assert.match(header, /identity-mark/)
+  assert.match(header, /平台管理员/)
+  assert.match(header, /租户管理员/)
+  assert.match(header, /只读用户/)
+  assert.match(header, /openChangePassword/)
+  assert.match(header, /this\.logout\(\)/)
+})
+
+test('F37 renders a SmartOps-native 404 without upstream illustration assets', () => {
+  const page = source('src/pages/exception/404.vue')
+  assert.doesNotMatch(page, /ExceptionPage/)
+  assert.doesNotMatch(page, /404\.svg/)
+  assert.doesNotMatch(page, /<img/)
+  assert.match(page, /运行路径在这里中断/)
+  assert.match(page, /route-trace/)
+  assert.match(page, /trace-break/)
+  assert.match(page, /返回工作台/)
+  assert.match(page, /返回上一页/)
+})

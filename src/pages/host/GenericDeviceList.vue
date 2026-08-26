@@ -2,7 +2,7 @@
   <component :is="wrapper" v-bind="wrapperProps">
     <div class="generic-device-list">
       <!-- 搜索栏 -->
-      <div class="search-bar-row">
+      <div class="search-bar-row smartops-filter-panel">
         <a-form-model class="home-search" layout="inline" :colon="false">
           <a-form-model-item label="设备名称">
             <a-input v-model.trim="hosts" placeholder="设备名称" allow-clear />
@@ -58,6 +58,7 @@
 
       <!-- 设备列表 -->
       <a-table
+        class="smartops-data-panel"
         :loading="loading"
         :columns="tableColumns"
         :data-source="list"
@@ -132,9 +133,9 @@
         </div>
 
         <div slot="ping" slot-scope="record">
-          <a-tag v-if="record.ping && record.ping.includes('Up')" color="#34af67">Up</a-tag>
-          <a-tag v-else-if="record.ping && record.ping.includes('Down')" color="#DC143C">Down</a-tag>
-          <a-tag v-else color="#808080">Unknown</a-tag>
+          <a-tag v-if="record.ping && record.ping.includes('Up')" color="#2f6f62">在线</a-tag>
+          <a-tag v-else-if="record.ping && record.ping.includes('Down')" color="#c94b4b">离线</a-tag>
+          <a-tag v-else color="#7d8b9a">未知</a-tag>
           <span v-if="record.ping_sec" style="font-size: 12px; color: #888;">
             {{ (record.ping_sec || '').replace(/\s/g, '') }}/{{ (record.ping_loss || '').replace(/\s/g, '') }}
           </span>
@@ -143,18 +144,18 @@
         <span slot="available" slot-scope="record">
           <a-tooltip v-if="record.available == 2">
             <template slot="title">{{ record.error }}</template>
-            <a-tag color="#DC143C">异常</a-tag>
+            <a-tag color="#c94b4b">异常</a-tag>
           </a-tooltip>
-          <a-tag v-else-if="record.available == 1" color="#34af67">正常</a-tag>
-          <a-tag v-else color="#808080">未知</a-tag>
+          <a-tag v-else-if="record.available == 1" color="#2f6f62">正常</a-tag>
+          <a-tag v-else color="#7d8b9a">未知</a-tag>
         </span>
 
         <div slot="standard_tags" slot-scope="record" class="standard-tags">
           <template v-if="tagState(record).compliant">
-            <a-tag color="blue">tenant={{ tagState(record).values.tenant }}</a-tag>
-            <a-tag color="green">env={{ optionLabel(envOptions, tagState(record).values.env) }}</a-tag>
-            <a-tag color="purple">app={{ tagState(record).values.app }}</a-tag>
-            <a-tag color="orange">level={{ optionLabel(levelOptions, tagState(record).values.level) }}</a-tag>
+            <a-tag color="blue">租户={{ tagState(record).values.tenant }}</a-tag>
+            <a-tag color="green">环境={{ optionLabel(envOptions, tagState(record).values.env) }}</a-tag>
+            <a-tag color="blue">系统={{ tagState(record).values.app }}</a-tag>
+            <a-tag color="orange">级别={{ optionLabel(levelOptions, tagState(record).values.level) }}</a-tag>
           </template>
           <a-tooltip v-else :title="`缺失或非法维度：${tagState(record).missing.join(', ')}`">
             <a-tag color="red">待规范</a-tag>
@@ -265,9 +266,9 @@
             <a-tag v-else color="#808080">未知</a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="Ping状态">
-            <a-tag v-if="detailRecord.ping && detailRecord.ping.includes('Up')" color="#34af67">Up</a-tag>
-            <a-tag v-else-if="detailRecord.ping && detailRecord.ping.includes('Down')" color="#DC143C">Down</a-tag>
-            <a-tag v-else color="#808080">Unknown</a-tag>
+            <a-tag v-if="detailRecord.ping && detailRecord.ping.includes('Up')" color="#2f6f62">在线</a-tag>
+            <a-tag v-else-if="detailRecord.ping && detailRecord.ping.includes('Down')" color="#c94b4b">离线</a-tag>
+            <a-tag v-else color="#7d8b9a">未知</a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="操作系统" :span="2">{{ detailRecord.os || '--' }}</a-descriptions-item>
           <a-descriptions-item label="运行时长">{{ detailRecord.uptime || '--' }}</a-descriptions-item>

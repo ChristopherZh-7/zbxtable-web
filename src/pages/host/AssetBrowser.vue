@@ -1,5 +1,13 @@
 <template>
   <page-layout :noTitle="true">
+    <div class="smartops-page-heading asset-heading">
+      <div>
+        <p class="asset-kicker">统一台账</p>
+        <h1>资产管理</h1>
+        <p>按资产分类查看设备清单、连接状态与详细信息。</p>
+      </div>
+      <div class="smartops-heading-metric">资产总数<strong>{{ totalAssets }}</strong></div>
+    </div>
     <div class="asset-browser" :style="themeVars">
       <a-layout class="asset-browser__layout">
 
@@ -9,7 +17,7 @@
           <div class="sider-search">
             <a-input
               v-model="searchText"
-              placeholder="搜索设备类型..."
+              placeholder="搜索设备类型"
               size="small"
               allow-clear
             >
@@ -83,7 +91,7 @@
           <template v-if="!selectedType">
             <div class="overview-header">
               <a-icon type="appstore" :style="{ marginRight: '8px', color: $themeColor }" />
-              <span style="font-size:16px;font-weight:500;">资产总览</span>
+              <span>资产分类</span>
             </div>
             <a-row :gutter="[16, 16]" class="overview-cards">
               <a-col
@@ -92,7 +100,6 @@
                 :xs="24" :sm="12" :md="8" :lg="6"
               >
                 <a-card
-                  hoverable
                   size="small"
                   class="overview-card"
                   @click="selectFirstTypeInGroup(group)"
@@ -129,7 +136,7 @@
             <div class="content-header">
               <a-breadcrumb>
                 <a-breadcrumb-item>
-                  <a @click="selectedType = null" style="cursor:pointer;">设备管理</a>
+                  <a @click="selectedType = null" style="cursor:pointer;">资产管理</a>
                 </a-breadcrumb-item>
                 <a-breadcrumb-item>{{ selectedGroupName }}</a-breadcrumb-item>
                 <a-breadcrumb-item>
@@ -180,6 +187,9 @@ export default {
     }
   },
   computed: {
+    totalAssets() {
+      return this.treeData.reduce((sum, group) => sum + (Number(group.total) || 0), 0)
+    },
     // 注入主题色 CSS 变量，供 /deep/ 选择器（hover/选中态）使用
     themeVars() {
       return {
@@ -343,27 +353,39 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.asset-heading {
+  margin-bottom: 14px;
+}
+
+.asset-kicker {
+  margin: 0 0 4px !important;
+  color: #1b5a96 !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .24em;
+}
+
 .asset-browser {
-  height: calc(100vh - 140px);
+  height: calc(100vh - 230px);
   min-height: 500px;
 
   &__layout {
     height: 100%;
     background: #fff;
-    border: 1px solid #e8e8e8;
-    border-radius: 4px;
+    border: 1px solid #dce4ed;
+    border-radius: 2px;
     overflow: hidden;
   }
 
   &__sider {
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid #dce4ed;
     overflow-y: auto;
-    background: #fafafa;
+    background: #f6f8fb;
 
     .sider-search {
       padding: 12px 12px 8px;
-      background: #fafafa;
-      border-bottom: 1px solid #f0f0f0;
+      background: #f6f8fb;
+      border-bottom: 1px solid #dce4ed;
     }
   }
 
@@ -379,11 +401,11 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 500;
-  color: #333;
+  font-weight: 650;
+  color: #243a54;
 }
 .tree-group-icon {
-  color: var(--theme-color, #1890ff);
+  color: var(--theme-color, #1b5a96);
   font-size: 14px;
 }
 .tree-group-name {
@@ -402,11 +424,11 @@ export default {
 }
 .tree-type-name {
   flex: 1;
-  color: #444;
+  color: #43566d;
 }
 .tree-type-count {
   font-size: 11px;
-  color: #aaa;
+  color: #8492a2;
   min-width: 24px;
   text-align: right;
 }
@@ -417,14 +439,14 @@ export default {
   background: transparent;
 
   /deep/ .ant-tree-node-content-wrapper:hover {
-    background: var(--theme-hover-bg, #e6f7ff);
+    background: var(--theme-hover-bg, #edf4fb);
   }
   /deep/ .ant-tree-node-selected .ant-tree-node-content-wrapper {
-    background: var(--theme-selected-bg, #bae7ff) !important;
-    border-radius: 4px;
+    background: var(--theme-selected-bg, #dceaf6) !important;
+    border-radius: 2px;
   }
   /deep/ .ant-tree-node-content-wrapper {
-    border-radius: 4px;
+    border-radius: 2px;
     transition: background 0.15s;
   }
 }
@@ -432,14 +454,22 @@ export default {
 // 总览卡片
 .overview-header {
   margin-bottom: 16px;
-  color: #333;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #dce4ed;
+  color: #0a1f44;
+  font-size: 15px;
+  font-weight: 650;
 }
 .overview-card {
-  transition: box-shadow 0.2s, transform 0.2s;
+  min-height: 140px;
+  border-color: #dce4ed;
+  border-radius: 2px;
+  transition: border-color 0.16s;
   cursor: pointer;
   &:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
+    border-color: #1b5a96;
+    box-shadow: none;
+    transform: none;
   }
   &__body {
     display: flex;
@@ -449,20 +479,21 @@ export default {
   }
   &__icon {
     font-size: 28px;
-    color: var(--theme-color, #1890ff);
+    color: var(--theme-color, #1b5a96);
   }
   &__name {
     font-size: 14px;
-    font-weight: 500;
-    color: #333;
+    font-weight: 650;
+    color: #243a54;
   }
   &__count {
     font-size: 20px;
-    font-weight: 600;
-    color: var(--theme-color, #1890ff);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-weight: 650;
+    color: var(--theme-color, #1b5a96);
   }
   &__types {
-    border-top: 1px solid #f5f5f5;
+    border-top: 1px solid #e6ebf1;
     padding-top: 8px;
   }
 }

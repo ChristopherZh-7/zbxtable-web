@@ -1,6 +1,6 @@
 <template>
   <a-layout :class="['admin-layout', 'beauty-scroll']">
-    <drawer v-if="isMobile" v-model="drawerOpen">
+    <drawer v-if="isMobile" v-model="drawerOpen" :showHandler="false">
       <side-menu :theme="theme.mode" :menuData="menuData" :collapsed="false" :collapsible="false" @menuSelect="onMenuSelect"/>
     </drawer>
     <side-menu :class="[fixedSideBar ? 'fixed-side' : '']" :theme="theme.mode" v-else-if="layout === 'side' || layout === 'mix'" :menuData="sideMenuData" :collapsed="collapsed" :collapsible="true" />
@@ -101,6 +101,10 @@ export default {
   methods: {
     ...mapMutations('setting', ['correctPageMinHeight', 'setActivatedFirst']),
     toggleCollapse () {
+      if (this.isMobile) {
+        this.drawerOpen = !this.drawerOpen
+        return
+      }
       this.collapsed = !this.collapsed
     },
     onMenuSelect () {

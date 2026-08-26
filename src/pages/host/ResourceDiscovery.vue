@@ -1,7 +1,7 @@
 <template>
   <page-layout :noTitle="true">
     <div class="resource-discovery">
-      <div class="page-header">
+      <div class="content-page-header">
         <div>
           <h2>五类资源发现</h2>
           <p>实时识别当前租户已由 Zabbix 纳管的主机，所有分类均有可核对的链接模板证据。</p>
@@ -117,9 +117,9 @@ export default {
 
 <style scoped>
 .resource-discovery { padding: 0 4px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.page-header p, .muted { color: rgba(0, 0, 0, .45); }
+.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
+.content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
 .section-alert { margin-bottom: 16px; }
 .profile-grid { margin-bottom: 18px; }
 .profile-grid .ant-col { margin-bottom: 12px; }
@@ -137,5 +137,5 @@ export default {
 .product { margin-top: 5px; font-size: 12px; }
 .evidence { margin-top: 5px; color: rgba(0, 0, 0, .45); font-size: 12px; }
 .summary-line { padding: 12px 4px; color: rgba(0, 0, 0, .45); font-size: 12px; }
-@media (max-width: 900px) { .page-header, .section-title { display: block; } .page-header button, .section-title > div:last-child { margin-top: 12px; } }
+@media (max-width: 900px) { .content-page-header, .section-title { display: block; } .content-page-header button, .section-title > div:last-child { margin-top: 12px; } }
 </style>

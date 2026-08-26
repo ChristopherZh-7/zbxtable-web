@@ -62,7 +62,7 @@ const options = {
               path: "overview",
               name: "状态总览",
               meta: { page: { closable: false } },
-              component: () => import("@/pages/dashboard/overview"),
+              component: () => import("@/pages/dashboard/overview-redesign"),
             },
             {
               path: "custom-dashboards",

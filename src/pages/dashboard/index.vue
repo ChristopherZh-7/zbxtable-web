@@ -1,5 +1,12 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-workplace">
+    <div class="smartops-page-heading workplace-heading">
+      <div>
+        <p class="workplace-kicker">值守工作台</p>
+        <h1>运维总览</h1>
+        <p>集中查看当前告警、资产分布与重点资源运行情况。</p>
+      </div>
+    </div>
     <a-modal
       :visible="topConfigModalVisible"
       :confirmLoading="topNumSaving"
@@ -27,7 +34,7 @@
       <template slot="description">
         <div>
           <p style="margin-bottom: 8px;">{{ $t('alert_no_instance_desc') }}</p>
-          <p style="margin-bottom: 12px;">{{ $t('alert_no_instance_action') }} <a @click="goToZabbixConfig" style="font-weight: 600; cursor: pointer; color: #1890ff;">{{ $t('alert_no_instance_link') }}</a> {{ $t('alert_no_instance_action_end') }}</p>
+          <p style="margin-bottom: 12px;">{{ $t('alert_no_instance_action') }} <a @click="goToZabbixConfig" style="font-weight: 600; cursor: pointer; color: #1b5a96;">{{ $t('alert_no_instance_link') }}</a> {{ $t('alert_no_instance_action_end') }}</p>
         </div>
       </template>
     </a-alert>
@@ -57,11 +64,23 @@
         <a-col :xl="{ span: 12 }" :lg="{ span: 24 }">
           <a-row>
             <a-col :lg="24" :md="24">
-              <a-card :title="$t('title_hosttypecount')" :headStyle="cardHeadStyle" :bodyStyle="{height: '180px'}" size="small" :loading="!loading2">
-                <div class="homeHost beauty-scroll" :style="cssVars">
-                  <div class="homeHItem" v-for="item in deviceStats" :key="item.type_code">
-                    <span class="device-name">{{ item.name }}</span>
-                    <em class="device-count">{{ item.count }}</em>
+              <a-card :title="$t('title_hosttypecount')" :headStyle="cardHeadStyle" :bodyStyle="{minHeight: '194px', height: 'auto', padding: '14px'}" size="small" :loading="!loading2">
+                <div class="device-stat-grid" :style="cssVars" role="list" aria-label="设备数量">
+                  <div
+                    class="device-stat-card"
+                    v-for="item in deviceStats"
+                    :key="item.type_code"
+                    role="listitem"
+                    :aria-label="`${item.name} ${item.count} 台`"
+                  >
+                    <span class="device-stat-icon" aria-hidden="true"><a-icon :type="item.icon" /></span>
+                    <div class="device-stat-content">
+                      <span class="device-name">{{ item.name }}</span>
+                      <div class="device-stat-value">
+                        <strong class="device-count">{{ item.count }}</strong>
+                        <span class="device-stat-unit">台</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </a-card>
@@ -298,15 +317,16 @@ export default {
         return counts.map(item => ({
           type_code: item.type_code,
           name: this.getPrimaryName(item.name || item.type_code),
-          count: item.count || 0
+          count: item.count || 0,
+          icon: this.getDeviceIcon(item.type_code, item.name)
         }))
       }
 
       return [
-        { type_code: 'HW_NET', name: this.$t('device_network_devices'), count: this.info.net_count || 0 },
-        { type_code: 'HW_SRV', name: this.$t('device_server_devices'), count: this.info.srv_count || 0 },
-        { type_code: 'VM_WIN', name: this.$t('device_windows_hosts'), count: this.info.win_count || 0 },
-        { type_code: 'VM_LIN', name: this.$t('device_linux_hosts'), count: this.info.lin_count || 0 }
+        { type_code: 'HW_NET', name: this.$t('device_network_devices'), count: this.info.net_count || 0, icon: this.getDeviceIcon('HW_NET') },
+        { type_code: 'HW_SRV', name: this.$t('device_server_devices'), count: this.info.srv_count || 0, icon: this.getDeviceIcon('HW_SRV') },
+        { type_code: 'VM_WIN', name: this.$t('device_windows_hosts'), count: this.info.win_count || 0, icon: this.getDeviceIcon('VM_WIN') },
+        { type_code: 'VM_LIN', name: this.$t('device_linux_hosts'), count: this.info.lin_count || 0, icon: this.getDeviceIcon('VM_LIN') }
       ]
     }
   },
@@ -334,6 +354,25 @@ export default {
     }
   },
   methods: {
+    getDeviceIcon(typeCode, name) {
+      const code = String(typeCode || '').toUpperCase()
+      const label = String(name || '')
+      const icons = {
+        VM_LIN: 'code',
+        VM_WIN: 'windows',
+        HW_NET: 'deployment-unit',
+        HW_SRV: 'hdd',
+        HW_FIBER: 'branches',
+        HW_STORAGE: 'database'
+      }
+      if (icons[code]) return icons[code]
+      if (/Linux/i.test(label)) return 'code'
+      if (/Windows/i.test(label)) return 'windows'
+      if (/网络|交换|光纤/.test(label)) return 'deployment-unit'
+      if (/存储|数据库/.test(label)) return 'database'
+      if (/物理|服务/.test(label)) return 'hdd'
+      return 'appstore'
+    },
     getPrimaryName(name) {
       if (!name) return ''
       return String(name).replace(/\s*[（(][^（）()]*[）)]\s*$/u, '').trim()
@@ -901,60 +940,113 @@ export default {
   line-height: 14px;
   padding: 0 4px;
 }
-.homeHost {
-  height: 156px;
-  overflow: hidden;
+.device-stat-grid {
+  min-height: 166px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.device-stat-card {
+  min-width: 0;
+  min-height: 78px;
+  padding: 12px 14px;
+  border: 1px solid #d7e1ec;
+  border-radius: 4px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 0 8px;
+  background: #fbfcfe;
+  box-shadow: 0 1px 2px rgba(10, 31, 68, .05);
 }
-.homeHItem {
-  flex: 1;
-  min-width: 0;
-  height: 140px;
-  border: 2px solid;
-  border-color: var(--primary-color);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.device-stat-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #cbd9e8;
+  border-radius: 4px;
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 12px;
-  background: var(--primary-bg);
-  transition: all 0.3s ease;
-  position: relative;
+  justify-content: center;
+  color: #1b5a96;
+  background: #edf4fa;
+  font-size: 16px;
+}
+.device-stat-content {
+  min-width: 0;
+  flex: 1;
+}
+.device-name {
+  display: block;
+  min-width: 0;
   overflow: hidden;
-  
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    background: var(--primary-bg-hover);
-    
-    .device-count {
-      transform: scale(1.15);
+  color: #52677f;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.device-stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 5px;
+  color: #0a1f44;
+}
+.device-count {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+.device-stat-unit {
+  color: #6b7f95;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 720px) {
+  .device-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  }
-  
-  .device-name {
-    font-size: 14px;
-    color: #666;
-    line-height: 1.4;
-    text-align: center;
-    font-weight: 500;
-    word-break: break-word;
-    max-width: 100%;
-  }
-  
-  .device-count {
-    font-size: 42px;
-    line-height: 1;
-    color: var(--primary-color);
-    font-style: normal;
-    font-weight: 700;
-    transition: transform 0.3s ease;
+
+  .device-stat-card {
+    padding: 11px 12px;
   }
 }
+</style>
+
+<style lang="less" scoped>
+.workplace-heading {
+  margin-bottom: 14px;
+}
+
+.workplace-kicker {
+  margin: 0 0 4px !important;
+  color: #1b5a96 !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .24em;
+}
+
+.smartops-workplace /deep/ .ant-card {
+  border-color: #dce4ed;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.smartops-workplace /deep/ .ant-card-body {
+  box-shadow: none !important;
+}
+
+.smartops-workplace /deep/ .ant-card-head {
+  border-bottom-color: #dce4ed;
+  background: #f8fafc !important;
+}
+
+.smartops-workplace /deep/ .ant-card-head-title {
+  color: #0a1f44 !important;
+}
+
 </style>

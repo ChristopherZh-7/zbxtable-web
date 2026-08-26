@@ -1,7 +1,7 @@
 <template>
   <page-layout :noTitle="true">
     <div class="network-discovery">
-      <div class="page-header">
+      <div class="content-page-header">
         <div>
           <h2>网络发现</h2>
           <p>由 Zabbix 扫描已授权的私有 IPv4 范围，展示真实发现的设备和服务端口。</p>
@@ -164,9 +164,9 @@ export default {
 
 <style scoped>
 .network-discovery { padding: 0 4px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.page-header p, .muted, .field-tip { color: rgba(0, 0, 0, .45); }
+.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
+.content-page-header p, .muted, .field-tip { color: rgba(0, 0, 0, .45); }
 .header-action { margin-left: 8px; }
 .section-alert { margin-bottom: 16px; }
 .section-card { padding: 18px 20px; margin-bottom: 18px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
@@ -176,5 +176,5 @@ export default {
 .error-text { max-width: 160px; margin-top: 4px; color: #f5222d; font-size: 12px; }
 .field-tip { display: block; margin-top: 4px; font-size: 12px; }
 code { padding: 2px 5px; color: #1d39c4; background: #f0f5ff; border-radius: 3px; }
-@media (max-width: 768px) { .page-header { display: block; } .page-header > div:last-child { margin-top: 12px; } }
+@media (max-width: 768px) { .content-page-header { display: block; } .content-page-header > div:last-child { margin-top: 12px; } }
 </style>

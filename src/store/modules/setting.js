@@ -6,6 +6,25 @@ import {getLocalSetting} from '@/utils/themeUtil'
 import deepClone from 'lodash.clonedeep'
 
 const localSetting = getLocalSetting(true)
+const brandSetting = {
+  ...localSetting,
+  theme: {
+    ...config.theme,
+    ...(localSetting.theme || {}),
+    color: '#1b5a96',
+    mode: 'dark',
+    success: '#2f6f62',
+    warning: '#c68a2b',
+    error: '#c94b4b'
+  },
+  animate: {
+    ...config.animate,
+    ...(localSetting.animate || {}),
+    disabled: true
+  },
+  hideSetting: true,
+  pageWidth: 'fluid'
+}
 const customTitlesStr = sessionStorage.getItem(process.env.VUE_APP_TBAS_TITLES_KEY)
 const customTitles = (customTitlesStr && JSON.parse(customTitlesStr)) || []
 
@@ -21,7 +40,7 @@ export default {
     customTitles,
     demoMode: false,
     ...config,
-    ...localSetting
+    ...brandSetting
   },
   getters: {
     menuData(state, getters, rootState) {

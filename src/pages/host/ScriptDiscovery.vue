@@ -1,7 +1,7 @@
 <template>
   <page-layout :noTitle="true">
     <div class="script-discovery">
-      <div class="page-header">
+      <div class="content-page-header">
         <div>
           <h2>扩展脚本发现</h2>
           <p>读取 Zabbix 已执行的受信 Agent UserParameter 或 External check 最新结果，并按资产模型校验后映射。</p>
@@ -108,9 +108,9 @@ export default {
 
 <style scoped>
 .script-discovery { padding: 0 4px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.page-header p, .muted { color: rgba(0, 0, 0, .45); }
+.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
+.content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
 .section-alert { margin-bottom: 16px; }
 .section-card { padding: 18px 20px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -118,5 +118,5 @@ export default {
 .section-title span { margin-left: 10px; color: rgba(0, 0, 0, .45); }
 .mono { color: rgba(0, 0, 0, .45); font-family: SFMono-Regular, Consolas, monospace; font-size: 11px; }
 .error { overflow: hidden; max-width: 200px; margin-top: 4px; color: #f5222d; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 900px) { .page-header, .section-title { display: block; } .page-header button, .section-title .ant-tag { margin-top: 12px; } }
+@media (max-width: 900px) { .content-page-header, .section-title { display: block; } .content-page-header button, .section-title .ant-tag { margin-top: 12px; } }
 </style>

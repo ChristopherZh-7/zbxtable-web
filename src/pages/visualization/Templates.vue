@@ -1,7 +1,7 @@
 <template>
   <page-layout :noTitle="true">
     <div class="visualization-templates">
-      <div class="page-header">
+      <div class="content-page-header">
         <div>
           <h2>五类展示视图</h2>
           <p>网络、系统、应用、业务与综合运行五套内置模板，直接读取当前租户真实数据。</p>
@@ -184,10 +184,10 @@ export default {
 
 <style scoped>
 .visualization-templates { padding: 0 4px; }
-.page-header, .view-title { display: flex; align-items: flex-start; justify-content: space-between; }
-.page-header { margin-bottom: 16px; }
-.page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.page-header p, .view-title p, .view-title span { color: rgba(0,0,0,.45); }
+.content-page-header, .view-title { display: flex; align-items: flex-start; justify-content: space-between; }
+.content-page-header { margin-bottom: 16px; }
+.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
+.content-page-header p, .view-title p, .view-title span { color: rgba(0,0,0,.45); }
 .view-alert, .template-tabs { margin-bottom: 16px; }
 .template-tabs { overflow-x: auto; white-space: nowrap; }
 .view-shell { min-height: 560px; padding: 22px; border: 1px solid #e8edf5; border-radius: 10px; background: linear-gradient(145deg,#fff,#f6f9ff); }
@@ -211,5 +211,5 @@ export default {
 .comprehensive-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
 .comprehensive-grid > div { padding: 22px; background: #f5f8fc; }
 .comprehensive-grid strong { color: #1677ff; font-size: 36px; }
-@media (max-width: 768px) { .page-header, .view-title { display: block; } .page-header button { margin-top: 10px; } .comprehensive-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .content-page-header, .view-title { display: block; } .content-page-header button { margin-top: 10px; } .comprehensive-grid { grid-template-columns: 1fr; } }
 </style>

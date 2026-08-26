@@ -11,7 +11,7 @@ module.exports = {
       loginSuccess: '登录成功',
       loginFailed: '登录失败',
       systemSubtitle: 'Zabbix 监控数据可视化平台',
-      copyright: '© 2026 SmartOps. All rights reserved.',
+      copyright: '© 2026 SmartOps 版权所有',
     },
     HK: {
       title: '登錄',
@@ -24,7 +24,7 @@ module.exports = {
       loginSuccess: '登錄成功',
       loginFailed: '登錄失敗',
       systemSubtitle: 'Zabbix 監控數據可視化平台',
-      copyright: '© 2026 SmartOps. All rights reserved.',
+      copyright: '© 2026 SmartOps 版權所有',
     },
     US: {
       title: 'Login',

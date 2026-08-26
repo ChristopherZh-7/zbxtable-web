@@ -2,7 +2,11 @@
   <a-layout-header :class="[headerTheme, 'admin-header']">
     <div :class="['admin-header-wide', layout, pageWidth]">
       <router-link v-if="isMobile || layout === 'head'" to="/" :class="['logo', isMobile ? null : 'pc', headerTheme]">
-        <img width="32" :src="systemLogo" />
+        <img
+          width="48"
+          :src="isMobile ? brandMarkEmbeddedLogo : brandWideEmbeddedLogo"
+          alt="奇安信标志"
+        />
         <h1 v-if="!isMobile">{{systemName}}</h1>
       </router-link>
       <a-divider v-if="isMobile" type="vertical" />
@@ -79,10 +83,12 @@ export default {
   props: ["collapsed", "menuData"],
   data() {
     return {
+      brandWideEmbeddedLogo: require('@/assets/img/qianxin-horizontal-embedded.png'),
+      brandMarkEmbeddedLogo: require('@/assets/img/qianxin-tiger-embedded.png'),
       langList: [
         { key: "CN", name: "简体中文", alias: "简体" },
         { key: "HK", name: "繁體中文", alias: "繁體" },
-        { key: "US", name: "English", alias: "English" },
+        { key: "US", name: "英语", alias: "英语" },
       ],
       searchActive: false,
       switchingTenant: false,
@@ -94,7 +100,6 @@ export default {
       "isMobile",
       "layout",
       "systemName",
-      "systemLogo",
       "lang",
       "pageWidth",
       "demoMode",
@@ -179,7 +184,7 @@ export default {
 
 .demo-tag {
   margin-right: 8px;
-  border-radius: 10px;
+  border-radius: 2px;
   font-weight: 500;
 }
 
@@ -197,5 +202,10 @@ export default {
 .tenant-selector {
   min-width: 150px;
   margin-right: 8px;
+}
+
+/deep/ .tenant-selector .ant-select-selection {
+  border-color: #cbd6e2;
+  border-radius: 2px;
 }
 </style>

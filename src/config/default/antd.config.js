@@ -1,15 +1,15 @@
 // antd 配置
 const ANTD = {
   primary: {
-    color: '#1890ff',
-    warning: '#faad14',
-    success: '#52c41a',
-    error: '#f5222d',
+    color: '#1b5a96',
+    warning: '#c68a2b',
+    success: '#2f6f62',
+    error: '#c94b4b',
     light: {
-      menuColors: ['#000c17', '#001529', '#002140']
+      menuColors: ['#071a37', '#0a1f44', '#163a63']
     },
     dark: {
-      menuColors: ['#000c17', '#001529', '#002140']
+      menuColors: ['#071a37', '#0a1f44', '#163a63']
     },
     night: {
       menuColors: ['#151515', '#1f1f1f', '#1e1e1e'],
@@ -17,19 +17,19 @@ const ANTD = {
   },
   theme: {
     dark: {
-      'layout-body-background': '#f0f2f5',
+      'layout-body-background': '#f3f6fa',
       'body-background': '#fff',
       'component-background': '#fff',
       'heading-color': 'rgba(0, 0, 0, 0.85)',
       'text-color': 'rgba(0, 0, 0, 0.65)',
       'text-color-inverse': '#fff',
       'text-color-secondary': 'rgba(0, 0, 0, 0.45)',
-      'shadow-color': 'rgba(0, 0, 0, 0.15)',
-      'border-color-split': '#f0f0f0',
-      'background-color-light': '#fafafa',
-      'background-color-base': '#f5f5f5',
-      'table-selected-row-bg': '#fafafa',
-      'table-expanded-row-bg': '#fbfbfb',
+      'shadow-color': 'rgba(10, 31, 68, 0.12)',
+      'border-color-split': '#dce4ed',
+      'background-color-light': '#f7f9fc',
+      'background-color-base': '#eef3f8',
+      'table-selected-row-bg': '#edf4fb',
+      'table-expanded-row-bg': '#f7f9fc',
       'checkbox-check-color': '#fff',
       'disabled-color': 'rgba(0, 0, 0, 0.25)',
       'menu-dark-color': 'rgba(254, 254, 254, 0.65)',

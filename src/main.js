@@ -2,6 +2,7 @@ import Vue from "vue";
 import App from "./App.vue";
 import { initRouter } from "./router";
 import "./theme/index.less";
+import "./theme/smartops.less";
 import Antd from "ant-design-vue";
 import Viser from "viser-vue";
 //import echats
@@ -33,7 +34,7 @@ Vue.use(Plugins);
 Vue.mixin({
   computed: {
     $themeColor() {
-      return this.$store?.state?.setting?.theme?.color || '#1890ff';
+      return this.$store?.state?.setting?.theme?.color || '#1b5a96';
     },
     $cardHeadStyle() {
       const color = this.$themeColor;

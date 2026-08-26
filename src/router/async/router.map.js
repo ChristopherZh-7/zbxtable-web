@@ -36,7 +36,7 @@ const routerMap = {
 		component: () => import('@/pages/dashboard/index'),
 	},
 	overview: {
-		component: () => import('@/pages/dashboard/overview'),
+		component: () => import('@/pages/dashboard/overview-redesign'),
 	},
 	dash: {
 		component: () => import('@/pages/dashboard/dash'),
