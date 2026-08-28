@@ -200,6 +200,17 @@ const options = {
               name: "运维大屏",
               component: () => import("@/pages/screen/index"),
             },
+            {
+              path: "custom-screens",
+              name: "自定义大屏",
+              component: () => import("@/pages/dashboard/custom/index"),
+            },
+            {
+              path: "custom-screen-designer",
+              name: "大屏设计",
+              meta: { highlight: "/topology/custom-screens", invisible: true },
+              component: () => import("@/pages/dashboard/custom/designer"),
+            },
           ],
         },
         {

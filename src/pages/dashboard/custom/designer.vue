@@ -3,8 +3,8 @@
     <div class="custom-dashboard-designer">
       <div class="custom-dashboard-designer__header">
         <div class="custom-dashboard-designer__identity">
-          <h2>{{ dashboardId ? (isReadonly ? '查看仪表盘' : '编辑仪表盘') : '新建仪表盘' }}</h2>
-          <a-input v-model.trim="form.name" :disabled="isReadonly" placeholder="仪表盘名称" style="width: 260px" />
+          <h2>{{ dashboardId ? (isReadonly ? `查看${resourceLabel}` : `编辑${resourceLabel}`) : `新建${resourceLabel}` }}</h2>
+          <a-input v-model.trim="form.name" :disabled="isReadonly" :placeholder="`${resourceLabel}名称`" style="width: 260px" />
           <a-select v-model="form.visibility" :disabled="isReadonly" style="width: 140px">
             <a-select-option value="personal">仅自己可见</a-select-option>
             <a-select-option value="tenant">租户可见</a-select-option>
@@ -205,6 +205,18 @@ export default {
     }
   },
   computed: {
+    visualizationMode() {
+      return this.$route.path.startsWith('/topology/custom-screen')
+    },
+    resourceLabel() {
+      return this.visualizationMode ? '大屏' : '仪表盘'
+    },
+    designerPath() {
+      return this.visualizationMode ? '/topology/custom-screen-designer' : '/dashboard/custom-dashboard-designer'
+    },
+    listPath() {
+      return this.visualizationMode ? '/topology/custom-screens' : '/dashboard/custom-dashboards'
+    },
     isReadonly() {
       return this.$route.query.readonly === '1' || Boolean(this.dashboardId && !this.$can('tenant.dashboard', 'update'))
     },
@@ -436,13 +448,13 @@ export default {
         if (result.code !== 200) throw new Error(result.message || '保存失败')
         this.dashboard = result.data
         this.dashboardId = String(result.data.id)
-        this.$router.replace({path: '/dashboard/custom-dashboard-designer', query: {id: this.dashboardId}})
-        this.$message.success('仪表盘保存成功')
-      }).catch((error) => this.$message.error(error.message || '仪表盘保存失败'))
+        this.$router.replace({path: this.designerPath, query: {id: this.dashboardId}})
+        this.$message.success(`${this.resourceLabel}保存成功`)
+      }).catch((error) => this.$message.error(error.message || `${this.resourceLabel}保存失败`))
         .finally(() => { this.saving = false })
     },
     back() {
-      this.$router.push('/dashboard/custom-dashboards')
+      this.$router.push(this.listPath)
     },
   },
 }

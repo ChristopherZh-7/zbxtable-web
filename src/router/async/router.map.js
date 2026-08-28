@@ -118,6 +118,12 @@ const routerMap = {
 		path: '/screen/dashboard',
 		component: () => import('@/pages/screen/index'),
 	},
+	visualizationDashboards: {
+		component: () => import('@/pages/dashboard/custom/index'),
+	},
+	visualizationDashboardDesigner: {
+		component: () => import('@/pages/dashboard/custom/designer'),
+	},
 	//report
 	report: {
 		component: view.blank,

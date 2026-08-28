@@ -6,7 +6,11 @@
         :interval="refreshInterval"
         :last-updated="lastUpdated"
         :viewport-label="viewportLabel"
+        :can-manage-screens="$can('tenant.dashboard', 'read')"
+        :can-create-screen="$can('tenant.dashboard', 'create')"
         @interval-change="onIntervalChange"
+        @manage-screens="openScreenManagement"
+        @create-screen="createCustomScreen"
       />
       <div class="screen-body">
 
@@ -145,6 +149,12 @@ export default {
     window.loginNoAuth = this._origLoginNoAuth
   },
   methods: {
+    openScreenManagement() {
+      this.$router.push('/topology/custom-screens')
+    },
+    createCustomScreen() {
+      this.$router.push('/topology/custom-screen-designer')
+    },
     syncViewport() {
       this.viewportWidth = Math.max(1, window.innerWidth || 1920)
       this.viewportHeight = Math.max(1, window.innerHeight || 1080)

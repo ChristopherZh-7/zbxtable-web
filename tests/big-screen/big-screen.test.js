@@ -35,3 +35,16 @@ test('refresh completion is visible and all screen data is settled together', ()
     assert.match(page, new RegExp(source))
   }
 })
+
+test('fixed big screen exposes permission-aware custom screen entry points', () => {
+  assert.match(page, /\$can\('tenant\.dashboard', 'read'\)/)
+  assert.match(page, /\$can\('tenant\.dashboard', 'create'\)/)
+  assert.match(page, /@manage-screens="openScreenManagement"/)
+  assert.match(page, /@create-screen="createCustomScreen"/)
+  assert.match(page, /this\.\$router\.push\('\/topology\/custom-screens'\)/)
+  assert.match(page, /this\.\$router\.push\('\/topology\/custom-screen-designer'\)/)
+  assert.match(header, /v-if="canManageScreens"/)
+  assert.match(header, /v-if="canCreateScreen"/)
+  assert.match(header, /screen_manage/)
+  assert.match(header, /screen_create/)
+})

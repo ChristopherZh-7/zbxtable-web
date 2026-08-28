@@ -2,6 +2,12 @@
   <div class="screen-header">
     <div class="header-left">
       <span class="header-btn" @click="goBack"><a-icon type="arrow-left" />{{ $t('screen_back') }}</span>
+      <span v-if="canManageScreens" class="header-btn" @click="$emit('manage-screens')">
+        <a-icon type="appstore" />{{ $t('screen_manage') }}
+      </span>
+      <span v-if="canCreateScreen" class="header-btn" @click="$emit('create-screen')">
+        <a-icon type="plus" />{{ $t('screen_create') }}
+      </span>
     </div>
     <div class="header-title">
       <div class="title-main">{{ $t('screen_title') }}</div>
@@ -38,7 +44,9 @@ export default {
   props: {
     interval: { type: Number, default: 30 },
     lastUpdated: { type: String, default: '' },
-    viewportLabel: { type: String, default: '1920×1080' }
+    viewportLabel: { type: String, default: '1920×1080' },
+    canManageScreens: { type: Boolean, default: false },
+    canCreateScreen: { type: Boolean, default: false }
   },
   data() {
     return {

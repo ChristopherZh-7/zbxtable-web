@@ -1,20 +1,20 @@
 <template>
   <page-layout :noTitle="true">
     <a-form-model layout="inline" class="dashboard-search">
-      <a-form-model-item label="仪表盘名称">
+      <a-form-model-item :label="`${resourceLabel}名称`">
         <a-input v-model.trim="name" allow-clear placeholder="输入名称" @pressEnter="load" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="load">查询</a-button>
         <a-button style="margin-left: 8px" @click="reset">重置</a-button>
         <a-button v-auth="'create'" type="primary" style="margin-left: 8px" @click="createNew">
-          <a-icon type="plus" /> 新建仪表盘
+          <a-icon type="plus" /> 新建{{ resourceLabel }}
         </a-button>
       </a-form-model-item>
     </a-form-model>
 
     <a-alert
-      message="仪表盘数据源由服务端按当前租户 Host Group 重验；个人仪表盘仅创建者可见。"
+      :message="`${resourceLabel}数据源由服务端按当前租户 Host Group 重验；个人${resourceLabel}仅创建者可见。`"
       type="info"
       show-icon
       style="margin-bottom: 16px"
@@ -86,6 +86,17 @@ export default {
   created() {
     this.load()
   },
+  computed: {
+    visualizationMode() {
+      return this.$route.path.startsWith('/topology/custom-screen')
+    },
+    resourceLabel() {
+      return this.visualizationMode ? '大屏' : '仪表盘'
+    },
+    designerPath() {
+      return this.visualizationMode ? '/topology/custom-screen-designer' : '/dashboard/custom-dashboard-designer'
+    },
+  },
   methods: {
     load() {
       this.loading = true
@@ -116,13 +127,13 @@ export default {
       return new Date(value).toLocaleString()
     },
     createNew() {
-      this.$router.push('/dashboard/custom-dashboard-designer')
+      this.$router.push(this.designerPath)
     },
     edit(record) {
-      this.$router.push(`/dashboard/custom-dashboard-designer?id=${record.id}`)
+      this.$router.push({path: this.designerPath, query: {id: record.id}})
     },
     view(record) {
-      this.$router.push(`/dashboard/custom-dashboard-designer?id=${record.id}&readonly=1`)
+      this.$router.push({path: this.designerPath, query: {id: record.id, readonly: '1'}})
     },
     remove(record) {
       deleteDashboard(record.id).then((response) => {
