@@ -7,6 +7,59 @@ const CLASS_META = {
   ApplicationSolution: {label: '应用系统', icon: 'appstore', color: 'magenta'},
 }
 
+const COMMON_FIELDS = [
+  {key: 'name', label: '资产名称', kind: 'string', required: true, wide: true},
+  {key: 'status', label: '生命周期状态', kind: 'status'},
+  {key: 'business_criticity', label: '业务关键度', kind: 'criticality'},
+  {key: 'move2production', label: '上线日期', kind: 'date'},
+  {key: 'description', label: '说明', kind: 'text', wide: true},
+]
+
+const CLASS_FIELDS = {
+  Server: [
+    {key: 'managementip', label: '管理 IP', kind: 'ip'},
+    {key: 'location_id', label: '位置', kind: 'location'},
+    {key: 'serialnumber', label: '序列号', kind: 'string'},
+    {key: 'asset_number', label: '资产编号', kind: 'string'},
+    {key: 'cpu', label: 'CPU', kind: 'string'},
+    {key: 'ram', label: '内存', kind: 'string'},
+    {key: 'purchase_date', label: '采购日期', kind: 'date'},
+    {key: 'end_of_warranty', label: '保修到期', kind: 'date'},
+  ],
+  VirtualMachine: [
+    {key: 'managementip', label: '管理 IP', kind: 'ip'},
+    {key: 'cpu', label: 'CPU', kind: 'string'},
+    {key: 'ram', label: '内存', kind: 'string'},
+  ],
+  NetworkDevice: [
+    {key: 'managementip', label: '管理 IP', kind: 'ip'},
+    {key: 'location_id', label: '位置', kind: 'location'},
+    {key: 'networkdevicetype_id', label: '网络设备类型', kind: 'networkType', required: true},
+    {key: 'serialnumber', label: '序列号', kind: 'string'},
+    {key: 'asset_number', label: '资产编号', kind: 'string'},
+    {key: 'ram', label: '内存', kind: 'string'},
+    {key: 'purchase_date', label: '采购日期', kind: 'date'},
+    {key: 'end_of_warranty', label: '保修到期', kind: 'date'},
+  ],
+  PC: [
+    {key: 'location_id', label: '位置', kind: 'location'},
+    {key: 'serialnumber', label: '序列号', kind: 'string'},
+    {key: 'asset_number', label: '资产编号', kind: 'string'},
+    {key: 'cpu', label: 'CPU', kind: 'string'},
+    {key: 'ram', label: '内存', kind: 'string'},
+    {key: 'purchase_date', label: '采购日期', kind: 'date'},
+    {key: 'end_of_warranty', label: '保修到期', kind: 'date'},
+  ],
+  Printer: [
+    {key: 'location_id', label: '位置', kind: 'location'},
+    {key: 'serialnumber', label: '序列号', kind: 'string'},
+    {key: 'asset_number', label: '资产编号', kind: 'string'},
+    {key: 'purchase_date', label: '采购日期', kind: 'date'},
+    {key: 'end_of_warranty', label: '保修到期', kind: 'date'},
+  ],
+  ApplicationSolution: [],
+}
+
 const DETAIL_FIELDS = [
   ['status', '状态'],
   ['organization_name', '所属组织'],
@@ -76,19 +129,82 @@ function mappingForTenant(mappings, tenantID) {
 
 function statusMeta(status) {
   const value = String(status || '').toLowerCase()
-  if (['production', 'active', 'implementation'].includes(value)) return {status: 'success', label: status || '在用'}
-  if (['obsolete', 'inactive', 'stock'].includes(value)) return {status: 'default', label: status || '已停用'}
+  const labels = {production: '生产', active: '启用', implementation: '实施中', stock: '库存', obsolete: '已退役', inactive: '已停用'}
+  if (['production', 'active', 'implementation'].includes(value)) return {status: 'success', label: labels[value]}
+  if (['obsolete', 'inactive', 'stock'].includes(value)) return {status: 'default', label: labels[value]}
   return {status: 'processing', label: status || '未知'}
+}
+
+function lifecycleMeta(asset) {
+  const status = String(asset && asset.status || '').toLowerCase()
+  const retired = status === 'obsolete' || status === 'inactive'
+  return {retired, action: retired ? 'activate' : 'retire', label: retired ? '重新启用' : '退役'}
+}
+
+function statusOptions(assetClass) {
+  if (assetClass === 'ApplicationSolution') return [{value: 'active', label: '启用'}]
+  return [
+    {value: 'stock', label: '库存'},
+    {value: 'implementation', label: '实施中'},
+    {value: 'production', label: '生产'},
+  ]
+}
+
+function editableFields(assetClass) {
+  if (!CLASS_META[assetClass]) return []
+  return [...COMMON_FIELDS, ...(CLASS_FIELDS[assetClass] || [])]
+}
+
+function createAssetForm(assetClass, asset) {
+  const source = asset || {}
+  const form = {}
+  editableFields(assetClass).forEach((field) => {
+    if (field.kind === 'location' || field.kind === 'networkType') {
+      const value = Number(source[field.key])
+      form[field.key] = value > 0 ? value : undefined
+    } else {
+      form[field.key] = source[field.key] === undefined || source[field.key] === null ? '' : String(source[field.key])
+    }
+  })
+  if (!asset && !form.status) form.status = assetClass === 'ApplicationSolution' ? 'active' : 'production'
+  return form
+}
+
+function buildAssetFields(assetClass, form, creating) {
+  const fields = {}
+  editableFields(assetClass).forEach((field) => {
+    const value = form ? form[field.key] : undefined
+    if (field.kind === 'location' || field.kind === 'networkType') {
+      if (!creating || value !== undefined && value !== null && value !== '') fields[field.key] = Number(value) || 0
+      return
+    }
+    const normalized = value === undefined || value === null ? '' : String(value).trim()
+    if (!creating || normalized !== '' || field.required || field.key === 'status') fields[field.key] = normalized
+  })
+  return fields
+}
+
+function validateAssetForm(assetClass, form) {
+  if (!CLASS_META[assetClass]) return '请选择资产类型'
+  if (!String(form && form.name || '').trim()) return '请输入资产名称'
+  if (assetClass === 'NetworkDevice' && !(Number(form && form.networkdevicetype_id) > 0)) return '请选择网络设备类型'
+  return ''
 }
 
 module.exports = {
   CLASS_META,
   assetKey,
+  buildAssetFields,
   classMeta,
+  createAssetForm,
   detailRows,
   displayValue,
+  editableFields,
   isPlatformAdmin,
+  lifecycleMeta,
   mappingForTenant,
   relationBuckets,
+  statusOptions,
   statusMeta,
+  validateAssetForm,
 }

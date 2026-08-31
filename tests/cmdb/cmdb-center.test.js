@@ -5,11 +5,17 @@ const test = require('node:test')
 
 const {
   assetKey,
+  buildAssetFields,
   classMeta,
+  createAssetForm,
   detailRows,
+  editableFields,
   isPlatformAdmin,
+  lifecycleMeta,
   mappingForTenant,
   relationBuckets,
+  statusOptions,
+  validateAssetForm,
 } = require('../../src/pages/cmdb/cmdb-model')
 
 const source = (relative) => fs.readFileSync(path.join(__dirname, '../..', relative), 'utf8')
@@ -18,20 +24,24 @@ test('CMDB route and services stay inside the SmartOps application API', () => {
   const router = source('src/router/async/router.map.js')
   const service = source('src/services/cmdb.js')
   assert.match(router, /cmdbCenter:\s*\{[\s\S]*@\/pages\/cmdb/)
-  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
+  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'getCMDBReferences', 'createCMDBAsset', 'updateCMDBAsset', 'retireCMDBAsset', 'activateCMDBAsset', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
     assert.match(service, new RegExp(`function ${operation}\\b`))
   }
+  assert.doesNotMatch(service, /deleteCMDBAsset|METHOD\.DELETE/)
   for (const forbidden of ['Auth-Token', 'SMARTOPS_ITOP', '18090', 'webservices/rest.php']) {
     assert.equal(service.includes(forbidden), false, `browser service leaked iTop detail: ${forbidden}`)
   }
 })
 
-test('CMDB page presents authoritative read-only and tenant-isolated behavior', () => {
+test('CMDB page presents authoritative governed lifecycle and tenant isolation', () => {
   const page = source('src/pages/cmdb/index.vue')
-  for (const copy of ['SOURCE OF TRUTH', 'iTop CMDB', '唯一真实源', '服务端只读 · 租户隔离', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
+  for (const copy of ['SOURCE OF TRUTH', 'iTop CMDB', '唯一配置真源', '受控写入 · 租户隔离', '新增资产', '编辑资产', '退役', '重新启用', '不会删除历史', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
     assert.ok(page.includes(copy), `missing confirmed CMDB UI copy: ${copy}`)
   }
   assert.match(page, /v-if="platformAdmin"[\s\S]*配置组织映射/)
+  assert.match(page, /v-if="canCreate && sourceReady"[\s\S]*新增资产/)
+  assert.match(page, /v-if="canUpdate && !selectedLifecycle\.retired"[\s\S]*编辑资产/)
+  assert.match(page, /canPerform\(this\.permissions, 'tenant\.cmdb', 'operate'\)/)
   assert.match(page, /organizationAssignedElsewhere/)
   assert.doesNotMatch(page, /iframe|window\.open|target="_blank"/)
 })
@@ -55,6 +65,39 @@ test('CMDB model builds stable asset metadata and detail rows', () => {
   ])
 })
 
+test('CMDB model exposes only the confirmed per-class write fields', () => {
+  const serverFields = editableFields('Server').map((field) => field.key)
+  const pcFields = editableFields('PC').map((field) => field.key)
+  const networkFields = editableFields('NetworkDevice').map((field) => field.key)
+  assert.ok(serverFields.includes('managementip'))
+  assert.equal(pcFields.includes('managementip'), false)
+  assert.ok(networkFields.includes('networkdevicetype_id'))
+  assert.equal(editableFields('Person').length, 0)
+})
+
+test('CMDB form payload trims fields, preserves clears and validates network type', () => {
+  const createForm = createAssetForm('Server')
+  createForm.name = '  app-01  '
+  createForm.managementip = ' 10.0.0.8 '
+  const createFields = buildAssetFields('Server', createForm, true)
+  assert.equal(createFields.name, 'app-01')
+  assert.equal(createFields.managementip, '10.0.0.8')
+  assert.equal(Object.hasOwn(createFields, 'location_id'), false)
+
+  const editForm = createAssetForm('Server', {name: 'app-01', status: 'production', location_id: 9})
+  editForm.location_id = undefined
+  const editFields = buildAssetFields('Server', editForm, false)
+  assert.equal(editFields.location_id, 0)
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01'}), '请选择网络设备类型')
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01', networkdevicetype_id: 3}), '')
+})
+
+test('CMDB lifecycle treats retired records as recoverable rather than deleted', () => {
+  assert.deepEqual(lifecycleMeta({status: 'obsolete'}), {retired: true, action: 'activate', label: '重新启用'})
+  assert.deepEqual(lifecycleMeta({status: 'production'}), {retired: false, action: 'retire', label: '退役'})
+  assert.deepEqual(statusOptions('ApplicationSolution'), [{value: 'active', label: '启用'}])
+})
+
 test('CMDB relation spine separates upstream and downstream around the selected node', () => {
   const app = {key: 'ApplicationSolution:1', id: 1, class: 'ApplicationSolution', name: 'Portal'}
   const server = {key: 'Server:2', id: 2, class: 'Server', name: 'Server'}
@@ -76,6 +119,15 @@ test('only platform administrators may see mapping management and mappings resol
   assert.equal(isPlatformAdmin({role: 'tenant_admin'}), false)
   const mapping = mappingForTenant([{tenant_id: 3, itop_organization_id: 8}], '3')
   assert.equal(mapping.itop_organization_id, 8)
+})
+
+test('tenant viewers do not trigger platform-only setup or dashboard configuration requests', () => {
+  const layout = source('src/layouts/AdminLayout.vue')
+  const dashboard = source('src/pages/dashboard/index.vue')
+  assert.match(layout, /isPlatformAdministrator\(\)[\s\S]*role === 'admin' \|\| role === 'platform_admin'/)
+  assert.match(layout, /if \(this\.isPlatformAdministrator\) this\.checkSetupStatus\(\)/)
+  assert.match(dashboard, /const configReady = this\.isPlatformAdministrator \? this\.initConfig\(\) : Promise\.resolve\(\)/)
+  assert.match(dashboard, /v-if="isPlatformAdministrator" size="small" icon="setting"/)
 })
 
 test('a fresh browser without local theme state still receives an object fallback', () => {

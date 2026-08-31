@@ -81,6 +81,11 @@ export default {
     ...mapState('setting', ['isMobile', 'theme', 'layout', 'footerLinks', 'copyright', 'fixedHeader', 'fixedSideBar',
       'fixedTabs', 'hideSetting', 'multiPage']),
     ...mapGetters('setting', ['firstMenu', 'subMenu', 'menuData']),
+    ...mapGetters('account', {accountUser: 'user'}),
+    isPlatformAdministrator() {
+      const role = String(this.accountUser && this.accountUser.role || '').toLowerCase()
+      return role === 'admin' || role === 'platform_admin'
+    },
     sideMenuWidth() {
       return this.collapsed ? '80px' : '256px'
     },
@@ -201,8 +206,8 @@ export default {
   created() {
     this.correctPageMinHeight(this.minHeight - 24)
     this.setActivated(this.$route)
-    // 检查是否需要显示初始配置引导
-    this.checkSetupStatus()
+    // 初始平台配置只属于平台管理员；租户角色不得触发平台级接口。
+    if (this.isPlatformAdministrator) this.checkSetupStatus()
     
     // 监听实例添加成功事件
     this.$root.$on('instance-added-from-guide', this.handleInstanceAdded)

@@ -8,6 +8,7 @@
       </div>
     </div>
     <a-modal
+      v-if="isPlatformAdministrator"
       :visible="topConfigModalVisible"
       :confirmLoading="topNumSaving"
       :title="topConfigTitle"
@@ -114,7 +115,7 @@
                     <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
                   </a-radio-group>
                   <a-tooltip :title="$t('top_settings')">
-                    <a-button size="small" icon="setting" @click="openTopConfigModal('VM_LIN')" />
+                    <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_LIN')" />
                   </a-tooltip>
                 </div>
               </div>
@@ -179,7 +180,7 @@
                     <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
                   </a-radio-group>
                   <a-tooltip :title="$t('top_settings')">
-                    <a-button size="small" icon="setting" @click="openTopConfigModal('VM_WIN')" />
+                    <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_WIN')" />
                   </a-tooltip>
                 </div>
               </div>
@@ -251,7 +252,7 @@ import { message } from 'ant-design-vue'
 import { parseTimeFun } from '@/utils/formatter'
 import legent from '@/components/gcharts/legent'
 import EgressBandwidth from '@/components/egress/EgressBandwidth'
-import { mapState } from 'vuex'
+import { mapGetters, mapState } from 'vuex'
 
 export default {
   name: 'index',
@@ -293,6 +294,11 @@ export default {
   },
   computed: {
     ...mapState('setting', ['theme']),
+    ...mapGetters('account', {accountUser: 'user'}),
+    isPlatformAdministrator() {
+      const role = String(this.accountUser && this.accountUser.role || '').toLowerCase()
+      return role === 'admin' || role === 'platform_admin'
+    },
     cardHeadStyle() {
       // 使用主题颜色的浅色版本作为卡片标题背景
       return {
@@ -339,7 +345,8 @@ export default {
     this.initTrigger()
     this.initInfo()
     this.initEgress()
-    this.initConfig().then(() => {
+    const configReady = this.isPlatformAdministrator ? this.initConfig() : Promise.resolve()
+    configReady.then(() => {
       this.initTop()
     })
     // 每30秒刷新一次出口数据
@@ -381,6 +388,7 @@ export default {
       this.$router.push('/system/zabbix')
     },
     openTopConfigModal(type) {
+      if (!this.isPlatformAdministrator) return
       this.topConfigType = type
       this.topNumDraft = type === 'VM_WIN' ? this.winTopNum : this.linTopNum
       this.topConfigModalVisible = true
@@ -389,6 +397,7 @@ export default {
       this.topConfigModalVisible = false
     },
     async saveTopNum() {
+      if (!this.isPlatformAdministrator) return
       const n = parseInt(this.topNumDraft, 10)
       if (!Number.isFinite(n) || n <= 0 || n > 50) {
         message.error(this.$t('top_settings_msg_range'))

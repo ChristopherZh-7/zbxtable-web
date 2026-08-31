@@ -5,11 +5,12 @@
         <div>
           <p class="cmdb-kicker">CONFIGURATION RECORDS</p>
           <h1>CMDB 配置中心</h1>
-          <p>iTop 作为配置数据唯一真实源，SmartOps 按当前租户只读呈现资产与依赖关系。</p>
+          <p>iTop 保存唯一配置真源，SmartOps 提供按租户受控的资产维护入口与关系视图。</p>
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
-          <a-button v-if="platformAdmin" type="primary" icon="setting" @click="openMapping">配置组织映射</a-button>
+          <a-button v-if="platformAdmin" icon="setting" @click="openMapping">配置组织映射</a-button>
+          <a-button v-if="canCreate && sourceReady" type="primary" icon="plus" @click="openCreateAsset">新增资产</a-button>
         </div>
       </header>
 
@@ -28,7 +29,7 @@
         </div>
         <div class="source-field">
           <span>数据边界</span>
-          <strong>服务端只读 · 租户隔离</strong>
+          <strong>受控写入 · 租户隔离</strong>
         </div>
         <div class="source-total">
           <span>配置项</span>
@@ -39,7 +40,7 @@
       <section v-if="!loading && overview.state === 'unconfigured'" class="cmdb-empty smartops-data-panel">
         <div class="empty-symbol"><a-icon type="disconnect" /></div>
         <h2>当前租户尚未关联 iTop Organization</h2>
-        <p>建立映射后，本页只会读取该 Organization 下的配置项，不会展示其他客户数据。</p>
+        <p>建立映射后，本页只会维护该 Organization 下的配置项，不会展示或修改其他客户数据。</p>
         <a-button v-if="platformAdmin" type="primary" icon="link" @click="openMapping">立即配置映射</a-button>
         <a-alert v-else type="info" show-icon message="请联系平台管理员完成 CMDB 组织映射。" />
       </section>
@@ -134,11 +135,22 @@
             <a-spin v-else :spinning="detailLoading">
               <div class="inspector-head">
                 <div class="inspector-icon"><a-icon :type="classMeta(selectedAsset.class).icon" /></div>
-                <div>
+                <div class="inspector-identity">
                   <a-tag :color="classMeta(selectedAsset.class).color">{{ classMeta(selectedAsset.class).label }}</a-tag>
                   <h2>{{ selectedAsset.name }}</h2>
                   <code>{{ assetKey(selectedAsset) }}</code>
                 </div>
+              </div>
+
+              <div v-if="canUpdate || canOperate" class="inspector-actions">
+                <a-button v-if="canUpdate && !selectedLifecycle.retired" icon="edit" @click="openEditAsset">编辑资产</a-button>
+                <a-button
+                  v-if="canOperate"
+                  :loading="lifecycleSaving"
+                  :type="selectedLifecycle.retired ? 'primary' : 'danger'"
+                  :icon="selectedLifecycle.retired ? 'check-circle' : 'stop'"
+                  @click="confirmLifecycleTransition"
+                >{{ selectedLifecycle.label }}</a-button>
               </div>
 
               <div class="inspector-section">
@@ -186,6 +198,61 @@
     </div>
 
     <a-modal
+      :visible="assetFormVisible"
+      :title="assetEditing ? '编辑 CMDB 资产' : '新增 CMDB 资产'"
+      :confirm-loading="assetSaving"
+      :mask-closable="false"
+      :destroy-on-close="true"
+      width="760px"
+      :ok-text="assetEditing ? '保存修改' : '新增资产'"
+      @ok="saveAsset"
+      @cancel="closeAssetForm"
+    >
+      <div class="asset-form-context">
+        <span class="asset-form-context__mark"><a-icon type="database" /></span>
+        <div>
+          <strong>直接写入 {{ organizationName }}</strong>
+          <p>资产类型和所属 Organization 创建后不可变；退役会保留记录，不会删除历史。</p>
+        </div>
+      </div>
+      <a-alert v-if="assetFormError" type="error" show-icon :message="assetFormError" class="asset-form-error" />
+      <a-form-model layout="vertical" class="asset-form">
+        <div class="asset-form-grid">
+          <a-form-model-item label="资产类型" required class="asset-form-wide">
+            <a-select v-model="assetFormClass" :disabled="assetEditing" placeholder="选择资产类型" @change="changeAssetClass">
+              <a-select-option v-for="option in classOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item
+            v-for="field in assetFormFields"
+            :key="field.key"
+            :label="field.label"
+            :required="field.required"
+            :class="{'asset-form-wide': field.wide}"
+          >
+            <a-textarea v-if="field.kind === 'text'" v-model="assetForm[field.key]" :rows="3" :max-length="4000" placeholder="记录用途、责任边界或维护说明" />
+            <a-select v-else-if="field.kind === 'status'" v-model="assetForm[field.key]">
+              <a-select-option v-for="option in assetStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+            </a-select>
+            <a-select v-else-if="field.kind === 'criticality'" v-model="assetForm[field.key]" allow-clear placeholder="未设置">
+              <a-select-option value="high">高</a-select-option>
+              <a-select-option value="medium">中</a-select-option>
+              <a-select-option value="low">低</a-select-option>
+            </a-select>
+            <a-date-picker v-else-if="field.kind === 'date'" v-model="assetForm[field.key]" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
+            <a-select v-else-if="field.kind === 'location'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
+              <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+            </a-select>
+            <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
+              <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+            </a-select>
+            <a-input v-else v-model="assetForm[field.key]" :placeholder="field.kind === 'ip' ? '例如 10.0.0.10' : `填写${field.label}`" :max-length="255" />
+          </a-form-model-item>
+        </div>
+      </a-form-model>
+    </a-modal>
+
+    <a-modal
       :visible="mappingVisible"
       title="配置租户 CMDB 组织映射"
       :confirm-loading="mappingSaving"
@@ -225,24 +292,37 @@
 import PageLayout from '@/layouts/PageLayout'
 import {listTenants} from '@/services/tenant'
 import {
+  activateCMDBAsset,
+  createCMDBAsset,
   getCMDBAsset,
   getCMDBOverview,
+  getCMDBReferences,
   getCMDBRelations,
   listCMDBAssets,
   listCMDBMappings,
   listCMDBOrganizations,
+  retireCMDBAsset,
+  updateCMDBAsset,
   upsertCMDBMapping,
 } from '@/services/cmdb'
 import {
   CLASS_META,
   assetKey,
+  buildAssetFields,
   classMeta,
+  createAssetForm,
   detailRows,
+  editableFields,
   isPlatformAdmin,
+  lifecycleMeta,
   mappingForTenant,
   relationBuckets,
+  statusOptions,
   statusMeta,
+  validateAssetForm,
 } from './cmdb-model'
+
+const {canPerform} = require('@/utils/permission-policy')
 
 const emptyAssetPage = () => ({items: [], total: 0, page: 1, page_size: 30, counts: {}})
 
@@ -262,6 +342,16 @@ export default {
       selectedDetail: null,
       relations: {nodes: [], edges: [], depth: 1},
       detailSequence: 0,
+      assetFormVisible: false,
+      assetEditing: false,
+      assetSaving: false,
+      lifecycleSaving: false,
+      assetFormClass: 'Server',
+      assetForm: createAssetForm('Server'),
+      assetFormRevision: '',
+      assetFormError: '',
+      cmdbReferences: {locations: [], network_device_types: []},
+      referencesLoaded: false,
       mappingVisible: false,
       mappingLoading: false,
       mappingSaving: false,
@@ -280,8 +370,12 @@ export default {
   },
   computed: {
     user() { return this.$store.getters['account/user'] || {} },
+    permissions() { return this.$store.getters['account/permissions'] || [] },
     currentTenant() { return this.$store.getters['account/currentTenant'] || {} },
     platformAdmin() { return isPlatformAdmin(this.user) },
+    canCreate() { return canPerform(this.permissions, 'tenant.cmdb', 'create') },
+    canUpdate() { return canPerform(this.permissions, 'tenant.cmdb', 'update') },
+    canOperate() { return canPerform(this.permissions, 'tenant.cmdb', 'operate') },
     sourceReady() { return this.overview.state === 'ready' },
     sourceStateLabel() {
       if (this.loading || this.overview.state === 'loading') return '读取中'
@@ -305,6 +399,9 @@ export default {
     },
     selectedDetailRows() { return detailRows(this.selectedDetail || this.selectedAsset) },
     relationView() { return relationBuckets(this.relations, this.selectedDetail || this.selectedAsset) },
+    selectedLifecycle() { return lifecycleMeta(this.selectedDetail || this.selectedAsset) },
+    assetFormFields() { return editableFields(this.assetFormClass) },
+    assetStatusOptions() { return statusOptions(this.assetFormClass) },
   },
   created() {
     this.loadOverviewAndAssets()
@@ -315,7 +412,11 @@ export default {
     statusMeta,
     unwrap(response) {
       const result = response && response.data
-      if (!result || Number(result.code) !== 200) throw new Error(result && result.message || '请求失败')
+      if (!result || Number(result.code) !== 200) {
+        const error = new Error(result && result.message || '请求失败')
+        error.businessCode = Number(result && result.code) || 0
+        throw error
+      }
       return result.data
     },
     pageItems(response) {
@@ -402,6 +503,123 @@ export default {
       this.relations = {nodes: [], edges: [], depth: 1}
       this.detailLoading = false
     },
+    async ensureCMDBReferences() {
+      if (this.referencesLoaded) return
+      const data = this.unwrap(await getCMDBReferences()) || {}
+      this.cmdbReferences = {
+        locations: Array.isArray(data.locations) ? data.locations : [],
+        network_device_types: Array.isArray(data.network_device_types) ? data.network_device_types : [],
+      }
+      this.referencesLoaded = true
+    },
+    async openCreateAsset() {
+      if (!this.canCreate || !this.sourceReady) return
+      try {
+        await this.ensureCMDBReferences()
+        this.assetEditing = false
+        this.assetFormClass = this.filters.class && CLASS_META[this.filters.class] ? this.filters.class : 'Server'
+        this.assetForm = createAssetForm(this.assetFormClass)
+        this.assetFormRevision = ''
+        this.assetFormError = ''
+        this.assetFormVisible = true
+      } catch (error) {
+        this.$message.error(error.message || 'CMDB 参考数据加载失败')
+      }
+    },
+    async openEditAsset() {
+      if (!this.canUpdate || this.selectedLifecycle.retired || !this.selectedAsset) return
+      try {
+        await this.ensureCMDBReferences()
+        let asset = this.selectedDetail
+        if (!asset || !asset.revision) asset = this.unwrap(await getCMDBAsset(this.selectedAsset.class, this.selectedAsset.id))
+        if (!asset || !asset.revision) throw new Error('资产版本信息缺失，请刷新后重试')
+        this.selectedDetail = asset
+        this.assetEditing = true
+        this.assetFormClass = asset.class
+        this.assetForm = createAssetForm(asset.class, asset)
+        this.assetFormRevision = asset.revision
+        this.assetFormError = ''
+        this.assetFormVisible = true
+      } catch (error) {
+        this.$message.error(error.message || '资产编辑数据加载失败')
+      }
+    },
+    changeAssetClass(assetClass) {
+      if (this.assetEditing) return
+      this.assetForm = createAssetForm(assetClass)
+      this.assetFormError = ''
+    },
+    closeAssetForm() {
+      if (this.assetSaving) return
+      this.assetFormVisible = false
+      this.assetFormError = ''
+    },
+    async saveAsset() {
+      const validation = validateAssetForm(this.assetFormClass, this.assetForm)
+      if (validation) {
+        this.assetFormError = validation
+        return
+      }
+      this.assetSaving = true
+      this.assetFormError = ''
+      try {
+        const fields = buildAssetFields(this.assetFormClass, this.assetForm, !this.assetEditing)
+        const response = this.assetEditing
+          ? await updateCMDBAsset(this.assetFormClass, this.selectedAsset.id, this.assetFormRevision, fields)
+          : await createCMDBAsset(this.assetFormClass, fields)
+        const asset = this.unwrap(response)
+        this.assetFormVisible = false
+        this.$message.success(this.assetEditing ? 'CMDB 资产已更新' : 'CMDB 资产已新增')
+        this.selectedAsset = asset
+        await this.loadOverviewAndAssets()
+      } catch (error) {
+        if (error.businessCode === 1000) {
+          this.assetFormError = '资产已被其他操作更新，当前详情已刷新；请关闭表单后重新编辑。'
+          if (this.selectedAsset) await this.selectAsset(this.selectedAsset)
+        } else if (error.businessCode === 1013) {
+          this.assetFormError = '同一 Organization 下已存在同类型同名资产。'
+        } else {
+          this.assetFormError = error.message || 'CMDB 资产保存失败'
+        }
+      } finally {
+        this.assetSaving = false
+      }
+    },
+    confirmLifecycleTransition() {
+      if (!this.canOperate || !this.selectedAsset || !this.selectedDetail || !this.selectedDetail.revision) {
+        this.$message.warning('资产版本信息尚未就绪，请刷新后重试')
+        return
+      }
+      const transition = this.selectedLifecycle
+      this.$confirm({
+        title: transition.retired ? '重新启用这项资产？' : '退役这项资产？',
+        content: transition.retired
+          ? '资产会恢复为在用状态，并继续作为 iTop 配置真源中的有效记录。'
+          : '资产会保留在台账和审计记录中，不会被删除。',
+        okText: transition.label,
+        okType: transition.retired ? 'primary' : 'danger',
+        cancelText: '取消',
+        onOk: () => this.runLifecycleTransition(transition),
+      })
+    },
+    async runLifecycleTransition(transition) {
+      this.lifecycleSaving = true
+      try {
+        const operation = transition.retired ? activateCMDBAsset : retireCMDBAsset
+        this.unwrap(await operation(this.selectedDetail.class, this.selectedDetail.id, this.selectedDetail.revision))
+        this.$message.success(transition.retired ? 'CMDB 资产已重新启用' : 'CMDB 资产已退役并保留记录')
+        await this.loadOverviewAndAssets()
+      } catch (error) {
+        if (error.businessCode === 1000) {
+          this.$message.warning('资产已被其他操作更新，已刷新当前详情，请确认后重试。')
+          await this.selectAsset(this.selectedAsset)
+        } else {
+          this.$message.error(error.message || `${transition.label}失败`)
+        }
+      } finally {
+        this.lifecycleSaving = false
+      }
+    },
     async openMapping() {
       if (!this.platformAdmin) return
       this.mappingVisible = true
@@ -443,6 +661,7 @@ export default {
       try {
         this.unwrap(await upsertCMDBMapping(this.mappingForm.tenant_id, this.mappingForm.itop_organization_id))
         this.$message.success('CMDB 组织映射已更新')
+        this.referencesLoaded = false
         this.closeMapping()
         await this.loadOverviewAndAssets()
       } catch (error) {
@@ -509,8 +728,10 @@ export default {
 .inspector-placeholder span { font-size: 12px; }
 .inspector-head { display: flex; align-items: center; min-height: 120px; padding: 20px; border-bottom: 1px solid var(--smartops-line); background: #f7f9fc; gap: 14px; }
 .inspector-icon { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; flex: 0 0 54px; border: 1px solid #b8c9da; background: #fff; color: var(--smartops-signal-blue); font-size: 23px; }
+.inspector-identity { min-width: 0; }
 .inspector-head h2 { max-width: 250px; overflow: hidden; margin: 5px 0 2px; color: var(--smartops-command-navy); font-size: 18px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .inspector-head code { color: var(--smartops-muted); font-size: 10px; }
+.inspector-actions { display: grid; padding: 12px 18px; border-bottom: 1px solid var(--smartops-line); background: #fff; grid-template-columns: 1fr 1fr; gap: 8px; }
 .inspector-section { padding: 17px 18px; border-bottom: 1px solid var(--smartops-line); }
 .inspector-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; color: var(--smartops-command-navy); font-size: 13px; font-weight: 700; }
 .inspector-title small { color: #8c9caf; font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .1em; }
@@ -536,6 +757,15 @@ export default {
 .spine-connector { height: 20px; }
 .spine-connector span { position: absolute; left: 2px; width: 9px; height: 9px; margin-top: 5px; border: 1px solid #8da5bc; border-radius: 50%; background: #fff; }
 .relation-empty { display: block; padding: 8px 0; color: #9aa8b7; font-size: 11px; }
+.asset-form-context { display: flex; align-items: center; margin: -4px 0 18px; padding: 13px 15px; border: 1px solid #b9cce0; background: #f0f5fa; gap: 12px; }
+.asset-form-context__mark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
+.asset-form-context strong { display: block; color: var(--smartops-command-navy); font-size: 13px; }
+.asset-form-context p { margin: 3px 0 0; color: var(--smartops-muted); font-size: 11px; line-height: 1.5; }
+.asset-form-error { margin-bottom: 16px; }
+.asset-form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.asset-form-wide { grid-column: 1 / -1; }
+.asset-form /deep/ .ant-form-item { margin-bottom: 14px; }
+.asset-form /deep/ .ant-form-item-label { padding-bottom: 4px; }
 .mapping-alert { margin-bottom: 18px; }
 
 @media (max-width: 1240px) {
@@ -564,5 +794,7 @@ export default {
   .panel-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .class-counts { max-width: 100%; flex-wrap: wrap; }
   .ledger-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .asset-form-grid { grid-template-columns: 1fr; }
+  .asset-form-wide { grid-column: auto; }
 }
 </style>
