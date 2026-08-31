@@ -50,21 +50,27 @@ Vue.mixin({
   }
 });
 
-bootstrap({ router, store, i18n, message: Vue.prototype.$message });
-
-// 页面加载时，如果 Cookie 中已有 token（F5 刷新、新标签、浏览器重启），直接启动刷新器
-if (Cookie.get('X-Token')) {
-  startTokenRefresher()
-}
-
 window.loginNoAuth = function () {
   stopTokenRefresher()
   Vue.prototype.$message.warning("登录已失效，请重新登录");
   router.push({ path: "/login" });
 };
-new Vue({
-  router,
-  store,
-  i18n,
-  render: (h) => h(App),
-}).$mount("#app");
+
+async function mountApplication() {
+  // 先刷新当前租户的权限和菜单，再让 Vue Router 处理首个 hash 路径。
+  // 这样已有登录会话在版本升级后刷新即可获得新增入口，无需退出重登。
+  await bootstrap({ router, store, i18n, message: Vue.prototype.$message });
+
+  if (Cookie.get('X-Token')) {
+    startTokenRefresher()
+  }
+
+  new Vue({
+    router,
+    store,
+    i18n,
+    render: (h) => h(App),
+  }).$mount("#app");
+}
+
+mountApplication()

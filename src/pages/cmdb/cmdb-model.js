@@ -8,7 +8,7 @@ const CLASS_META = {
 }
 
 const COMMON_FIELDS = [
-  {key: 'name', label: '资产名称', kind: 'string', required: true, wide: true},
+  {key: 'name', label: '资产名称', kind: 'string', required: true},
   {key: 'status', label: '生命周期状态', kind: 'status'},
   {key: 'business_criticity', label: '业务关键度', kind: 'criticality'},
   {key: 'move2production', label: '上线日期', kind: 'date'},

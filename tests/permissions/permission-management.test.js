@@ -58,6 +58,17 @@ test('unauthorized controls are hidden and tenant switches refresh server state'
   assert.ok(permissionIndex > -1 && reloadIndex > permissionIndex)
 })
 
+test('an authenticated application refreshes server permissions and routes before mounting', () => {
+  const bootstrap = source('src/bootstrap.js')
+  const main = source('src/main.js')
+  assert.match(bootstrap, /async function bootstrap/)
+  assert.match(bootstrap, /checkAuthorization\(\)/)
+  assert.match(bootstrap, /await getPermissionContext\(\)/)
+  assert.match(bootstrap, /await getRoutesConfig\(\)/)
+  assert.match(bootstrap, /clearCachedAccess\(store\)[\s\S]*loadRoutes\(routesConfig\)/)
+  assert.ok(main.indexOf('await bootstrap') < main.indexOf('.$mount("#app")'))
+})
+
 test('viewer-sensitive export and topology write controls declare action checks', () => {
   assert.match(source('src/pages/alarm/query.vue'), /v-auth="'export'"/)
   assert.match(source('src/pages/alarm/analysis.vue'), /\$can\('tenant\.alarms', 'export'\)/)

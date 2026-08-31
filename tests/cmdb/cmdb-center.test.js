@@ -52,6 +52,18 @@ test('CMDB page presents authoritative governed lifecycle and tenant isolation',
   assert.doesNotMatch(page, /iframe|window\.open|target="_blank"/)
 })
 
+test('CMDB asset editor is grouped, viewport-safe and never compiles a third grid column', () => {
+  const page = source('src/pages/cmdb/index.vue')
+  for (const section of ['基本信息', '责任归属', '技术与采购']) {
+    assert.ok(page.includes(section), `missing asset form section: ${section}`)
+  }
+  assert.match(page, /width="840px"/)
+  assert.match(page, /maxHeight: 'calc\(100vh - 260px\)'/)
+  assert.match(page, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(page, /grid-column-start: 1; grid-column-end: -1;/)
+  assert.doesNotMatch(page, /grid-column:\s*1\s*\/\s*-1/)
+})
+
 test('CMDB inspector presents an explicit CI to Host monitoring closure without automatic binding', () => {
   const page = source('src/pages/cmdb/index.vue')
   for (const copy of ['监控闭环', 'CMDB ↔ ZABBIX', 'iTop 期望', 'Zabbix 实际', '关联监控主机', '更换绑定', '按 CMDB 状态修复监控', '解除关联', '只建立身份关联，不复制资产数据', '最终仍需人工确认']) {

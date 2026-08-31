@@ -270,7 +270,8 @@
       :confirm-loading="assetSaving"
       :mask-closable="false"
       :destroy-on-close="true"
-      width="760px"
+      width="840px"
+      :body-style="{ maxHeight: 'calc(100vh - 260px)', overflowY: 'auto', padding: '18px 24px 20px' }"
       :ok-text="assetEditing ? '保存修改' : '新增资产'"
       @ok="saveAsset"
       @cancel="closeAssetForm"
@@ -284,44 +285,49 @@
       </div>
       <a-alert v-if="assetFormError" type="error" show-icon :message="assetFormError" class="asset-form-error" />
       <a-form-model layout="vertical" class="asset-form">
-        <div class="asset-form-grid">
-          <a-form-model-item label="资产类型" required class="asset-form-wide">
-            <a-select v-model="assetFormClass" :disabled="assetEditing" placeholder="选择资产类型" @change="changeAssetClass">
-              <a-select-option v-for="option in classOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
-            </a-select>
-          </a-form-model-item>
-          <a-form-model-item
-            v-for="field in assetFormFields"
-            :key="field.key"
-            :label="field.label"
-            :required="field.required || field.key === 'smartops_primary_owner_id' && assetForm.status === 'production'"
-            :class="{'asset-form-wide': field.wide}"
-          >
-            <a-textarea v-if="field.kind === 'text'" v-model="assetForm[field.key]" :rows="3" :max-length="4000" placeholder="记录用途、责任边界或维护说明" />
-            <a-select v-else-if="field.kind === 'status'" v-model="assetForm[field.key]">
-              <a-select-option v-for="option in assetStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
-            </a-select>
-            <a-select v-else-if="field.kind === 'criticality'" v-model="assetForm[field.key]" allow-clear placeholder="未设置">
-              <a-select-option value="high">高</a-select-option>
-              <a-select-option value="medium">中</a-select-option>
-              <a-select-option value="low">低</a-select-option>
-            </a-select>
-            <a-date-picker v-else-if="field.kind === 'date'" v-model="assetForm[field.key]" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
-            <a-select v-else-if="field.kind === 'location'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
-              <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
-            </a-select>
-            <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
-              <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
-            </a-select>
-            <a-select v-else-if="field.kind === 'team'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前 Organization 的运维团队">
-              <a-select-option v-for="option in cmdbReferences.teams" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
-            </a-select>
-            <a-select v-else-if="field.kind === 'person'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="选择当前 Organization 的人员">
-              <a-select-option v-for="option in cmdbReferences.people" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
-            </a-select>
-            <a-input v-else v-model="assetForm[field.key]" :placeholder="field.kind === 'ip' ? '例如 10.0.0.10' : `填写${field.label}`" :max-length="255" />
-          </a-form-model-item>
-        </div>
+        <section v-for="section in assetFormSections" :key="section.key" class="asset-form-section" :data-section="section.key">
+          <header class="asset-form-section__heading">
+            <span>{{ section.index }}</span>
+            <strong>{{ section.title }}</strong>
+            <small>{{ section.hint }}</small>
+          </header>
+          <div class="asset-form-grid">
+            <a-form-model-item
+              v-for="field in section.fields"
+              :key="field.key"
+              :label="field.label"
+              :required="field.required || field.key === 'smartops_primary_owner_id' && assetForm.status === 'production'"
+              :class="{'asset-form-wide': field.wide}"
+            >
+              <a-select v-if="field.kind === 'assetClass'" v-model="assetFormClass" :disabled="assetEditing" placeholder="选择资产类型" @change="changeAssetClass">
+                <a-select-option v-for="option in classOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+              </a-select>
+              <a-textarea v-else-if="field.kind === 'text'" v-model="assetForm[field.key]" :rows="3" :max-length="4000" placeholder="记录用途、责任边界或维护说明" />
+              <a-select v-else-if="field.kind === 'status'" v-model="assetForm[field.key]">
+                <a-select-option v-for="option in assetStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+              </a-select>
+              <a-select v-else-if="field.kind === 'criticality'" v-model="assetForm[field.key]" allow-clear placeholder="未设置">
+                <a-select-option value="high">高</a-select-option>
+                <a-select-option value="medium">中</a-select-option>
+                <a-select-option value="low">低</a-select-option>
+              </a-select>
+              <a-date-picker v-else-if="field.kind === 'date'" v-model="assetForm[field.key]" value-format="YYYY-MM-DD" placeholder="选择日期" style="width: 100%" />
+              <a-select v-else-if="field.kind === 'location'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
+                <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+              </a-select>
+              <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
+                <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+              </a-select>
+              <a-select v-else-if="field.kind === 'team'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前 Organization 的运维团队">
+                <a-select-option v-for="option in cmdbReferences.teams" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+              </a-select>
+              <a-select v-else-if="field.kind === 'person'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="选择当前 Organization 的人员">
+                <a-select-option v-for="option in cmdbReferences.people" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+              </a-select>
+              <a-input v-else v-model="assetForm[field.key]" :placeholder="field.kind === 'ip' ? '例如 10.0.0.10' : `填写${field.label}`" :max-length="255" />
+            </a-form-model-item>
+          </div>
+        </section>
       </a-form-model>
     </a-modal>
 
@@ -806,6 +812,21 @@ export default {
       return values.length ? values.join(' / ') : '未采集'
     },
     assetFormFields() { return editableFields(this.assetFormClass) },
+    assetFormSections() {
+      const fields = this.assetFormFields
+      const baseKeys = ['name', 'status', 'business_criticity', 'move2production', 'description']
+      const baseFields = fields.filter((field) => baseKeys.includes(field.key))
+      const responsibilityFields = fields.filter((field) => field.kind === 'team' || field.kind === 'person')
+      const technicalFields = fields.filter((field) => !baseKeys.includes(field.key) && field.kind !== 'team' && field.kind !== 'person')
+      return [
+        {
+          key: 'identity', index: '01', title: '基本信息', hint: '类型、名称与生命周期',
+          fields: [{key: '__asset_class', label: '资产类型', kind: 'assetClass', required: true}, ...baseFields],
+        },
+        {key: 'responsibility', index: '02', title: '责任归属', hint: '团队与主备负责人', fields: responsibilityFields},
+        {key: 'technical', index: '03', title: '技术与采购', hint: '识别、位置与维保信息', fields: technicalFields},
+      ].filter((section) => section.fields.length)
+    },
     assetStatusOptions() { return statusOptions(this.assetFormClass) },
   },
   created() {
@@ -1442,7 +1463,7 @@ export default {
 .detail-grid > div { min-width: 0; }
 .detail-grid dt { margin-bottom: 3px; color: var(--smartops-muted); font-size: 10px; }
 .detail-grid dd { overflow-wrap: anywhere; margin: 0; color: #243b55; font-size: 12px; line-height: 1.5; }
-.detail-grid .detail-wide { grid-column: 1 / -1; }
+.detail-grid .detail-wide { grid-column-start: 1; grid-column-end: -1; }
 
 .monitoring-section { background: #fbfcfe; }
 .monitoring-status-line { display: flex; align-items: flex-start; flex-direction: column; gap: 6px; }
@@ -1509,15 +1530,22 @@ export default {
 .spine-connector { height: 20px; }
 .spine-connector span { position: absolute; left: 2px; width: 9px; height: 9px; margin-top: 5px; border: 1px solid #8da5bc; border-radius: 50%; background: #fff; }
 .relation-empty { display: block; padding: 8px 0; color: #9aa8b7; font-size: 11px; }
-.asset-form-context { display: flex; align-items: center; margin: -4px 0 18px; padding: 13px 15px; border: 1px solid #b9cce0; background: #f0f5fa; gap: 12px; }
+.asset-form-context { display: flex; align-items: center; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #b9cce0; background: #f0f5fa; gap: 12px; }
 .asset-form-context__mark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
 .asset-form-context strong { display: block; color: var(--smartops-command-navy); font-size: 13px; }
 .asset-form-context p { margin: 3px 0 0; color: var(--smartops-muted); font-size: 11px; line-height: 1.5; }
 .asset-form-error { margin-bottom: 16px; }
-.asset-form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
-.asset-form-wide { grid-column: 1 / -1; }
-.asset-form /deep/ .ant-form-item { margin-bottom: 14px; }
+.asset-form-section { display: grid; padding: 17px 0 3px; border-top: 1px solid #d9e3ec; grid-template-columns: 118px minmax(0, 1fr); gap: 18px; }
+.asset-form-section:first-child { padding-top: 0; border-top: 0; }
+.asset-form-section__heading { display: flex; padding-top: 3px; flex-direction: column; }
+.asset-form-section__heading > span { color: var(--smartops-signal-blue); font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.asset-form-section__heading strong { margin-top: 4px; color: var(--smartops-command-navy); font-size: 13px; }
+.asset-form-section__heading small { margin-top: 3px; color: var(--smartops-muted); font-size: 9px; line-height: 1.5; }
+.asset-form-grid { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+.asset-form-wide { grid-column-start: 1; grid-column-end: -1; }
+.asset-form /deep/ .ant-form-item { min-width: 0; margin-bottom: 13px; }
 .asset-form /deep/ .ant-form-item-label { padding-bottom: 4px; }
+.asset-form /deep/ .ant-select, .asset-form /deep/ .ant-calendar-picker { width: 100%; }
 
 .admission-workspace { display: grid; min-height: calc(100vh - 108px); margin: -24px; grid-template-columns: 340px minmax(0, 1fr); background: #f3f6f9; }
 .admission-queue { min-width: 0; padding: 20px 16px; border-right: 1px solid #cdd9e4; background: #fff; }
@@ -1624,8 +1652,10 @@ export default {
   .panel-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .class-counts { max-width: 100%; flex-wrap: wrap; }
   .ledger-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .asset-form-section { display: block; }
+  .asset-form-section__heading { margin-bottom: 10px; }
   .asset-form-grid { grid-template-columns: 1fr; }
-  .asset-form-wide { grid-column: auto; }
+  .asset-form-wide { grid-column-start: auto; grid-column-end: auto; }
   .monitoring-candidate { grid-template-columns: 26px minmax(0, 1fr); }
   .monitoring-candidate__address, .monitoring-candidate__match, .monitoring-candidate__state { grid-column: 2; }
   .admission-workspace { display: block; }
