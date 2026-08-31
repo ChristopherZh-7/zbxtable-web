@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"serve": "vue-cli-service serve",
-		"build": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service build",
+		"build": "node scripts/build.js",
 		"test:portal": "node --test tests/portal/*.test.js",
 		"test:users": "node --test tests/users/*.test.js",
 		"test:tenants": "node --test tests/tenants/*.test.js",
@@ -30,7 +30,7 @@
 		"test:cmdb": "node --test tests/cmdb/*.test.js",
 		"test:visualization-templates": "node --test tests/visualization-templates/*.test.js",
 		"test:big-screen": "node --test tests/big-screen/*.test.js",
-		"test:all": "node --test tests/*/*.test.js",
+		"test:all": "node --test",
 		"lint": "vue-cli-service lint"
 	},
 	"dependencies": {
