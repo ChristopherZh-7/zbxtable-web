@@ -201,6 +201,9 @@ const routerMap = {
 	cmdbCenter: {
 		component: () => import('@/pages/cmdb'),
 	},
+	cmdbResponsibilities: {
+		component: () => import('@/pages/cmdb/responsibilities'),
+	},
 	configConsumption: {
 		component: () => import('@/pages/host/ConfigConsumption'),
 	},
