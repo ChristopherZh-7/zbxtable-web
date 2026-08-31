@@ -6,6 +6,7 @@ const test = require('node:test')
 const {
   assetKey,
   buildAssetFields,
+  candidateMatchLabel,
   classMeta,
   createAssetForm,
   detailRows,
@@ -13,6 +14,8 @@ const {
   isPlatformAdmin,
   lifecycleMeta,
   mappingForTenant,
+  monitoringHostStatusLabel,
+  monitoringStateMeta,
   relationBuckets,
   statusOptions,
   validateAssetForm,
@@ -24,7 +27,7 @@ test('CMDB route and services stay inside the SmartOps application API', () => {
   const router = source('src/router/async/router.map.js')
   const service = source('src/services/cmdb.js')
   assert.match(router, /cmdbCenter:\s*\{[\s\S]*@\/pages\/cmdb/)
-  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'getCMDBReferences', 'createCMDBAsset', 'updateCMDBAsset', 'retireCMDBAsset', 'activateCMDBAsset', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
+  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'getCMDBMonitoring', 'listCMDBMonitoringCandidates', 'bindCMDBMonitoring', 'unbindCMDBMonitoring', 'repairCMDBMonitoring', 'getCMDBReferences', 'createCMDBAsset', 'updateCMDBAsset', 'retireCMDBAsset', 'activateCMDBAsset', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
     assert.match(service, new RegExp(`function ${operation}\\b`))
   }
   assert.doesNotMatch(service, /deleteCMDBAsset|METHOD\.DELETE/)
@@ -44,6 +47,17 @@ test('CMDB page presents authoritative governed lifecycle and tenant isolation',
   assert.match(page, /canPerform\(this\.permissions, 'tenant\.cmdb', 'operate'\)/)
   assert.match(page, /organizationAssignedElsewhere/)
   assert.doesNotMatch(page, /iframe|window\.open|target="_blank"/)
+})
+
+test('CMDB inspector presents an explicit CI to Host monitoring closure without automatic binding', () => {
+  const page = source('src/pages/cmdb/index.vue')
+  for (const copy of ['监控闭环', 'CMDB ↔ ZABBIX', 'iTop 期望', 'Zabbix 实际', '关联监控主机', '更换绑定', '按 CMDB 状态修复监控', '解除关联', '只建立身份关联，不复制资产数据', '最终仍需人工确认']) {
+    assert.ok(page.includes(copy), `missing monitoring closure copy: ${copy}`)
+  }
+  assert.match(page, /v-if="canOperate" class="monitoring-actions"/)
+  assert.match(page, /v-if="monitoringReconciliation\.can_repair"/)
+  assert.match(page, /candidate\.selectable/)
+  assert.doesNotMatch(page, /自动绑定|创建 Zabbix|删除 Zabbix/)
 })
 
 test('CMDB page distinguishes empty ready, unconfigured and read failure states', () => {
@@ -96,6 +110,15 @@ test('CMDB lifecycle treats retired records as recoverable rather than deleted',
   assert.deepEqual(lifecycleMeta({status: 'obsolete'}), {retired: true, action: 'activate', label: '重新启用'})
   assert.deepEqual(lifecycleMeta({status: 'production'}), {retired: false, action: 'retire', label: '退役'})
   assert.deepEqual(statusOptions('ApplicationSolution'), [{value: 'active', label: '启用'}])
+})
+
+test('CMDB monitoring model labels reconciliation, runtime state and candidate evidence', () => {
+  assert.deepEqual(monitoringStateMeta({state: 'healthy'}), {status: 'success', label: '关联正常', tone: 'healthy'})
+  assert.equal(monitoringStateMeta({state: 'host_missing'}).status, 'error')
+  assert.equal(monitoringHostStatusLabel('enabled'), '启用')
+  assert.equal(monitoringHostStatusLabel('disabled'), '停用')
+  assert.equal(candidateMatchLabel({match_reasons: ['名称一致', '管理 IP 一致']}), '名称一致 · 管理 IP 一致')
+  assert.equal(candidateMatchLabel({match_reasons: []}), '无自动匹配依据，需人工确认')
 })
 
 test('CMDB relation spine separates upstream and downstream around the selected node', () => {

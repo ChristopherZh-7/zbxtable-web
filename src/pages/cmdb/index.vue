@@ -164,6 +164,72 @@
                 <a-empty v-if="!selectedDetailRows.length" :image-style="{height: '42px'}" description="暂无扩展属性" />
               </div>
 
+              <div class="inspector-section monitoring-section">
+                <div class="inspector-title"><span>监控闭环</span><small>CMDB ↔ ZABBIX</small></div>
+                <a-spin :spinning="monitoringLoading">
+                  <div v-if="monitoringError" class="monitoring-error">
+                    <a-alert type="error" show-icon :message="monitoringError" />
+                    <a-button size="small" icon="reload" @click="reloadMonitoring">重新对账</a-button>
+                  </div>
+                  <template v-else>
+                    <div class="monitoring-status-line">
+                      <a-badge :status="monitoringMeta.status" :text="monitoringMeta.label" />
+                      <span>{{ monitoringReconciliation.summary }}</span>
+                    </div>
+
+                    <div v-if="monitoringBound" class="monitoring-bridge" :data-tone="monitoringMeta.tone">
+                      <div class="bridge-node bridge-node--cmdb">
+                        <span>iTop 期望</span>
+                        <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.expected_host_status) }}</strong>
+                        <small>{{ selectedLifecycle.retired ? '资产已退役' : '资产在用' }}</small>
+                      </div>
+                      <div class="bridge-link" aria-hidden="true"><span></span></div>
+                      <div class="bridge-node bridge-node--zabbix">
+                        <span>Zabbix 实际</span>
+                        <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.actual_host_status) }}</strong>
+                        <small>{{ monitoring.host ? monitoring.host.address || '未采集地址' : '无法读取主机' }}</small>
+                      </div>
+                    </div>
+
+                    <div v-if="monitoring.host" class="monitoring-host">
+                      <span class="monitoring-host__icon"><a-icon type="monitor" /></span>
+                      <span>
+                        <strong>{{ monitoring.host.host_name }}</strong>
+                        <small>{{ monitoring.host.instance_name }} · Host {{ monitoring.host.host_id }}</small>
+                      </span>
+                    </div>
+                    <div v-else-if="monitoringBound" class="monitoring-host monitoring-host--stale">
+                      <span class="monitoring-host__icon"><a-icon type="disconnect" /></span>
+                      <span>
+                        <strong>已保存的监控身份不可用</strong>
+                        <small>ZID {{ monitoring.binding.zid }} · Host {{ monitoring.binding.host_id }}</small>
+                      </span>
+                    </div>
+                    <div v-else class="monitoring-unbound">
+                      <a-icon type="link" />
+                      <span><strong>尚未关联监控主机</strong><small>从当前租户 Host Group 中人工确认对应主机。</small></span>
+                    </div>
+
+                    <div v-if="monitoringIssueLabels.length" class="monitoring-issues">
+                      <a-tag v-for="issue in monitoringIssueLabels" :key="issue">{{ issue }}</a-tag>
+                    </div>
+
+                    <div v-if="canOperate" class="monitoring-actions">
+                      <a-button size="small" icon="link" @click="openMonitoringBinding">{{ monitoringBound ? '更换绑定' : '关联监控主机' }}</a-button>
+                      <a-button
+                        v-if="monitoringReconciliation.can_repair"
+                        size="small"
+                        type="primary"
+                        icon="tool"
+                        :loading="monitoringRepairing"
+                        @click="confirmMonitoringRepair"
+                      >按 CMDB 状态修复监控</a-button>
+                      <a-button v-if="monitoringBound" size="small" type="link" icon="disconnect" @click="confirmMonitoringUnbind">解除关联</a-button>
+                    </div>
+                  </template>
+                </a-spin>
+              </div>
+
               <div class="inspector-section relation-section">
                 <div class="inspector-title"><span>配置关系</span><small>DEPTH 1</small></div>
                 <div class="configuration-spine">
@@ -253,6 +319,69 @@
     </a-modal>
 
     <a-modal
+      :visible="monitoringBindingVisible"
+      :title="monitoringBound ? '更换 Zabbix 监控主机' : '关联 Zabbix 监控主机'"
+      :confirm-loading="monitoringBindingSaving"
+      :mask-closable="false"
+      :destroy-on-close="true"
+      width="760px"
+      ok-text="确认关联"
+      @ok="saveMonitoringBinding"
+      @cancel="closeMonitoringBinding"
+    >
+      <div class="monitoring-modal-context">
+        <span><a-icon type="safety-certificate" /></span>
+        <div>
+          <strong>只建立身份关联，不复制资产数据</strong>
+          <p>候选仅来自当前租户的 Host Group；名称与 IP 匹配用于排序，最终仍需人工确认。</p>
+        </div>
+      </div>
+      <a-input-search
+        v-model.trim="monitoringCandidateSearch"
+        allow-clear
+        placeholder="搜索主机名称、IP、Host ID 或 Zabbix 实例"
+        :loading="monitoringCandidatesLoading"
+        @search="loadMonitoringCandidates"
+      />
+      <a-alert v-if="monitoringCandidateError" type="error" show-icon :message="monitoringCandidateError" class="monitoring-candidate-error" />
+      <a-spin :spinning="monitoringCandidatesLoading">
+        <div class="monitoring-candidate-summary">
+          <span>当前范围 {{ monitoringCandidatePage.total }} 台主机</span>
+          <small v-if="monitoringCandidatePage.total > monitoringCandidatePage.limit">仅显示前 {{ monitoringCandidatePage.limit }} 项，请继续搜索</small>
+        </div>
+        <div v-if="monitoringCandidates.length" class="monitoring-candidate-list">
+          <div
+            v-for="candidate in monitoringCandidates"
+            :key="monitoringCandidateKey(candidate)"
+            class="monitoring-candidate"
+            :class="{'monitoring-candidate--selected': monitoringCandidateKey(candidate) === selectedMonitoringCandidateKey, 'monitoring-candidate--disabled': !candidate.selectable}"
+          >
+            <a-radio
+              :checked="monitoringCandidateKey(candidate) === selectedMonitoringCandidateKey"
+              :disabled="!candidate.selectable"
+              @change="selectMonitoringCandidate(candidate)"
+            />
+            <span class="monitoring-candidate__identity">
+              <strong>{{ candidate.host_name }}</strong>
+              <code>{{ candidate.instance_name }} / {{ candidate.host_id }}</code>
+            </span>
+            <span class="monitoring-candidate__address">{{ candidate.address || '未采集地址' }}</span>
+            <span class="monitoring-candidate__match">
+              <a-tag v-if="candidate.suggested" color="blue">推荐</a-tag>
+              <small>{{ candidateMatchLabel(candidate) }}</small>
+            </span>
+            <span class="monitoring-candidate__state">
+              <a-badge :status="candidate.enabled ? 'success' : 'default'" :text="candidate.enabled ? '启用' : '停用'" />
+              <small v-if="!candidate.selectable">已绑定 {{ candidate.bound_asset_key }}</small>
+              <small v-else-if="candidate.current">当前绑定</small>
+            </span>
+          </div>
+        </div>
+        <a-empty v-else-if="!monitoringCandidatesLoading" :image-style="{height: '48px'}" description="当前租户范围没有匹配主机" />
+      </a-spin>
+    </a-modal>
+
+    <a-modal
       :visible="mappingVisible"
       title="配置租户 CMDB 组织映射"
       :confirm-loading="mappingSaving"
@@ -293,15 +422,20 @@ import PageLayout from '@/layouts/PageLayout'
 import {listTenants} from '@/services/tenant'
 import {
   activateCMDBAsset,
+  bindCMDBMonitoring,
   createCMDBAsset,
   getCMDBAsset,
+  getCMDBMonitoring,
   getCMDBOverview,
   getCMDBReferences,
   getCMDBRelations,
   listCMDBAssets,
   listCMDBMappings,
+  listCMDBMonitoringCandidates,
   listCMDBOrganizations,
+  repairCMDBMonitoring,
   retireCMDBAsset,
+  unbindCMDBMonitoring,
   updateCMDBAsset,
   upsertCMDBMapping,
 } from '@/services/cmdb'
@@ -309,6 +443,7 @@ import {
   CLASS_META,
   assetKey,
   buildAssetFields,
+  candidateMatchLabel,
   classMeta,
   createAssetForm,
   detailRows,
@@ -316,6 +451,8 @@ import {
   isPlatformAdmin,
   lifecycleMeta,
   mappingForTenant,
+  monitoringHostStatusLabel,
+  monitoringStateMeta,
   relationBuckets,
   statusOptions,
   statusMeta,
@@ -325,6 +462,14 @@ import {
 const {canPerform} = require('@/utils/permission-policy')
 
 const emptyAssetPage = () => ({items: [], total: 0, page: 1, page_size: 30, counts: {}})
+const emptyMonitoring = () => ({
+  binding: null,
+  host: null,
+  reconciliation: {
+    state: 'unbound', label: '未关联', severity: 'default', summary: '尚未选择对应的 Zabbix 监控主机。',
+    issues: [], can_repair: false, expected_host_status: 'enabled', actual_host_status: '',
+  },
+})
 
 export default {
   name: 'CMDBCenter',
@@ -334,6 +479,18 @@ export default {
       loading: false,
       assetsLoading: false,
       detailLoading: false,
+      monitoringLoading: false,
+      monitoringError: '',
+      monitoring: emptyMonitoring(),
+      monitoringBindingVisible: false,
+      monitoringBindingSaving: false,
+      monitoringRepairing: false,
+      monitoringCandidatesLoading: false,
+      monitoringCandidateError: '',
+      monitoringCandidateSearch: '',
+      monitoringCandidates: [],
+      monitoringCandidatePage: {total: 0, limit: 200},
+      selectedMonitoringCandidate: null,
       overview: {state: 'loading', message: '', total: 0, counts: {}},
       assets: [],
       assetPage: emptyAssetPage(),
@@ -400,6 +557,21 @@ export default {
     selectedDetailRows() { return detailRows(this.selectedDetail || this.selectedAsset) },
     relationView() { return relationBuckets(this.relations, this.selectedDetail || this.selectedAsset) },
     selectedLifecycle() { return lifecycleMeta(this.selectedDetail || this.selectedAsset) },
+    monitoringReconciliation() { return this.monitoring && this.monitoring.reconciliation || emptyMonitoring().reconciliation },
+    monitoringMeta() { return monitoringStateMeta(this.monitoringReconciliation) },
+    monitoringBound() { return Boolean(this.monitoring && this.monitoring.binding) },
+    monitoringIssueLabels() {
+      const labels = {
+        name_drift: '名称不一致',
+        ip_drift: '管理 IP 不一致',
+        active_ci_host_disabled: '在用资产 / 监控停用',
+        retired_ci_host_enabled: '退役资产 / 监控启用',
+        host_missing: '主机不存在',
+        host_out_of_scope: '主机越出租户范围',
+      }
+      return (this.monitoringReconciliation.issues || []).map((issue) => labels[issue] || issue)
+    },
+    selectedMonitoringCandidateKey() { return this.monitoringCandidateKey(this.selectedMonitoringCandidate) },
     assetFormFields() { return editableFields(this.assetFormClass) },
     assetStatusOptions() { return statusOptions(this.assetFormClass) },
   },
@@ -408,7 +580,9 @@ export default {
   },
   methods: {
     assetKey,
+    candidateMatchLabel,
     classMeta,
+    monitoringHostStatusLabel,
     statusMeta,
     unwrap(response) {
       const result = response && response.data
@@ -465,6 +639,9 @@ export default {
       const sequence = ++this.detailSequence
       this.selectedAsset = asset
       this.detailLoading = true
+      this.monitoring = emptyMonitoring()
+      this.monitoringError = ''
+      this.loadMonitoring(asset, sequence)
       try {
         const [detailResponse, relationResponse] = await Promise.all([
           getCMDBAsset(asset.class, asset.id),
@@ -502,6 +679,149 @@ export default {
       this.selectedDetail = null
       this.relations = {nodes: [], edges: [], depth: 1}
       this.detailLoading = false
+      this.monitoringLoading = false
+      this.monitoringError = ''
+      this.monitoring = emptyMonitoring()
+      this.closeMonitoringBinding()
+    },
+    async loadMonitoring(asset, sequence) {
+      this.monitoringLoading = true
+      this.monitoringError = ''
+      try {
+        const data = this.unwrap(await getCMDBMonitoring(asset.class, asset.id))
+        if (sequence !== this.detailSequence) return
+        this.monitoring = data || emptyMonitoring()
+      } catch (error) {
+        if (sequence !== this.detailSequence) return
+        this.monitoring = emptyMonitoring()
+        this.monitoringError = error.message || '监控对账失败，请稍后重试。'
+      } finally {
+        if (sequence === this.detailSequence) this.monitoringLoading = false
+      }
+    },
+    reloadMonitoring() {
+      if (!this.selectedAsset) return
+      this.loadMonitoring(this.selectedAsset, this.detailSequence)
+    },
+    monitoringCandidateKey(candidate) {
+      if (!candidate || !candidate.host_id || !candidate.zid) return ''
+      return `${candidate.zid}:${candidate.host_id}`
+    },
+    async openMonitoringBinding() {
+      if (!this.canOperate || !this.selectedAsset) return
+      this.monitoringBindingVisible = true
+      this.monitoringCandidateSearch = ''
+      this.monitoringCandidateError = ''
+      this.selectedMonitoringCandidate = null
+      await this.loadMonitoringCandidates()
+      if (this.monitoringBound) {
+        const currentKey = `${this.monitoring.binding.zid}:${this.monitoring.binding.host_id}`
+        this.selectedMonitoringCandidate = this.monitoringCandidates.find((candidate) => this.monitoringCandidateKey(candidate) === currentKey) || null
+      }
+    },
+    closeMonitoringBinding() {
+      if (this.monitoringBindingSaving) return
+      this.monitoringBindingVisible = false
+      this.monitoringCandidateError = ''
+      this.monitoringCandidateSearch = ''
+      this.monitoringCandidates = []
+      this.monitoringCandidatePage = {total: 0, limit: 200}
+      this.selectedMonitoringCandidate = null
+    },
+    async loadMonitoringCandidates() {
+      if (!this.selectedAsset) return
+      this.monitoringCandidatesLoading = true
+      this.monitoringCandidateError = ''
+      try {
+        const data = this.unwrap(await listCMDBMonitoringCandidates(this.selectedAsset.class, this.selectedAsset.id, {
+          search: this.monitoringCandidateSearch || undefined,
+        })) || {items: [], total: 0, limit: 200}
+        this.monitoringCandidates = Array.isArray(data.items) ? data.items : []
+        this.monitoringCandidatePage = {total: Number(data.total) || 0, limit: Number(data.limit) || 200}
+        if (this.selectedMonitoringCandidate) {
+          const selectedKey = this.monitoringCandidateKey(this.selectedMonitoringCandidate)
+          this.selectedMonitoringCandidate = this.monitoringCandidates.find((candidate) => this.monitoringCandidateKey(candidate) === selectedKey) || null
+        }
+      } catch (error) {
+        this.monitoringCandidates = []
+        this.monitoringCandidatePage = {total: 0, limit: 200}
+        this.monitoringCandidateError = error.message || '监控主机候选加载失败'
+      } finally {
+        this.monitoringCandidatesLoading = false
+      }
+    },
+    selectMonitoringCandidate(candidate) {
+      if (!candidate || !candidate.selectable) return
+      this.selectedMonitoringCandidate = candidate
+    },
+    async saveMonitoringBinding() {
+      if (!this.canOperate || !this.selectedAsset || !this.selectedMonitoringCandidate) {
+        this.monitoringCandidateError = '请选择一台可关联的 Zabbix 主机'
+        return
+      }
+      this.monitoringBindingSaving = true
+      this.monitoringCandidateError = ''
+      try {
+        this.monitoring = this.unwrap(await bindCMDBMonitoring(
+          this.selectedAsset.class,
+          this.selectedAsset.id,
+          this.selectedMonitoringCandidate.zid,
+          this.selectedMonitoringCandidate.host_id,
+        )) || emptyMonitoring()
+        this.monitoringError = ''
+        this.monitoringBindingVisible = false
+        this.$message.success('Zabbix 监控主机已关联')
+      } catch (error) {
+        this.monitoringCandidateError = error.businessCode === 1013
+          ? '该监控主机已绑定其他 CMDB 资产，请选择其他主机。'
+          : error.message || '监控主机关联失败'
+      } finally {
+        this.monitoringBindingSaving = false
+      }
+    },
+    confirmMonitoringUnbind() {
+      if (!this.canOperate || !this.selectedAsset || !this.monitoringBound) return
+      this.$confirm({
+        title: '解除这项监控关联？',
+        content: '只删除 SmartOps 中的身份关联，不会删除 iTop 资产或 Zabbix 主机。',
+        okText: '解除关联',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: () => this.runMonitoringUnbind(),
+      })
+    },
+    async runMonitoringUnbind() {
+      try {
+        this.monitoring = this.unwrap(await unbindCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id)) || emptyMonitoring()
+        this.monitoringError = ''
+        this.$message.success('Zabbix 监控关联已解除')
+      } catch (error) {
+        this.$message.error(error.message || '解除监控关联失败')
+      }
+    },
+    confirmMonitoringRepair() {
+      if (!this.canOperate || !this.selectedAsset || !this.monitoringReconciliation.can_repair) return
+      const expected = monitoringHostStatusLabel(this.monitoringReconciliation.expected_host_status)
+      this.$confirm({
+        title: `将 Zabbix 监控调整为“${expected}”？`,
+        content: '本操作只修改 Zabbix Host 的启停状态，不会覆盖双方名称、IP、接口、模板或资产属性。',
+        okText: '按 CMDB 状态修复监控',
+        cancelText: '取消',
+        onOk: () => this.runMonitoringRepair(),
+      })
+    },
+    async runMonitoringRepair() {
+      this.monitoringRepairing = true
+      try {
+        this.monitoring = this.unwrap(await repairCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id)) || emptyMonitoring()
+        this.monitoringError = ''
+        this.$message.success('Zabbix 监控状态已按 CMDB 修复')
+      } catch (error) {
+        this.$message.error(error.message || '监控状态修复失败')
+        await this.loadMonitoring(this.selectedAsset, this.detailSequence)
+      } finally {
+        this.monitoringRepairing = false
+      }
     },
     async ensureCMDBReferences() {
       if (this.referencesLoaded) return
@@ -741,6 +1061,55 @@ export default {
 .detail-grid dd { overflow-wrap: anywhere; margin: 0; color: #243b55; font-size: 12px; line-height: 1.5; }
 .detail-grid .detail-wide { grid-column: 1 / -1; }
 
+.monitoring-section { background: #fbfcfe; }
+.monitoring-status-line { display: flex; align-items: flex-start; flex-direction: column; gap: 6px; }
+.monitoring-status-line > span:last-child { color: var(--smartops-muted); font-size: 11px; line-height: 1.55; }
+.monitoring-bridge { display: grid; align-items: stretch; margin-top: 13px; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); }
+.bridge-node { min-width: 0; padding: 10px; border: 1px solid #ccd9e5; background: #fff; }
+.bridge-node > span { display: block; color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .07em; }
+.bridge-node strong { display: block; margin: 4px 0 2px; color: var(--smartops-command-navy); font-size: 14px; }
+.bridge-node small { display: block; overflow: hidden; color: #76879a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.bridge-node--cmdb { border-left: 3px solid var(--smartops-signal-blue); }
+.bridge-link { position: relative; display: flex; align-items: center; justify-content: center; }
+.bridge-link::before { width: 100%; height: 1px; background: #90a7bc; content: ''; }
+.bridge-link span { position: absolute; width: 9px; height: 9px; border: 2px solid #90a7bc; border-radius: 50%; background: #fbfcfe; }
+.monitoring-bridge[data-tone='healthy'] .bridge-link::before { background: #51a37c; }
+.monitoring-bridge[data-tone='healthy'] .bridge-link span { border-color: #51a37c; }
+.monitoring-bridge[data-tone='warning'] .bridge-link::before { background: #d49a35; }
+.monitoring-bridge[data-tone='warning'] .bridge-link span { border-color: #d49a35; }
+.monitoring-bridge[data-tone='error'] .bridge-link::before { background: #c55b5b; }
+.monitoring-bridge[data-tone='error'] .bridge-link span { border-color: #c55b5b; }
+.monitoring-host, .monitoring-unbound { display: flex; align-items: center; margin-top: 11px; padding: 9px 10px; border: 1px solid #dae3ec; background: #fff; gap: 9px; }
+.monitoring-host > span:last-child, .monitoring-unbound > span:last-child { display: flex; min-width: 0; flex-direction: column; }
+.monitoring-host strong, .monitoring-unbound strong { overflow: hidden; color: #243b55; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.monitoring-host small, .monitoring-unbound small { color: var(--smartops-muted); font-size: 9px; line-height: 1.5; }
+.monitoring-host__icon, .monitoring-unbound > .anticon { display: inline-flex; align-items: center; justify-content: center; width: 29px; height: 29px; flex: 0 0 29px; background: #eaf2f9; color: var(--smartops-signal-blue); }
+.monitoring-host--stale { border-color: #e7c8c8; background: #fff8f8; }
+.monitoring-host--stale .monitoring-host__icon { background: #fae8e8; color: #b94f4f; }
+.monitoring-unbound { border-style: dashed; }
+.monitoring-issues { display: flex; margin-top: 9px; flex-wrap: wrap; gap: 4px; }
+.monitoring-issues .ant-tag { margin: 0; color: #765716; }
+.monitoring-actions { display: flex; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 6px; }
+.monitoring-actions .ant-btn { margin: 0; }
+.monitoring-error .ant-btn { margin-top: 10px; }
+
+.monitoring-modal-context { display: flex; align-items: center; margin: -4px 0 16px; padding: 13px 15px; border: 1px solid #bfd0df; background: #f1f6fa; gap: 12px; }
+.monitoring-modal-context > span { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
+.monitoring-modal-context strong { display: block; color: var(--smartops-command-navy); font-size: 13px; }
+.monitoring-modal-context p { margin: 3px 0 0; color: var(--smartops-muted); font-size: 11px; line-height: 1.5; }
+.monitoring-candidate-error { margin-top: 12px; }
+.monitoring-candidate-summary { display: flex; justify-content: space-between; min-height: 38px; padding-top: 12px; color: var(--smartops-muted); font-size: 11px; }
+.monitoring-candidate-list { max-height: 430px; overflow: auto; border-top: 1px solid var(--smartops-line); }
+.monitoring-candidate { display: grid; align-items: center; min-height: 72px; padding: 10px 8px; border-bottom: 1px solid var(--smartops-line); grid-template-columns: 28px minmax(145px, 1.4fr) minmax(105px, .9fr) minmax(155px, 1.2fr) 90px; gap: 10px; }
+.monitoring-candidate--selected { background: #eef5fb; box-shadow: inset 3px 0 0 var(--smartops-signal-blue); }
+.monitoring-candidate--disabled { background: #fafafa; opacity: .68; }
+.monitoring-candidate__identity, .monitoring-candidate__match, .monitoring-candidate__state { display: flex; min-width: 0; flex-direction: column; }
+.monitoring-candidate__identity strong { overflow: hidden; color: var(--smartops-command-navy); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.monitoring-candidate__identity code, .monitoring-candidate__address { color: #728498; font-family: var(--smartops-font-mono); font-size: 10px; }
+.monitoring-candidate__match { align-items: flex-start; gap: 3px; }
+.monitoring-candidate__match .ant-tag { margin: 0; }
+.monitoring-candidate__match small, .monitoring-candidate__state small { color: var(--smartops-muted); font-size: 9px; line-height: 1.45; }
+
 .configuration-spine { position: relative; padding-left: 17px; }
 .configuration-spine::before { position: absolute; top: 19px; bottom: 19px; left: 6px; width: 1px; background: #a9bbcd; content: ''; }
 .relation-lane { position: relative; }
@@ -796,5 +1165,7 @@ export default {
   .ledger-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
   .asset-form-grid { grid-template-columns: 1fr; }
   .asset-form-wide { grid-column: auto; }
+  .monitoring-candidate { grid-template-columns: 26px minmax(0, 1fr); }
+  .monitoring-candidate__address, .monitoring-candidate__match, .monitoring-candidate__state { grid-column: 2; }
 }
 </style>

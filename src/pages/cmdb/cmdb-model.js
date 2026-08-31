@@ -82,6 +82,16 @@ const DETAIL_FIELDS = [
   ['description', '说明'],
 ]
 
+const MONITORING_STATE_META = {
+  unbound: {status: 'default', label: '未关联', tone: 'neutral'},
+  healthy: {status: 'success', label: '关联正常', tone: 'healthy'},
+  identity_drift: {status: 'warning', label: '身份信息有差异', tone: 'warning'},
+  active_ci_host_disabled: {status: 'warning', label: '监控已停用', tone: 'warning'},
+  retired_ci_host_enabled: {status: 'warning', label: '退役后仍在监控', tone: 'warning'},
+  host_missing: {status: 'error', label: '主机不存在', tone: 'error'},
+  host_out_of_scope: {status: 'error', label: '主机已越界', tone: 'error'},
+}
+
 function classMeta(assetClass) {
   return CLASS_META[assetClass] || {label: assetClass || '未知类型', icon: 'database', color: 'default'}
 }
@@ -150,6 +160,23 @@ function statusOptions(assetClass) {
   ]
 }
 
+function monitoringStateMeta(reconciliation) {
+  const state = String(reconciliation && reconciliation.state || 'unbound')
+  return MONITORING_STATE_META[state] || {status: 'processing', label: '状态未知', tone: 'neutral'}
+}
+
+function monitoringHostStatusLabel(status) {
+  if (status === 'enabled') return '启用'
+  if (status === 'disabled') return '停用'
+  return '未知'
+}
+
+function candidateMatchLabel(candidate) {
+  const reasons = candidate && Array.isArray(candidate.match_reasons) ? candidate.match_reasons : []
+  if (reasons.length) return reasons.join(' · ')
+  return '无自动匹配依据，需人工确认'
+}
+
 function editableFields(assetClass) {
   if (!CLASS_META[assetClass]) return []
   return [...COMMON_FIELDS, ...(CLASS_FIELDS[assetClass] || [])]
@@ -203,6 +230,9 @@ module.exports = {
   isPlatformAdmin,
   lifecycleMeta,
   mappingForTenant,
+  monitoringHostStatusLabel,
+  monitoringStateMeta,
+  candidateMatchLabel,
   relationBuckets,
   statusOptions,
   statusMeta,
