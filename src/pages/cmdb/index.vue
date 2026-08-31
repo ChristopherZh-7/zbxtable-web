@@ -10,6 +10,7 @@
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
           <a-button v-if="platformAdmin" icon="setting" @click="openMapping">配置组织映射</a-button>
+          <a-button v-if="sourceReady" data-testid="cmdb-admission-open" icon="radar-chart" @click="openAdmissions">发现候选入库</a-button>
           <a-button v-if="canCreate && sourceReady" type="primary" icon="plus" @click="openCreateAsset">新增资产</a-button>
         </div>
       </header>
@@ -293,7 +294,7 @@
             v-for="field in assetFormFields"
             :key="field.key"
             :label="field.label"
-            :required="field.required"
+            :required="field.required || field.key === 'smartops_primary_owner_id' && assetForm.status === 'production'"
             :class="{'asset-form-wide': field.wide}"
           >
             <a-textarea v-if="field.kind === 'text'" v-model="assetForm[field.key]" :rows="3" :max-length="4000" placeholder="记录用途、责任边界或维护说明" />
@@ -312,11 +313,204 @@
             <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
               <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
             </a-select>
+            <a-select v-else-if="field.kind === 'team'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前 Organization 的运维团队">
+              <a-select-option v-for="option in cmdbReferences.teams" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+            </a-select>
+            <a-select v-else-if="field.kind === 'person'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="选择当前 Organization 的人员">
+              <a-select-option v-for="option in cmdbReferences.people" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+            </a-select>
             <a-input v-else v-model="assetForm[field.key]" :placeholder="field.kind === 'ip' ? '例如 10.0.0.10' : `填写${field.label}`" :max-length="255" />
           </a-form-model-item>
         </div>
       </a-form-model>
     </a-modal>
+
+    <a-drawer
+      :visible="admissionVisible"
+      title="发现候选入库"
+      width="1080"
+      :destroy-on-close="true"
+      :mask-closable="!admissionSaving && !admissionRetrying"
+      @close="closeAdmissions"
+    >
+      <div class="admission-workspace">
+        <aside class="admission-queue">
+          <div class="admission-queue__heading">
+            <span class="smartops-section-label">ZABBIX CLASSIFIED HOSTS</span>
+            <strong>当前租户发现候选</strong>
+            <small>仅展示 F26 已有模板分类证据的 Host</small>
+          </div>
+          <div class="admission-filters">
+            <a-input-search
+              v-model.trim="admissionSearch"
+              allow-clear
+              placeholder="搜索主机、IP、Host ID"
+              :loading="admissionLoading"
+              @search="loadAdmissions"
+            />
+            <a-select v-model="admissionStateFilter" allow-clear placeholder="全部阶段" @change="loadAdmissions">
+              <a-select-option value="ready">待人工审核</a-select-option>
+              <a-select-option value="binding_pending">监控待关联</a-select-option>
+              <a-select-option value="conflict">身份冲突</a-select-option>
+              <a-select-option value="completed">闭环完成</a-select-option>
+            </a-select>
+          </div>
+          <a-alert v-if="admissionError" type="error" show-icon :message="admissionError" class="admission-error" />
+          <a-spin :spinning="admissionLoading">
+            <div class="admission-queue__summary">
+              <span>{{ admissionPage.total }} 台候选主机</span>
+              <a-button type="link" size="small" icon="reload" @click="loadAdmissions">刷新证据</a-button>
+            </div>
+            <div v-if="admissionCandidates.length" class="admission-list">
+              <button
+                v-for="candidate in admissionCandidates"
+                :key="admissionCandidateKey(candidate)"
+                type="button"
+                data-testid="cmdb-admission-candidate"
+                class="admission-card"
+                :class="{'admission-card--selected': admissionCandidateKey(candidate) === selectedAdmissionKey}"
+                @click="selectAdmission(candidate)"
+              >
+                <span class="admission-card__top">
+                  <strong>{{ candidate.host_name }}</strong>
+                  <a-badge :status="admissionStateMeta(candidate).status" :text="admissionStateMeta(candidate).label" />
+                </span>
+                <code>{{ candidate.instance_name }} / Host {{ candidate.host_id }}</code>
+                <span class="admission-card__facts">
+                  <span>{{ candidate.address || '未采集 IP' }}</span>
+                  <a-tag :color="classMeta(candidate.suggested_class).color">建议 {{ classMeta(candidate.suggested_class).label }}</a-tag>
+                </span>
+                <small>{{ admissionEvidenceLabel(candidate) }}</small>
+              </button>
+            </div>
+            <a-empty v-else-if="!admissionLoading" :image-style="{height: '46px'}" description="当前条件下没有发现候选" />
+          </a-spin>
+        </aside>
+
+        <section class="admission-review">
+          <div v-if="!selectedAdmission" class="admission-placeholder">
+            <a-icon type="radar-chart" />
+            <strong>选择一台候选主机</strong>
+            <span>在这里核对发现证据、责任引用与入库阶段。</span>
+          </div>
+          <template v-else>
+            <header class="admission-review__header">
+              <div>
+                <span class="smartops-section-label">GOVERNED ADMISSION</span>
+                <h2>{{ selectedAdmission.host_name }}</h2>
+                <p>{{ selectedAdmission.instance_name }} · Host {{ selectedAdmission.host_id }} · {{ selectedAdmission.address || '未采集 IP' }}</p>
+              </div>
+              <a-badge :status="selectedAdmissionMeta.status" :text="selectedAdmissionMeta.label" />
+            </header>
+
+            <div class="admission-stage-rail" aria-label="发现候选入库阶段">
+              <div v-for="(stage, index) in admissionStages" :key="stage.label" class="admission-stage" :data-state="admissionStageState(index)">
+                <span class="admission-stage__mark"><a-icon :type="admissionStageIcon(index)" /></span>
+                <span><b>0{{ index + 1 }}</b><strong>{{ stage.label }}</strong><small>{{ stage.caption }}</small></span>
+              </div>
+            </div>
+
+            <div class="admission-evidence">
+              <div class="admission-evidence__facts">
+                <span><small>主接口</small><strong>{{ selectedAdmission.interface_type || '未知' }} / {{ selectedAdmission.interface_port || '—' }}</strong></span>
+                <span><small>可用性</small><strong>{{ selectedAdmission.availability || '未知' }}</strong></span>
+                <span><small>Inventory</small><strong>{{ admissionInventorySummary }}</strong></span>
+              </div>
+              <div class="admission-classifications">
+                <div v-for="item in selectedAdmission.classifications" :key="item.code">
+                  <a-tag color="blue">{{ item.category }}</a-tag>
+                  <span><strong>{{ item.product || item.template_name || '已分类' }}</strong><small>{{ item.evidence || item.template_name }}</small></span>
+                </div>
+              </div>
+            </div>
+
+            <a-alert
+              v-if="selectedAdmission.state === 'ready' && !canCreate"
+              type="info"
+              show-icon
+              message="当前角色可查看发现和入库状态，不能确认入库。"
+              class="admission-policy-alert"
+            />
+
+            <div v-if="selectedAdmission.state === 'ready' && canCreate" class="admission-form-panel">
+              <div class="admission-section-title">
+                <span><strong>人工确认资产与责任</strong><small>引用只来自当前 iTop Organization</small></span>
+                <a-tag color="blue">类型建议可修改</a-tag>
+              </div>
+              <a-alert v-if="admissionFormError" type="error" show-icon :message="admissionFormError" class="admission-form-error" />
+              <a-form-model layout="vertical" class="asset-form">
+                <div class="asset-form-grid">
+                  <a-form-model-item label="资产类型" required class="asset-form-wide">
+                    <a-select v-model="admissionFormClass" @change="changeAdmissionClass">
+                      <a-select-option v-for="option in admissionClassOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+                    </a-select>
+                  </a-form-model-item>
+                  <a-form-model-item
+                    v-for="field in admissionFormFields"
+                    :key="field.key"
+                    :label="field.label"
+                    :required="field.required || field.key === 'smartops_primary_owner_id' && admissionForm.status === 'production'"
+                    :class="{'asset-form-wide': field.wide}"
+                  >
+                    <a-textarea v-if="field.kind === 'text'" v-model="admissionForm[field.key]" :rows="3" :max-length="4000" />
+                    <a-select v-else-if="field.kind === 'status'" v-model="admissionForm[field.key]">
+                      <a-select-option v-for="option in admissionStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</a-select-option>
+                    </a-select>
+                    <a-select v-else-if="field.kind === 'criticality'" v-model="admissionForm[field.key]" allow-clear placeholder="未设置">
+                      <a-select-option value="high">高</a-select-option><a-select-option value="medium">中</a-select-option><a-select-option value="low">低</a-select-option>
+                    </a-select>
+                    <a-date-picker v-else-if="field.kind === 'date'" v-model="admissionForm[field.key]" value-format="YYYY-MM-DD" style="width: 100%" />
+                    <a-select v-else-if="field.kind === 'location'" v-model="admissionForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
+                      <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                    <a-select v-else-if="field.kind === 'networkType'" v-model="admissionForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
+                      <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                    <a-select v-else-if="field.kind === 'team'" v-model="admissionForm[field.key]" data-testid="cmdb-admission-team" show-search option-filter-prop="children" placeholder="必选：运维团队">
+                      <a-select-option v-for="option in cmdbReferences.teams" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                    <a-select v-else-if="field.kind === 'person'" v-model="admissionForm[field.key]" :data-testid="field.key === 'smartops_primary_owner_id' ? 'cmdb-admission-primary-owner' : 'cmdb-admission-backup-owner'" allow-clear show-search option-filter-prop="children" placeholder="选择负责人">
+                      <a-select-option v-for="option in cmdbReferences.people" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                    <a-input v-else v-model="admissionForm[field.key]" :max-length="255" />
+                  </a-form-model-item>
+                  <a-form-model-item label="所属应用（可选）" class="asset-form-wide">
+                    <a-select v-model="admissionApplicationID" data-testid="cmdb-admission-application" allow-clear show-search option-filter-prop="children" placeholder="可选：写入 iTop 标准应用关系">
+                      <a-select-option v-for="option in cmdbReferences.applications" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                  </a-form-model-item>
+                </div>
+              </a-form-model>
+              <div class="admission-submit-row">
+                <span><a-icon type="safety-certificate" /> 先写 iTop，再建立 F49 监控关联；部分失败会保留 CI 并显示可重试阶段。</span>
+                <a-button data-testid="cmdb-admission-submit" type="primary" icon="check" :loading="admissionSaving" @click="saveAdmission">确认入库并关联</a-button>
+              </div>
+            </div>
+
+            <div v-else-if="selectedAdmission.state === 'binding_pending'" class="admission-result admission-result--pending">
+              <span class="admission-result__icon"><a-icon type="clock-circle" /></span>
+              <div>
+                <strong>iTop 已建档，监控待关联</strong>
+                <p>{{ selectedAdmission.state_message }}</p>
+                <small>{{ selectedAdmission.asset_key }} · {{ selectedAdmission.asset && selectedAdmission.asset.smartops_operations_team_name || '责任已保存' }}</small>
+              </div>
+              <a-button v-if="canOperate" data-testid="cmdb-admission-retry" type="primary" icon="sync" :loading="admissionRetrying" @click="retryAdmission">重试 Zabbix 关联</a-button>
+            </div>
+
+            <div v-else-if="selectedAdmission.state === 'completed'" class="admission-result admission-result--completed">
+              <span class="admission-result__icon"><a-icon type="check" /></span>
+              <div><strong>责任与监控已闭环</strong><p>{{ selectedAdmission.state_message }}</p><small>{{ selectedAdmission.asset_key }}</small></div>
+              <a-button icon="database" @click="showAdmissionAsset">查看 CMDB 资产</a-button>
+            </div>
+
+            <div v-else-if="selectedAdmission.state === 'conflict'" class="admission-result admission-result--conflict">
+              <span class="admission-result__icon"><a-icon type="warning" /></span>
+              <div><strong>需要人工处理身份冲突</strong><p>{{ selectedAdmission.state_message }}</p><small>不会覆盖现有 CI 或 Zabbix 绑定。</small></div>
+            </div>
+          </template>
+        </section>
+      </div>
+    </a-drawer>
 
     <a-modal
       :visible="monitoringBindingVisible"
@@ -422,6 +616,7 @@ import PageLayout from '@/layouts/PageLayout'
 import {listTenants} from '@/services/tenant'
 import {
   activateCMDBAsset,
+  admitCMDBCandidate,
   bindCMDBMonitoring,
   createCMDBAsset,
   getCMDBAsset,
@@ -430,10 +625,12 @@ import {
   getCMDBReferences,
   getCMDBRelations,
   listCMDBAssets,
+  listCMDBAdmissions,
   listCMDBMappings,
   listCMDBMonitoringCandidates,
   listCMDBOrganizations,
   repairCMDBMonitoring,
+  retryCMDBAdmission,
   retireCMDBAsset,
   unbindCMDBMonitoring,
   updateCMDBAsset,
@@ -441,11 +638,14 @@ import {
 } from '@/services/cmdb'
 import {
   CLASS_META,
+  admissionEvidenceLabel,
+  admissionStateMeta,
   assetKey,
   buildAssetFields,
   candidateMatchLabel,
   classMeta,
   createAssetForm,
+  createAdmissionForm,
   detailRows,
   editableFields,
   isPlatformAdmin,
@@ -462,6 +662,7 @@ import {
 const {canPerform} = require('@/utils/permission-policy')
 
 const emptyAssetPage = () => ({items: [], total: 0, page: 1, page_size: 30, counts: {}})
+const emptyAdmissionPage = () => ({items: [], total: 0, limit: 200})
 const emptyMonitoring = () => ({
   binding: null,
   host: null,
@@ -491,6 +692,26 @@ export default {
       monitoringCandidates: [],
       monitoringCandidatePage: {total: 0, limit: 200},
       selectedMonitoringCandidate: null,
+      admissionVisible: false,
+      admissionLoading: false,
+      admissionSaving: false,
+      admissionRetrying: false,
+      admissionError: '',
+      admissionFormError: '',
+      admissionSearch: '',
+      admissionStateFilter: undefined,
+      admissionCandidates: [],
+      admissionPage: emptyAdmissionPage(),
+      selectedAdmission: null,
+      admissionFormClass: 'Server',
+      admissionForm: createAssetForm('Server'),
+      admissionApplicationID: undefined,
+      admissionStages: [
+        {label: '发现主机', caption: 'Zabbix 模板证据'},
+        {label: '责任确认', caption: '团队与主备负责人'},
+        {label: 'iTop 建档', caption: 'CI 与应用关系'},
+        {label: 'Zabbix 关联', caption: '唯一 Host 身份'},
+      ],
       overview: {state: 'loading', message: '', total: 0, counts: {}},
       assets: [],
       assetPage: emptyAssetPage(),
@@ -507,7 +728,7 @@ export default {
       assetForm: createAssetForm('Server'),
       assetFormRevision: '',
       assetFormError: '',
-      cmdbReferences: {locations: [], network_device_types: []},
+      cmdbReferences: {locations: [], network_device_types: [], teams: [], people: [], applications: []},
       referencesLoaded: false,
       mappingVisible: false,
       mappingLoading: false,
@@ -572,6 +793,18 @@ export default {
       return (this.monitoringReconciliation.issues || []).map((issue) => labels[issue] || issue)
     },
     selectedMonitoringCandidateKey() { return this.monitoringCandidateKey(this.selectedMonitoringCandidate) },
+    selectedAdmissionKey() { return this.admissionCandidateKey(this.selectedAdmission) },
+    selectedAdmissionMeta() { return admissionStateMeta(this.selectedAdmission) },
+    admissionClassOptions() {
+      return ['Server', 'VirtualMachine', 'NetworkDevice'].map((value) => ({value, label: CLASS_META[value].label}))
+    },
+    admissionFormFields() { return editableFields(this.admissionFormClass) },
+    admissionStatusOptions() { return statusOptions(this.admissionFormClass) },
+    admissionInventorySummary() {
+      const inventory = this.selectedAdmission && this.selectedAdmission.inventory || {}
+      const values = [inventory.type, inventory.vendor, inventory.model, inventory.os, inventory.serial_no, inventory.location].filter(Boolean)
+      return values.length ? values.join(' / ') : '未采集'
+    },
     assetFormFields() { return editableFields(this.assetFormClass) },
     assetStatusOptions() { return statusOptions(this.assetFormClass) },
   },
@@ -579,6 +812,8 @@ export default {
     this.loadOverviewAndAssets()
   },
   methods: {
+    admissionEvidenceLabel,
+    admissionStateMeta,
     assetKey,
     candidateMatchLabel,
     classMeta,
@@ -823,12 +1058,160 @@ export default {
         this.monitoringRepairing = false
       }
     },
+    admissionCandidateKey(candidate) {
+      if (!candidate || !candidate.zid || !candidate.host_id) return ''
+      return `${candidate.zid}:${candidate.host_id}`
+    },
+    async openAdmissions() {
+      if (!this.sourceReady) return
+      this.admissionVisible = true
+      this.admissionError = ''
+      if (this.canCreate) {
+        try {
+          await this.ensureCMDBReferences()
+        } catch (error) {
+          this.admissionError = error.message || 'iTop 责任引用加载失败'
+        }
+      }
+      await this.loadAdmissions()
+    },
+    closeAdmissions() {
+      if (this.admissionSaving || this.admissionRetrying) return
+      this.admissionVisible = false
+      this.admissionFormError = ''
+    },
+    async loadAdmissions() {
+      const retainedKey = this.selectedAdmissionKey
+      this.admissionLoading = true
+      this.admissionError = ''
+      try {
+        const data = this.unwrap(await listCMDBAdmissions({
+          search: this.admissionSearch || undefined,
+          state: this.admissionStateFilter || undefined,
+        })) || emptyAdmissionPage()
+        this.admissionCandidates = Array.isArray(data.items) ? data.items : []
+        this.admissionPage = {...emptyAdmissionPage(), ...data}
+        const selected = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
+          || this.admissionCandidates[0]
+          || null
+        this.selectAdmission(selected)
+      } catch (error) {
+        this.admissionCandidates = []
+        this.admissionPage = emptyAdmissionPage()
+        this.selectedAdmission = null
+        this.admissionError = error.message || '发现候选加载失败'
+      } finally {
+        this.admissionLoading = false
+      }
+    },
+    selectAdmission(candidate) {
+      this.selectedAdmission = candidate || null
+      this.admissionFormError = ''
+      if (!candidate || candidate.state !== 'ready') {
+        this.admissionFormClass = 'Server'
+        this.admissionForm = createAssetForm('Server')
+        this.admissionApplicationID = undefined
+        return
+      }
+      const prepared = createAdmissionForm(candidate)
+      this.admissionFormClass = prepared.class
+      this.admissionForm = prepared.fields
+      this.admissionApplicationID = prepared.application_id
+    },
+    changeAdmissionClass(assetClass) {
+      const previous = {...this.admissionForm}
+      const next = createAssetForm(assetClass)
+      Object.keys(next).forEach((key) => {
+        if (previous[key] !== undefined) next[key] = previous[key]
+      })
+      if (this.selectedAdmission) {
+        next.name = previous.name || this.selectedAdmission.host_name || ''
+        if (Object.prototype.hasOwnProperty.call(next, 'managementip')) next.managementip = previous.managementip || this.selectedAdmission.address || ''
+      }
+      this.admissionForm = next
+      this.admissionFormError = ''
+    },
+    admissionStageState(index) {
+      const state = this.selectedAdmission && this.selectedAdmission.state || 'ready'
+      if (state === 'completed') return 'done'
+      if (state === 'binding_pending') return index < 3 ? 'done' : 'current'
+      if (state === 'conflict') return index < 2 ? 'done' : 'error'
+      if (state === 'ready') return index === 0 ? 'done' : index === 1 ? 'current' : 'waiting'
+      return index === 0 ? 'current' : 'waiting'
+    },
+    admissionStageIcon(index) {
+      const state = this.admissionStageState(index)
+      if (state === 'done') return 'check'
+      if (state === 'error') return 'warning'
+      if (state === 'current') return 'sync'
+      return 'lock'
+    },
+    async saveAdmission() {
+      if (!this.canCreate || !this.selectedAdmission || this.selectedAdmission.state !== 'ready') return
+      const validation = validateAssetForm(this.admissionFormClass, this.admissionForm)
+      if (validation) {
+        this.admissionFormError = validation
+        return
+      }
+      this.admissionSaving = true
+      this.admissionFormError = ''
+      const retainedKey = this.selectedAdmissionKey
+      try {
+        const result = this.unwrap(await admitCMDBCandidate({
+          zid: Number(this.selectedAdmission.zid),
+          host_id: String(this.selectedAdmission.host_id),
+          class: this.admissionFormClass,
+          fields: buildAssetFields(this.admissionFormClass, this.admissionForm, true),
+          application_id: Number(this.admissionApplicationID) || 0,
+        })) || {}
+        if (result.state === 'completed') this.$message.success(result.message || '发现候选已完成入库与监控关联')
+        else if (result.state === 'binding_pending') this.$message.warning(result.message || 'iTop 已建档，Zabbix 关联待重试')
+        else this.$message.warning(result.message || '入库结果需要人工处理')
+        await this.loadOverviewAndAssets()
+        await this.loadAdmissions()
+        const retained = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
+        if (retained) this.selectAdmission(retained)
+      } catch (error) {
+        if (error.businessCode === 1013) this.admissionFormError = '同类型同名 CI 或监控身份已存在，请核对现有资产。'
+        else this.admissionFormError = error.message || '发现候选入库失败'
+      } finally {
+        this.admissionSaving = false
+      }
+    },
+    async retryAdmission() {
+      if (!this.canOperate || !this.selectedAdmission || this.selectedAdmission.state !== 'binding_pending') return
+      this.admissionRetrying = true
+      const retainedKey = this.selectedAdmissionKey
+      try {
+        const result = this.unwrap(await retryCMDBAdmission(this.selectedAdmission.zid, this.selectedAdmission.host_id)) || {}
+        if (result.state === 'completed') this.$message.success(result.message || 'Zabbix 关联已补齐')
+        else this.$message.warning(result.message || 'Zabbix 关联仍待重试')
+        await this.loadAdmissions()
+        const retained = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
+        if (retained) this.selectAdmission(retained)
+      } catch (error) {
+        this.$message.error(error.message || '监控关联重试失败')
+      } finally {
+        this.admissionRetrying = false
+      }
+    },
+    async showAdmissionAsset() {
+      const asset = this.selectedAdmission && this.selectedAdmission.asset
+      if (!asset || !asset.id || !asset.class) return
+      this.admissionVisible = false
+      await this.loadAssets(1)
+      const target = this.assets.find((item) => assetKey(item) === assetKey(asset)) || asset
+      await this.selectAsset(target)
+    },
     async ensureCMDBReferences() {
       if (this.referencesLoaded) return
       const data = this.unwrap(await getCMDBReferences()) || {}
       this.cmdbReferences = {
         locations: Array.isArray(data.locations) ? data.locations : [],
         network_device_types: Array.isArray(data.network_device_types) ? data.network_device_types : [],
+        teams: Array.isArray(data.teams) ? data.teams : [],
+        people: Array.isArray(data.people) ? data.people : [],
+        applications: Array.isArray(data.applications) ? data.applications : [],
       }
       this.referencesLoaded = true
     },
@@ -1135,6 +1518,80 @@ export default {
 .asset-form-wide { grid-column: 1 / -1; }
 .asset-form /deep/ .ant-form-item { margin-bottom: 14px; }
 .asset-form /deep/ .ant-form-item-label { padding-bottom: 4px; }
+
+.admission-workspace { display: grid; min-height: calc(100vh - 108px); margin: -24px; grid-template-columns: 340px minmax(0, 1fr); background: #f3f6f9; }
+.admission-queue { min-width: 0; padding: 20px 16px; border-right: 1px solid #cdd9e4; background: #fff; }
+.admission-queue__heading { display: flex; flex-direction: column; gap: 4px; }
+.admission-queue__heading strong { color: var(--smartops-command-navy); font-size: 16px; }
+.admission-queue__heading small { color: var(--smartops-muted); font-size: 10px; line-height: 1.5; }
+.admission-filters { display: grid; margin-top: 16px; grid-template-columns: minmax(0, 1fr) 116px; gap: 8px; }
+.admission-error { margin-top: 12px; }
+.admission-queue__summary { display: flex; align-items: center; justify-content: space-between; min-height: 46px; color: var(--smartops-muted); font-size: 11px; }
+.admission-list { max-height: calc(100vh - 280px); overflow: auto; margin: 0 -6px; padding: 0 6px 20px; }
+.admission-card { display: flex; width: 100%; margin: 0 0 8px; padding: 12px; border: 1px solid #d7e1eb; border-radius: 0; background: #fff; color: inherit; text-align: left; cursor: pointer; flex-direction: column; gap: 6px; appearance: none; }
+.admission-card:hover { border-color: #84a7c7; background: #f8fbfe; }
+.admission-card--selected { border-color: var(--smartops-signal-blue); background: #eef5fb; box-shadow: inset 3px 0 0 var(--smartops-signal-blue); }
+.admission-card__top, .admission-card__facts { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 8px; }
+.admission-card__top strong { overflow: hidden; color: var(--smartops-command-navy); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.admission-card code { color: #718397; font-size: 9px; }
+.admission-card__facts > span { color: #41576d; font-family: var(--smartops-font-mono); font-size: 10px; }
+.admission-card__facts .ant-tag { margin: 0; }
+.admission-card > small { overflow: hidden; color: var(--smartops-muted); font-size: 9px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+
+.admission-review { min-width: 0; padding: 24px 26px 42px; }
+.admission-placeholder { display: flex; align-items: center; justify-content: center; min-height: 500px; color: #8090a1; flex-direction: column; gap: 8px; }
+.admission-placeholder .anticon { color: #94abc0; font-size: 36px; }
+.admission-placeholder strong { color: #40566d; font-size: 15px; }
+.admission-placeholder span { font-size: 11px; }
+.admission-review__header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 16px; }
+.admission-review__header h2 { margin: 5px 0 3px; color: var(--smartops-command-navy); font-size: 22px; }
+.admission-review__header p { margin: 0; color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 10px; }
+.admission-stage-rail { display: grid; margin-bottom: 14px; border: 1px solid #ccd9e5; background: #fff; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admission-stage { position: relative; display: flex; align-items: center; min-height: 72px; padding: 11px 12px; border-right: 1px solid #dde5ec; gap: 9px; }
+.admission-stage:last-child { border-right: 0; }
+.admission-stage__mark { display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; flex: 0 0 27px; border: 1px solid #bccbd8; background: #f5f7f9; color: #8395a7; }
+.admission-stage > span:last-child { display: flex; min-width: 0; flex-direction: column; }
+.admission-stage b { color: #94a3b3; font-family: var(--smartops-font-mono); font-size: 8px; letter-spacing: .08em; }
+.admission-stage strong { color: #334b63; font-size: 12px; }
+.admission-stage small { overflow: hidden; color: #8190a0; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.admission-stage[data-state='done'] .admission-stage__mark { border-color: #4e9d77; background: #e8f5ef; color: #2e805c; }
+.admission-stage[data-state='current'] { background: #eef5fb; box-shadow: inset 0 -3px 0 var(--smartops-signal-blue); }
+.admission-stage[data-state='current'] .admission-stage__mark { border-color: var(--smartops-signal-blue); background: var(--smartops-signal-blue); color: #fff; }
+.admission-stage[data-state='error'] { background: #fff4f4; }
+.admission-stage[data-state='error'] .admission-stage__mark { border-color: #c85d5d; background: #c85d5d; color: #fff; }
+.admission-evidence { margin-bottom: 14px; padding: 14px 16px; border: 1px solid #d3dee8; background: #fff; }
+.admission-evidence__facts { display: grid; padding-bottom: 12px; border-bottom: 1px solid #e1e8ef; grid-template-columns: 1fr 1fr 2fr; gap: 12px; }
+.admission-evidence__facts > span { display: flex; min-width: 0; flex-direction: column; }
+.admission-evidence__facts small { color: var(--smartops-muted); font-size: 9px; }
+.admission-evidence__facts strong { overflow: hidden; margin-top: 3px; color: #30485f; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.admission-classifications { display: grid; padding-top: 10px; gap: 7px; }
+.admission-classifications > div { display: flex; align-items: flex-start; gap: 7px; }
+.admission-classifications .ant-tag { min-width: 70px; margin: 0; text-align: center; }
+.admission-classifications span { display: flex; min-width: 0; flex-direction: column; }
+.admission-classifications strong { color: #31485f; font-size: 11px; }
+.admission-classifications small { color: var(--smartops-muted); font-size: 9px; line-height: 1.45; }
+.admission-policy-alert { margin-top: 14px; }
+.admission-form-panel { padding: 16px 18px; border: 1px solid #cbd8e4; background: #fff; }
+.admission-section-title { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.admission-section-title > span { display: flex; flex-direction: column; }
+.admission-section-title strong { color: var(--smartops-command-navy); font-size: 14px; }
+.admission-section-title small { margin-top: 2px; color: var(--smartops-muted); font-size: 9px; }
+.admission-section-title .ant-tag { margin: 0; }
+.admission-form-error { margin-bottom: 14px; }
+.admission-submit-row { display: flex; align-items: center; justify-content: space-between; margin: 3px -18px -16px; padding: 12px 18px; border-top: 1px solid #dce4ec; background: #f7f9fb; gap: 14px; }
+.admission-submit-row > span { max-width: 430px; color: var(--smartops-muted); font-size: 9px; line-height: 1.55; }
+.admission-submit-row > span .anticon { color: var(--smartops-signal-blue); }
+.admission-result { display: grid; align-items: center; padding: 18px; border: 1px solid #ccd8e4; background: #fff; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 14px; }
+.admission-result__icon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; background: #e9f1f8; color: var(--smartops-signal-blue); font-size: 18px; }
+.admission-result strong { color: var(--smartops-command-navy); font-size: 14px; }
+.admission-result p { margin: 3px 0; color: var(--smartops-muted); font-size: 10px; }
+.admission-result small { color: #738599; font-family: var(--smartops-font-mono); font-size: 9px; }
+.admission-result--pending { border-color: #ddc485; background: #fffaf0; }
+.admission-result--pending .admission-result__icon { background: #f8e9bd; color: #966b13; }
+.admission-result--completed { border-color: #9bc7b1; background: #f3fbf7; }
+.admission-result--completed .admission-result__icon { background: #dcefe5; color: #287752; }
+.admission-result--conflict { border-color: #dfabab; background: #fff7f7; }
+.admission-result--conflict .admission-result__icon { background: #f7dddd; color: #aa3f3f; }
 .mapping-alert { margin-bottom: 18px; }
 
 @media (max-width: 1240px) {
@@ -1153,6 +1610,10 @@ export default {
   .toolbar-summary { display: flex; align-items: center; margin-left: 0; }
   .cmdb-workbench { grid-template-columns: 1fr; }
   .asset-inspector { position: static; max-height: none; }
+  .admission-workspace { grid-template-columns: 285px minmax(0, 1fr); }
+  .admission-stage-rail { grid-template-columns: 1fr 1fr; }
+  .admission-stage:nth-child(2) { border-right: 0; }
+  .admission-stage:nth-child(-n+2) { border-bottom: 1px solid #dde5ec; }
 }
 @media (max-width: 640px) {
   .heading-actions { width: 100%; flex-wrap: wrap; }
@@ -1167,5 +1628,11 @@ export default {
   .asset-form-wide { grid-column: auto; }
   .monitoring-candidate { grid-template-columns: 26px minmax(0, 1fr); }
   .monitoring-candidate__address, .monitoring-candidate__match, .monitoring-candidate__state { grid-column: 2; }
+  .admission-workspace { display: block; }
+  .admission-queue { border-right: 0; border-bottom: 1px solid #cdd9e4; }
+  .admission-list { max-height: 280px; }
+  .admission-review { padding: 18px 14px 32px; }
+  .admission-evidence__facts { grid-template-columns: 1fr; }
+  .admission-submit-row, .admission-result { align-items: stretch; grid-template-columns: 1fr; flex-direction: column; }
 }
 </style>

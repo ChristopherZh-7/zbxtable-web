@@ -60,9 +60,18 @@ const CLASS_FIELDS = {
   ApplicationSolution: [],
 }
 
+const RESPONSIBILITY_FIELDS = [
+  {key: 'smartops_operations_team_id', label: '运维团队', kind: 'team', required: true, wide: true},
+  {key: 'smartops_primary_owner_id', label: '主负责人', kind: 'person'},
+  {key: 'smartops_backup_owner_id', label: '备份负责人', kind: 'person'},
+]
+
 const DETAIL_FIELDS = [
   ['status', '状态'],
   ['organization_name', '所属组织'],
+  ['smartops_operations_team_name', '运维团队'],
+  ['smartops_primary_owner_name', '主负责人'],
+  ['smartops_backup_owner_name', '备份负责人'],
   ['managementip', '管理 IP'],
   ['location_name', '位置'],
   ['serialnumber', '序列号'],
@@ -91,6 +100,15 @@ const MONITORING_STATE_META = {
   host_missing: {status: 'error', label: '主机不存在', tone: 'error'},
   host_out_of_scope: {status: 'error', label: '主机已越界', tone: 'error'},
 }
+
+const ADMISSION_STATE_META = {
+  ready: {status: 'processing', label: '待人工审核', tone: 'ready', step: 1},
+  binding_pending: {status: 'warning', label: '监控待关联', tone: 'pending', step: 2},
+  completed: {status: 'success', label: '闭环完成', tone: 'completed', step: 3},
+  conflict: {status: 'error', label: '身份冲突', tone: 'conflict', step: 2},
+}
+
+const REFERENCE_FIELD_KINDS = new Set(['location', 'networkType', 'team', 'person'])
 
 function classMeta(assetClass) {
   return CLASS_META[assetClass] || {label: assetClass || '未知类型', icon: 'database', color: 'default'}
@@ -177,16 +195,31 @@ function candidateMatchLabel(candidate) {
   return '无自动匹配依据，需人工确认'
 }
 
+function admissionStateMeta(candidate) {
+  const state = String(candidate && candidate.state || 'ready')
+  return ADMISSION_STATE_META[state] || {status: 'default', label: '状态未知', tone: 'neutral', step: 0}
+}
+
+function admissionEvidenceLabel(candidate) {
+  const classifications = candidate && Array.isArray(candidate.classifications) ? candidate.classifications : []
+  if (!classifications.length) return '无可用模板证据'
+  return classifications.map((item) => item.template_name || item.product || item.category).filter(Boolean).join(' · ')
+}
+
 function editableFields(assetClass) {
   if (!CLASS_META[assetClass]) return []
-  return [...COMMON_FIELDS, ...(CLASS_FIELDS[assetClass] || [])]
+  return [
+    ...COMMON_FIELDS,
+    ...(assetClass === 'ApplicationSolution' ? [] : RESPONSIBILITY_FIELDS),
+    ...(CLASS_FIELDS[assetClass] || []),
+  ]
 }
 
 function createAssetForm(assetClass, asset) {
   const source = asset || {}
   const form = {}
   editableFields(assetClass).forEach((field) => {
-    if (field.kind === 'location' || field.kind === 'networkType') {
+    if (REFERENCE_FIELD_KINDS.has(field.kind)) {
       const value = Number(source[field.key])
       form[field.key] = value > 0 ? value : undefined
     } else {
@@ -201,7 +234,7 @@ function buildAssetFields(assetClass, form, creating) {
   const fields = {}
   editableFields(assetClass).forEach((field) => {
     const value = form ? form[field.key] : undefined
-    if (field.kind === 'location' || field.kind === 'networkType') {
+    if (REFERENCE_FIELD_KINDS.has(field.kind)) {
       if (!creating || value !== undefined && value !== null && value !== '') fields[field.key] = Number(value) || 0
       return
     }
@@ -214,16 +247,31 @@ function buildAssetFields(assetClass, form, creating) {
 function validateAssetForm(assetClass, form) {
   if (!CLASS_META[assetClass]) return '请选择资产类型'
   if (!String(form && form.name || '').trim()) return '请输入资产名称'
+  if (assetClass !== 'ApplicationSolution' && !(Number(form && form.smartops_operations_team_id) > 0)) return '请选择运维团队'
+  if (assetClass !== 'ApplicationSolution' && String(form && form.status || '') === 'production' && !(Number(form && form.smartops_primary_owner_id) > 0)) return '生产/在用资产必须选择主负责人'
+  if (Number(form && form.smartops_primary_owner_id) > 0 && Number(form && form.smartops_primary_owner_id) === Number(form && form.smartops_backup_owner_id)) return '备份负责人不能与主负责人相同'
   if (assetClass === 'NetworkDevice' && !(Number(form && form.networkdevicetype_id) > 0)) return '请选择网络设备类型'
   return ''
+}
+
+function createAdmissionForm(candidate) {
+  const assetClass = candidate && CLASS_META[candidate.suggested_class] ? candidate.suggested_class : 'Server'
+  const form = createAssetForm(assetClass)
+  form.name = String(candidate && candidate.host_name || '').trim()
+  if (Object.prototype.hasOwnProperty.call(form, 'managementip')) form.managementip = String(candidate && candidate.address || '').trim()
+  form.description = admissionEvidenceLabel(candidate)
+  return {class: assetClass, fields: form, application_id: undefined}
 }
 
 module.exports = {
   CLASS_META,
   assetKey,
+  admissionEvidenceLabel,
+  admissionStateMeta,
   buildAssetFields,
   classMeta,
   createAssetForm,
+  createAdmissionForm,
   detailRows,
   displayValue,
   editableFields,

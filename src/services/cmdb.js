@@ -44,6 +44,18 @@ export function getCMDBReferences() {
   return request(`${CMDB}/references`, METHOD.GET)
 }
 
+export function listCMDBAdmissions(params) {
+  return request(`${CMDB}/admissions`, METHOD.GET, params)
+}
+
+export function admitCMDBCandidate(payload) {
+  return request(`${CMDB}/admissions`, METHOD.POST, payload)
+}
+
+export function retryCMDBAdmission(zid, hostID) {
+  return request(`${CMDB}/admissions/${encodeURIComponent(zid)}/${encodeURIComponent(hostID)}/retry`, METHOD.POST, {})
+}
+
 export function createCMDBAsset(assetClass, fields) {
   return request(`${CMDB}/assets`, METHOD.POST, {class: assetClass, fields})
 }

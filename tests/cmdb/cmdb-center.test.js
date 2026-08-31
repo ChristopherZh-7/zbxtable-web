@@ -4,11 +4,14 @@ const path = require('node:path')
 const test = require('node:test')
 
 const {
+  admissionEvidenceLabel,
+  admissionStateMeta,
   assetKey,
   buildAssetFields,
   candidateMatchLabel,
   classMeta,
   createAssetForm,
+  createAdmissionForm,
   detailRows,
   editableFields,
   isPlatformAdmin,
@@ -27,7 +30,7 @@ test('CMDB route and services stay inside the SmartOps application API', () => {
   const router = source('src/router/async/router.map.js')
   const service = source('src/services/cmdb.js')
   assert.match(router, /cmdbCenter:\s*\{[\s\S]*@\/pages\/cmdb/)
-  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'getCMDBMonitoring', 'listCMDBMonitoringCandidates', 'bindCMDBMonitoring', 'unbindCMDBMonitoring', 'repairCMDBMonitoring', 'getCMDBReferences', 'createCMDBAsset', 'updateCMDBAsset', 'retireCMDBAsset', 'activateCMDBAsset', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
+  for (const operation of ['getCMDBOverview', 'listCMDBAssets', 'getCMDBAsset', 'getCMDBRelations', 'getCMDBMonitoring', 'listCMDBMonitoringCandidates', 'bindCMDBMonitoring', 'unbindCMDBMonitoring', 'repairCMDBMonitoring', 'getCMDBReferences', 'listCMDBAdmissions', 'admitCMDBCandidate', 'retryCMDBAdmission', 'createCMDBAsset', 'updateCMDBAsset', 'retireCMDBAsset', 'activateCMDBAsset', 'listCMDBOrganizations', 'listCMDBMappings', 'upsertCMDBMapping']) {
     assert.match(service, new RegExp(`function ${operation}\\b`))
   }
   assert.doesNotMatch(service, /deleteCMDBAsset|METHOD\.DELETE/)
@@ -84,6 +87,9 @@ test('CMDB model exposes only the confirmed per-class write fields', () => {
   const pcFields = editableFields('PC').map((field) => field.key)
   const networkFields = editableFields('NetworkDevice').map((field) => field.key)
   assert.ok(serverFields.includes('managementip'))
+  assert.ok(serverFields.includes('smartops_operations_team_id'))
+  assert.ok(serverFields.includes('smartops_primary_owner_id'))
+  assert.ok(serverFields.includes('smartops_backup_owner_id'))
   assert.equal(pcFields.includes('managementip'), false)
   assert.ok(networkFields.includes('networkdevicetype_id'))
   assert.equal(editableFields('Person').length, 0)
@@ -93,17 +99,42 @@ test('CMDB form payload trims fields, preserves clears and validates network typ
   const createForm = createAssetForm('Server')
   createForm.name = '  app-01  '
   createForm.managementip = ' 10.0.0.8 '
+  createForm.smartops_operations_team_id = 21
+  createForm.smartops_primary_owner_id = 31
   const createFields = buildAssetFields('Server', createForm, true)
   assert.equal(createFields.name, 'app-01')
   assert.equal(createFields.managementip, '10.0.0.8')
+  assert.equal(createFields.smartops_operations_team_id, 21)
   assert.equal(Object.hasOwn(createFields, 'location_id'), false)
 
   const editForm = createAssetForm('Server', {name: 'app-01', status: 'production', location_id: 9})
   editForm.location_id = undefined
   const editFields = buildAssetFields('Server', editForm, false)
   assert.equal(editFields.location_id, 0)
-  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01'}), '请选择网络设备类型')
-  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01', networkdevicetype_id: 3}), '')
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01'}), '请选择运维团队')
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01', status: 'production', smartops_operations_team_id: 21, networkdevicetype_id: 3}), '生产/在用资产必须选择主负责人')
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01', status: 'production', smartops_operations_team_id: 21, smartops_primary_owner_id: 31, smartops_backup_owner_id: 31, networkdevicetype_id: 3}), '备份负责人不能与主负责人相同')
+  assert.equal(validateAssetForm('NetworkDevice', {name: 'switch-01', status: 'production', smartops_operations_team_id: 21, smartops_primary_owner_id: 31, smartops_backup_owner_id: 32, networkdevicetype_id: 3}), '')
+  assert.equal(validateAssetForm('ApplicationSolution', {name: 'portal', status: 'active'}), '')
+})
+
+test('CMDB admission model preserves classified evidence, suggested type and recoverable stages', () => {
+  const candidate = {
+    host_name: 'edge-01',
+    address: '10.50.0.11',
+    suggested_class: 'NetworkDevice',
+    state: 'binding_pending',
+    classifications: [
+      {category: '网络设备', template_name: 'Cisco IOS by SNMP'},
+      {category: '服务器', product: 'Linux'},
+    ],
+  }
+  assert.deepEqual(admissionStateMeta(candidate), {status: 'warning', label: '监控待关联', tone: 'pending', step: 2})
+  assert.equal(admissionEvidenceLabel(candidate), 'Cisco IOS by SNMP · Linux')
+  const form = createAdmissionForm(candidate)
+  assert.equal(form.class, 'NetworkDevice')
+  assert.equal(form.fields.name, 'edge-01')
+  assert.equal(form.fields.managementip, '10.50.0.11')
 })
 
 test('CMDB lifecycle treats retired records as recoverable rather than deleted', () => {
