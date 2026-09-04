@@ -5,13 +5,25 @@
     <div slot="headerContent" class="generic-detail">
       <a-spin :spinning="loading">
 
+        <monitoring-health-card :health="(detail && detail.monitoring_health) || {}" />
+
         <!-- 基本信息卡片 -->
         <a-card title="基本信息" :body-style="{ padding: '12px' }" style="margin-bottom: 16px;">
+          <a-alert
+            message="本页资产字段只读：Zabbix Inventory 仅作为监控侧信息展示，资产真值请在 CMDB 配置中心维护；历史自定义属性只读保留，不属于 CMDB。"
+            type="info"
+            show-icon
+            style="margin-bottom: 12px;"
+          />
           <a-descriptions bordered size="small" :column="{ xxl: 4, xl: 3, lg: 2, md: 2, sm: 1 }">
             <template v-for="field in visibleFields">
-              <a-descriptions-item :key="field.key" :label="field.label">
+              <a-descriptions-item :key="field.key" :label="fieldLabel(field)">
+                <!-- 历史自定义值永远按纯文本渲染，不能继承旧定义中的 link/render 行为。 -->
+                <template v-if="field.custom">
+                  <span>{{ displayFieldValue(fieldValue(detail, field.key)) }}</span>
+                </template>
                 <!-- progress -->
-                <template v-if="field.render === 'progress'">
+                <template v-else-if="field.render === 'progress'">
                   <span v-if="fieldValue(detail, field.key)">
                     <a-progress
                       :percent="parseFieldPercent(fieldValue(detail, field.key))"
@@ -27,9 +39,9 @@
                 <template v-else-if="field.render === 'status'">
                   <a-tooltip>
                     <template slot="title">{{ detail.error }}</template>
-                  <a-tag v-if="fieldValue(detail, field.key) == 1" color="#34af67">正常</a-tag>
-                  <a-tag v-else-if="fieldValue(detail, field.key) == 2" color="#DC143C">异常</a-tag>
-                    <a-tag v-else color="#808080">未知</a-tag>
+                    <a-tag v-if="fieldValue(detail, field.key) == 1" color="#34af67">{{ interfaceAvailabilityLabel(fieldValue(detail, field.key)) }}</a-tag>
+                    <a-tag v-else-if="fieldValue(detail, field.key) == 2" color="#DC143C">{{ interfaceAvailabilityLabel(fieldValue(detail, field.key)) }}</a-tag>
+                    <a-tag v-else color="#808080">{{ interfaceAvailabilityLabel(fieldValue(detail, field.key)) }}</a-tag>
                   </a-tooltip>
                 </template>
                 <!-- ping -->
@@ -47,37 +59,18 @@
                 </template>
                 <!-- link -->
                 <template v-else-if="field.render === 'link'">
-                  <a v-if="fieldValue(detail, field.key)" :href="fieldValue(detail, field.key)" target="_blank">{{ fieldValue(detail, field.key) }}</a>
-                  <span v-else>--</span>
+                  <a
+                    v-if="safeExternalLink(fieldValue(detail, field.key))"
+                    :href="safeExternalLink(fieldValue(detail, field.key))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ fieldValue(detail, field.key) }}</a>
+                  <span v-else>{{ fieldValue(detail, field.key) || '--' }}</span>
                 </template>
                 <!-- text / default -->
                 <template v-else>
-                  <template v-if="isEditing && isEditableField(field.key)">
-                    <a-input-number
-                      v-if="field.custom && field.field_type === 'number'"
-                      v-model="editForm[field.key]"
-                      size="small"
-                      style="width: 200px;"
-                    />
-                    <a-select
-                      v-else-if="field.custom && field.field_type === 'select'"
-                      v-model="editForm[field.key]"
-                      allow-clear
-                      size="small"
-                      style="width: 200px;"
-                    >
-                      <a-select-option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</a-select-option>
-                    </a-select>
-                    <a-date-picker
-                      v-else-if="isDateField(field.key)"
-                      v-model="editForm[field.key]"
-                      value-format="YYYY-MM-DD"
-                      size="small"
-                    />
-                    <a-input v-else v-model.trim="editForm[field.key]" size="small" style="width: 200px;" />
-                  </template>
                   <!-- 维保到期：按距当前时间远近显示不同风格的 Tag -->
-                  <template v-else-if="field.key === 'date_hw_expiry' && detail[field.key]">
+                  <template v-if="field.key === 'date_hw_expiry' && detail[field.key]">
                     <a-tooltip :title="expiryStatus(detail[field.key]).tip">
                       <a-tag :color="expiryStatus(detail[field.key]).color">
                         {{ detail[field.key] }}
@@ -90,15 +83,6 @@
               </a-descriptions-item>
             </template>
           </a-descriptions>
-
-          <!-- 编辑按钮区 -->
-          <div v-if="hasEditableField" style="margin-top: 12px; text-align: right;">
-            <template v-if="isEditing">
-              <a-button type="primary" size="small" :loading="saving" @click="handleSave" style="margin-right: 8px;">保存</a-button>
-              <a-button size="small" @click="cancelEdit">取消</a-button>
-            </template>
-            <a-button v-else icon="edit" size="small" @click="startEdit">编辑信息</a-button>
-          </div>
         </a-card>
 
         <!-- 监控图形 -->
@@ -139,17 +123,17 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import moment from 'moment'
-import { hostDetail, hostGraph, hostUpdate, updateHostAssetAttributes, getAssetTypes, getAssetTypeFields } from '@/services/admin'
+import { hostDetail, hostGraph, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import themeMixin from '@/mixins/themeMixin'
-
-const EDITABLE_FIELDS = new Set(['location', 'department', 'resource_id', 'mac', 'date_hw_install', 'date_hw_expiry'])
-const DATE_FIELDS = new Set(['date_hw_install', 'date_hw_expiry'])
+import MonitoringHealthCard from '@/components/MonitoringHealthCard'
+const monitoringHealthPolicy = require('@/utils/monitoring-health')
+const {ALL_DEVICE_TYPE, allMonitoringDeviceFields} = require('./all-monitoring-devices')
 
 export default {
   name: 'GenericDeviceDetail',
   mixins: [themeMixin],
-  components: { PageLayout },
+  components: { PageLayout, MonitoringHealthCard },
   data() {
     return {
       moment,
@@ -161,9 +145,6 @@ export default {
       loading: false,
       detail: {},
       fieldConfigs: [],
-      isEditing: false,
-      saving: false,
-      editForm: {},
       graphLoading: false,
       pngData: [],
       sortedPngData: [],
@@ -181,12 +162,6 @@ export default {
         .filter((f) => f.visible)
         .sort((a, b) => a.order - b.order)
     },
-    hasEditableField() {
-      return this.visibleFields.some((field) => (
-        (field.custom && this.$can('tenant.assets', 'update')) ||
-        (!field.custom && EDITABLE_FIELDS.has(field.key) && this.$can('tenant.monitoring', 'update'))
-      ))
-    },
   },
   created() {
     this.id = this.$route.query.id || ''
@@ -196,6 +171,21 @@ export default {
     this.init()
   },
   methods: {
+    displayFieldValue(value) {
+      return value === null || value === undefined || value === '' ? '--' : value
+    },
+    interfaceAvailabilityLabel(value) {
+      return monitoringHealthPolicy.interfaceAvailabilityLabel(value)
+    },
+    safeExternalLink(value) {
+      if (typeof value !== 'string' || !value.trim()) return ''
+      try {
+        const parsed = new URL(value)
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : ''
+      } catch {
+        return ''
+      }
+    },
     async init() {
       this.loading = true
       try {
@@ -208,6 +198,9 @@ export default {
           this.typeId = typeInfo.id
           const fieldsRes = await getAssetTypeFields(typeInfo.id)
           this.fieldConfigs = (fieldsRes.data && fieldsRes.data.data) || []
+        } else if (this.typeCode === ALL_DEVICE_TYPE) {
+          this.typeName = '监控设备'
+          this.fieldConfigs = allMonitoringDeviceFields()
         }
         const detailRes = await hostDetail(this.id, this.zid)
         const biz = detailRes.data
@@ -229,55 +222,9 @@ export default {
       const field = this.fieldConfig(key)
       return field.custom ? ((record.custom_attributes || {})[key]) : record[key]
     },
-    isEditableField(key) {
-      const field = this.fieldConfig(key)
-      return field.custom || EDITABLE_FIELDS.has(key)
-    },
-    isDateField(key) {
-      const field = this.fieldConfig(key)
-      return (field.custom && field.field_type === 'date') || DATE_FIELDS.has(key)
-    },
-
-    startEdit() {
-      const form = {}
-      this.visibleFields.filter((field) => this.isEditableField(field.key)).forEach((field) => {
-        form[field.key] = this.fieldValue(this.detail, field.key) || ''
-      })
-      this.editForm = form
-      this.isEditing = true
-    },
-    cancelEdit() {
-      this.isEditing = false
-      this.editForm = {}
-    },
-    async handleSave() {
-      this.saving = true
-      try {
-        const builtinValues = {}
-        const customValues = {}
-        Object.keys(this.editForm).forEach((key) => {
-          if (this.fieldConfig(key).custom) customValues[key] = this.editForm[key]
-          else builtinValues[key] = this.editForm[key]
-        })
-        const requests = []
-        if (Object.keys(builtinValues).length) requests.push(hostUpdate(Object.assign({}, this.detail, builtinValues)))
-        if (Object.keys(customValues).length) requests.push(updateHostAssetAttributes(this.id, this.zid, customValues))
-        const responses = await Promise.all(requests)
-        const failed = responses.find((res) => !((res && res.data ? res.data : res) || {}).code || ((res && res.data ? res.data : res) || {}).code !== 200)
-        if (!failed) {
-          Object.keys(builtinValues).forEach((key) => { this.$set(this.detail, key, builtinValues[key]) })
-          const currentCustom = { ...(this.detail.custom_attributes || {}), ...customValues }
-          this.$set(this.detail, 'custom_attributes', currentCustom)
-          this.cancelEdit()
-          this.$message.success('保存成功')
-        } else {
-          this.$message.error((biz && biz.message) || '保存失败')
-        }
-      } catch {
-        this.$message.error('保存失败')
-      } finally {
-        this.saving = false
-      }
+    fieldLabel(field) {
+      if (field.key === 'available') return '接口可用性'
+      return field.custom ? `${field.label || field.key}（历史只读 · 非 CMDB）` : field.label
     },
 
     parseFieldPercent(val) {

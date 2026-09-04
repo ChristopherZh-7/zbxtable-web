@@ -50,6 +50,7 @@ function normalizeDirectory(data) {
     state,
     message: String(source.message || ''),
     organization: source.organization || null,
+    mapping: source.mapping || null,
     teams: Array.isArray(source.teams) ? source.teams.map(item => normalizeContact(item, 'team')) : [],
     people: Array.isArray(source.people) ? source.people.map(item => normalizeContact(item, 'person')) : [],
   }

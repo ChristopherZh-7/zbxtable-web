@@ -1,43 +1,44 @@
 <template>
-  <div v-if="embedded">
+  <component :is="embedded ? 'div' : 'page-layout'" v-bind="embedded ? {} : { noTitle: true }">
     <div class="asset-binding-page">
+      <a-alert
+        message="历史只读 · 已废弃"
+        description="这些设备绑定曾把资产类型和监控项写入 Zabbix Inventory。iTop 现为唯一 CMDB 字段权威，旧配置不会再创建、修改、初始化、重试或自动执行；仅保留列表和历史记录用于核对。"
+        type="warning"
+        show-icon
+        class="legacy-alert"
+      />
+
       <a-card :bordered="false" class="table-card">
         <template #title>
           <div class="table-card__title-wrap">
-            <div class="table-card__title">设备绑定配置</div>
+            <div class="table-card__title">旧设备绑定配置</div>
+            <div class="table-card__subtitle">只读保留，不属于当前 CMDB 配置流程</div>
           </div>
         </template>
         <template #extra>
-          <div class="table-card__actions">
-            <a-tag color="blue">共 {{ dataSource.length }} 项</a-tag>
-            <a-button type="primary" icon="plus" @click="handleAdd">新建绑定</a-button>
-          </div>
+          <a-tag color="orange">共 {{ dataSource.length }} 项历史配置</a-tag>
         </template>
 
         <a-table
+          data-testid="system-binding-table"
           :columns="columns"
           :data-source="dataSource"
           :loading="loading"
           :pagination="false"
-          rowKey="id"
-          :rowClassName="getRowClassName"
-          :scroll="{ x: 1770 }"
+          row-key="id"
+          :row-class-name="getRowClassName"
+          :scroll="{ x: 1450 }"
         >
           <span slot="name" slot-scope="text, record">
             <div class="binding-name-cell">
-              <a-icon
-                :type="getAssetTypeIcon(record.type_code)"
-                class="binding-name-icon"
-              />
+              <a-icon :type="getAssetTypeIcon(record.type_code)" class="binding-name-icon" />
               <div class="binding-name">{{ record.name || getAssetTypeName(record.type_code) }}</div>
             </div>
           </span>
           <span slot="asset_type" slot-scope="text, record">
             <div class="asset-type-cell">
-              <a-icon
-                :type="getAssetTypeIcon(record.type_code)"
-                class="asset-type-icon"
-              />
+              <a-icon :type="getAssetTypeIcon(record.type_code)" class="asset-type-icon" />
               <span>{{ getAssetTypeName(record.type_code) }}</span>
               <a-tag color="blue">{{ record.type_code }}</a-tag>
             </div>
@@ -53,21 +54,18 @@
               <div class="group-cell">{{ formatGroupNames(record) }}</div>
             </a-tooltip>
           </span>
+          <span slot="legacy_automation" slot-scope="text, record">
+            <a-tag color="default">已停用</a-tag>
+            <span class="legacy-meta">{{ legacyAutomationLabel(record) }}</span>
+          </span>
           <span slot="status" slot-scope="text, record">
             <div class="status-cell">
-              <a-badge v-if="record.status === 1" status="success" text="已初始化" />
-              <a-badge v-else-if="record.status === 2" status="error" :text="'失败'" />
-              <a-badge v-else status="default" text="未初始化" />
+              <a-badge v-if="record.status === 1" status="success" text="历史成功" />
+              <a-badge v-else-if="record.status === 2" status="error" text="历史失败" />
+              <a-badge v-else status="default" text="未执行" />
               <a-tooltip v-if="record.status === 2 && record.init_error" :title="record.init_error">
                 <a-icon type="info-circle" class="status-error-icon" />
               </a-tooltip>
-            </div>
-          </span>
-          <span slot="auto_init" slot-scope="text, record">
-            <div class="auto-init-cell">
-              <a-tag v-if="record.auto_init === 1" color="green">自动</a-tag>
-              <a-tag v-else>手动</a-tag>
-              <span v-if="record.auto_init === 1 && record.init_cron" class="auto-init-cron">{{ record.init_cron }}</span>
             </div>
           </span>
           <span slot="last_success_at" slot-scope="text">
@@ -77,432 +75,151 @@
             </div>
           </span>
           <span slot="action" slot-scope="text, record">
-            <div class="action-cell">
-              <a-button size="small" type="primary" @click="handleInit(record)">初始化</a-button>
-              <a-button size="small" @click="handleCopy(record)">复制</a-button>
-              <a-button size="small" @click="handleEdit(record)">编辑</a-button>
-              <a-button size="small" @click="showHistory(record)">历史</a-button>
-              <a-popconfirm
-                title="确认删除该绑定配置？"
-                ok-text="确认"
-                cancel-text="取消"
-                @confirm="handleDelete(record)"
-              >
-                <a-button size="small" type="danger">删除</a-button>
-              </a-popconfirm>
-            </div>
+            <a-space>
+              <a-button data-testid="system-binding-detail-button" :data-record-id="String(record.id)" size="small" @click="showSystemDetail(record)">查看详情</a-button>
+              <a-button data-testid="system-binding-history-button" :data-record-id="String(record.id)" size="small" @click="showHistory(record)">查看历史</a-button>
+            </a-space>
           </span>
         </a-table>
       </a-card>
 
-      <!-- 新建/编辑 Modal -->
-      <a-modal
-        :title="modalTitle"
-        :visible="modalVisible"
-        :confirm-loading="modalLoading"
-        @ok="handleSubmit"
-        @cancel="handleCancel"
-        width="880px"
-        wrapClassName="asset-binding-modal"
-        :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '16px 20px 8px' }"
-      >
-        <a-form-model
-          ref="form"
-          class="binding-form"
-          :model="form"
-          :rules="rules"
-          :label-col="{ span: 6 }"
-          :wrapper-col="{ span: 16 }"
-        >
-          <a-row :gutter="16" class="binding-form__grid">
-            <a-col :span="12">
-              <a-form-model-item label="配置名称" prop="name" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-input v-model="form.name" placeholder="可选，用于描述该绑定" />
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="Zabbix实例" prop="zid" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select
-                  v-model="form.zid"
-                  placeholder="请选择 Zabbix 实例"
-                  show-search
-                  option-label-prop="label"
-                  option-filter-prop="children"
-                  @change="handleInstanceChange"
-                >
-                  <a-select-option v-for="inst in instanceList" :key="inst.instance" :value="inst.instance" :label="inst.name">
-                    {{ inst.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="资产类型" prop="type_code" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select v-model="form.type_code" placeholder="请选择资产类型" option-label-prop="label">
-                  <a-select-option
-                    v-for="at in assetTypes"
-                    :key="at.type_code"
-                    :value="at.type_code"
-                    :label="at.name"
-                  >
-                    <a-icon :type="at.icon || 'folder'" class="asset-type-option-icon" />
-                    {{ at.name }} ({{ at.type_code }})
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="主机组" prop="group_id" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select
-                  v-model="selectedGroups"
-                  mode="multiple"
-                  placeholder="请先选择 Zabbix 实例"
-                  :loading="groupsLoading"
-                  show-search
-                  option-label-prop="label"
-                  option-filter-prop="children"
-                  @change="updateGroupId"
-                >
-                  <a-select-option v-for="g in hostGroups" :key="g.groupid" :value="g.groupid" :label="g.name">
-                    {{ g.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left" class="binding-form__divider">监控指标绑定（可选）</a-divider>
-          <div class="binding-form__hint">先选模板，再选监控项</div>
-
-          <a-row :gutter="12" v-for="m in metricDefs" :key="m.key" class="binding-form__metric-row">
-            <a-col :span="12">
-              <a-form-model-item :label="m.label + ' / 模板'" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                <a-select show-search option-label-prop="label" option-filter-prop="label" placeholder="选择模板" :loading="templatesLoading"
-                  @change="val => handleTemplateChange(val, m.key)">
-                  <a-select-option v-for="tpl in templateList" :key="tpl.templateid" :value="tpl.templateid" :label="tpl.name">
-                    {{ tpl.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="监控项" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-                <a-select show-search option-label-prop="label" option-filter-prop="label" v-model="selectedItems[m.key]"
-                  placeholder="选择监控项" :loading="itemsLoading[m.key]"
-                  @change="val => handleItemChange(val, m.field)">
-                  <a-select-option v-for="item in itemLists[m.key]" :key="item.itemid" :value="item.itemid" :label="item.name">
-                    {{ item.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-          </a-row>
-
-          <a-form-model-item label="ICMP模板">
-            <a-select v-model="form.ping_template_id" show-search option-label-prop="label" option-filter-prop="label"
-              placeholder="选择 ICMP 模板（可选）" :loading="templatesLoading" allow-clear>
-              <a-select-option v-for="tpl in templateList" :key="tpl.templateid" :value="tpl.templateid" :label="tpl.name">
-                {{ tpl.name }}
-              </a-select-option>
-            </a-select>
-          </a-form-model-item>
-
-          <a-divider orientation="left" class="binding-form__divider">自动化配置</a-divider>
-
-          <a-form-model-item label="自动初始化">
-            <a-switch v-model="autoInitSwitch" @change="val => form.auto_init = val ? 1 : 0" />
-            <span style="margin-left: 8px; color: #888; font-size: 12px;">开启后按 Cron 表达式定时执行</span>
-          </a-form-model-item>
-
-          <a-form-model-item label="Cron 表达式" v-if="autoInitSwitch">
-            <a-input v-model="form.init_cron" placeholder="0 0 2 * * * （秒 分 时 日 月 周）" />
-            <div style="font-size: 12px; color: #aaa; margin-top: 2px;">格式：秒 分 时 日 月 周，示例每天凌晨2点：0 0 2 * * *</div>
-          </a-form-model-item>
-
-          <a-form-model-item label="新主机自动初始化" v-if="autoInitSwitch">
-            <a-switch v-model="initOnNewHostSwitch" @change="val => form.init_on_new_host = val ? 1 : 0" />
-            <span style="margin-left: 8px; color: #888; font-size: 12px;">主机组新增主机时自动执行</span>
-          </a-form-model-item>
-
-          <a-form-model-item label="最大重试次数">
-            <a-input-number v-model="form.max_retry" :min="0" :max="10" style="width: 100px;" />
-          </a-form-model-item>
-        </a-form-model>
-      </a-modal>
-
-      <!-- 执行历史 Modal -->
-      <a-modal
-        title="初始化执行历史"
-        :visible="historyVisible"
-        width="900px"
-        :footer="null"
-        @cancel="historyVisible = false"
-      >
-        <a-table
-          :loading="historyLoading"
-          :columns="historyColumns"
-          :data-source="historyList"
-          :pagination="historyPagination"
-          rowKey="id"
-          @change="handleHistoryPageChange"
-        >
-          <span slot="exec_type" slot-scope="text">
-            <a-tag :color="execTypeColor(text)">{{ execTypeLabel(text) }}</a-tag>
-          </span>
-          <span slot="status" slot-scope="text">
-            <a-tag :color="historyStatusColor(text)">{{ text }}</a-tag>
-          </span>
-          <span slot="start_time" slot-scope="text">{{ formatTime(text) }}</span>
-          <span slot="duration" slot-scope="text">{{ text ? text + 's' : '-' }}</span>
-        </a-table>
-      </a-modal>
-    </div>
-  </div>
-  <page-layout v-else :noTitle="true">
-    <div class="asset-binding-page">
       <a-card :bordered="false" class="table-card">
         <template #title>
           <div class="table-card__title-wrap">
-            <div class="table-card__title">设备绑定配置</div>
+            <div class="table-card__title">旧指标映射配置</div>
+            <div class="table-card__subtitle">历史 Inventory 指标关联只读保留，不会再执行或写入 Zabbix</div>
           </div>
         </template>
         <template #extra>
-          <div class="table-card__actions">
-            <a-tag color="blue">共 {{ dataSource.length }} 项</a-tag>
-            <a-button type="primary" icon="plus" @click="handleAdd">新建绑定</a-button>
-          </div>
+          <a-tag color="orange">共 {{ metricMappingDataSource.length }} 项历史配置</a-tag>
         </template>
 
         <a-table
-          :columns="columns"
-          :data-source="dataSource"
-          :loading="loading"
+          data-testid="metric-mapping-table"
+          :columns="metricMappingColumns"
+          :data-source="metricMappingDataSource"
+          :loading="metricMappingLoading"
           :pagination="false"
-          rowKey="id"
-          :rowClassName="getRowClassName"
-          :scroll="{ x: 1770 }"
+          row-key="id"
+          :scroll="{ x: 1260 }"
         >
-          <span slot="name" slot-scope="text, record">
+          <span slot="mapping_system_type" slot-scope="text, record" data-testid="metric-mapping-row">
             <div class="binding-name-cell">
-              <a-icon
-                :type="getAssetTypeIcon(record.type_code)"
-                class="binding-name-icon"
-              />
-              <div class="binding-name">{{ record.name || getAssetTypeName(record.type_code) }}</div>
+              <a-icon type="line-chart" class="binding-name-icon" />
+              <div class="binding-name">{{ record.system_type || '-' }}</div>
             </div>
           </span>
-          <span slot="asset_type" slot-scope="text, record">
-            <div class="asset-type-cell">
-              <a-icon
-                :type="getAssetTypeIcon(record.type_code)"
-                class="asset-type-icon"
-              />
-              <span>{{ getAssetTypeName(record.type_code) }}</span>
-              <a-tag color="blue">{{ record.type_code }}</a-tag>
-            </div>
-          </span>
-          <span slot="zabbix_instance" slot-scope="text, record">
+          <span slot="mapping_instance" slot-scope="text, record">
             <div class="instance-cell">
               <a-icon type="cloud-server" />
               <span>{{ getInstanceName(record.zid) }}</span>
             </div>
           </span>
-          <span slot="group_id" slot-scope="text, record">
-            <a-tooltip :title="formatGroupNames(record)">
-              <div class="group-cell">{{ formatGroupNames(record) }}</div>
+          <span slot="mapping_groups" slot-scope="text, record">
+            <a-tooltip :title="formatMetricMappingGroups(record)">
+              <div class="group-cell">{{ formatMetricMappingGroups(record) }}</div>
             </a-tooltip>
           </span>
-          <span slot="status" slot-scope="text, record">
+          <span slot="metric_count" slot-scope="text, record">
+            <a-tag color="blue">{{ metricCount(record) }} 项历史关联</a-tag>
+          </span>
+          <span slot="mapping_automation" slot-scope="text, record">
+            <a-tag color="default">已停用</a-tag>
+            <span class="legacy-meta">{{ legacyAutomationLabel(record) }}</span>
+          </span>
+          <span slot="mapping_status" slot-scope="text, record">
             <div class="status-cell">
-              <a-badge v-if="record.status === 1" status="success" text="已初始化" />
-              <a-badge v-else-if="record.status === 2" status="error" :text="'失败'" />
-              <a-badge v-else status="default" text="未初始化" />
-              <a-tooltip v-if="record.status === 2 && record.init_error" :title="record.init_error">
-                <a-icon type="info-circle" class="status-error-icon" />
-              </a-tooltip>
+              <a-badge v-if="record.status === 1" status="success" text="历史成功" />
+              <a-badge v-else-if="record.status === 2" status="error" text="历史失败" />
+              <a-badge v-else status="default" text="未执行" />
             </div>
           </span>
-          <span slot="auto_init" slot-scope="text, record">
-            <div class="auto-init-cell">
-              <a-tag v-if="record.auto_init === 1" color="green">自动</a-tag>
-              <a-tag v-else>手动</a-tag>
-              <span v-if="record.auto_init === 1 && record.init_cron" class="auto-init-cron">{{ record.init_cron }}</span>
-            </div>
-          </span>
-          <span slot="last_success_at" slot-scope="text">
+          <span slot="mapping_last_success_at" slot-scope="text">
             <div class="last-success-cell">
               <a-icon type="clock-circle" />
               <span>{{ text ? formatTime(text) : '暂无成功记录' }}</span>
             </div>
           </span>
-          <span slot="action" slot-scope="text, record">
-            <div class="action-cell">
-              <a-button size="small" type="primary" @click="handleInit(record)">初始化</a-button>
-              <a-button size="small" @click="handleCopy(record)">复制</a-button>
-              <a-button size="small" @click="handleEdit(record)">编辑</a-button>
-              <a-button size="small" @click="showHistory(record)">历史</a-button>
-              <a-popconfirm
-                title="确认删除该绑定配置？"
-                ok-text="确认"
-                cancel-text="取消"
-                @confirm="handleDelete(record)"
-              >
-                <a-button size="small" type="danger">删除</a-button>
-              </a-popconfirm>
-            </div>
+          <span slot="mapping_action" slot-scope="text, record">
+            <a-space>
+              <a-button data-testid="metric-mapping-detail-button" :data-record-id="String(record.id)" size="small" @click="showMetricMappingDetail(record)">查看详情</a-button>
+              <a-button data-testid="metric-mapping-history-button" :data-record-id="String(record.id)" size="small" @click="showMetricMappingHistory(record)">查看历史</a-button>
+            </a-space>
           </span>
         </a-table>
       </a-card>
 
-      <!-- 新建/编辑 Modal -->
       <a-modal
-        :title="modalTitle"
-        :visible="modalVisible"
-        :confirm-loading="modalLoading"
-        @ok="handleSubmit"
-        @cancel="handleCancel"
-        width="880px"
-        wrapClassName="asset-binding-modal"
-        :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '16px 20px 8px' }"
+        data-testid="system-binding-detail-modal"
+        title="旧设备绑定详情（只读）"
+        :visible="systemDetailVisible"
+        width="900px"
+        :footer="null"
+        @cancel="systemDetailVisible = false"
       >
-        <a-form-model
-          ref="form"
-          class="binding-form"
-          :model="form"
-          :rules="rules"
-          :label-col="{ span: 6 }"
-          :wrapper-col="{ span: 16 }"
-        >
-          <a-row :gutter="16" class="binding-form__grid">
-            <a-col :span="12">
-              <a-form-model-item label="配置名称" prop="name" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-input v-model="form.name" placeholder="可选，用于描述该绑定" />
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="Zabbix实例" prop="zid" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select
-                  v-model="form.zid"
-                  placeholder="请选择 Zabbix 实例"
-                  show-search
-                  option-label-prop="label"
-                  option-filter-prop="children"
-                  @change="handleInstanceChange"
-                >
-                  <a-select-option v-for="inst in instanceList" :key="inst.instance" :value="inst.instance" :label="inst.name">
-                    {{ inst.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="资产类型" prop="type_code" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select v-model="form.type_code" placeholder="请选择资产类型" option-label-prop="label">
-                  <a-select-option
-                    v-for="at in assetTypes"
-                    :key="at.type_code"
-                    :value="at.type_code"
-                    :label="at.name"
-                  >
-                    <a-icon :type="at.icon || 'folder'" class="asset-type-option-icon" />
-                    {{ at.name }} ({{ at.type_code }})
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="主机组" prop="group_id" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
-                <a-select
-                  v-model="selectedGroups"
-                  mode="multiple"
-                  placeholder="请先选择 Zabbix 实例"
-                  :loading="groupsLoading"
-                  show-search
-                  option-label-prop="label"
-                  option-filter-prop="children"
-                  @change="updateGroupId"
-                >
-                  <a-select-option v-for="g in hostGroups" :key="g.groupid" :value="g.groupid" :label="g.name">
-                    {{ g.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left" class="binding-form__divider">监控指标绑定（可选）</a-divider>
-          <div class="binding-form__hint">先选模板，再选监控项</div>
-
-          <a-row :gutter="12" v-for="m in metricDefs" :key="m.key" class="binding-form__metric-row">
-            <a-col :span="12">
-              <a-form-model-item :label="m.label + ' / 模板'" :label-col="{ span: 10 }" :wrapper-col="{ span: 14 }">
-                <a-select show-search option-label-prop="label" option-filter-prop="label" placeholder="选择模板" :loading="templatesLoading"
-                  @change="val => handleTemplateChange(val, m.key)">
-                  <a-select-option v-for="tpl in templateList" :key="tpl.templateid" :value="tpl.templateid" :label="tpl.name">
-                    {{ tpl.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-model-item label="监控项" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-                <a-select show-search option-label-prop="label" option-filter-prop="label" v-model="selectedItems[m.key]"
-                  placeholder="选择监控项" :loading="itemsLoading[m.key]"
-                  @change="val => handleItemChange(val, m.field)">
-                  <a-select-option v-for="item in itemLists[m.key]" :key="item.itemid" :value="item.itemid" :label="item.name">
-                    {{ item.name }}
-                  </a-select-option>
-                </a-select>
-              </a-form-model-item>
-            </a-col>
-          </a-row>
-
-          <a-form-model-item label="ICMP模板">
-            <a-select v-model="form.ping_template_id" show-search option-label-prop="label" option-filter-prop="label"
-              placeholder="选择 ICMP 模板（可选）" :loading="templatesLoading" allow-clear>
-              <a-select-option v-for="tpl in templateList" :key="tpl.templateid" :value="tpl.templateid" :label="tpl.name">
-                {{ tpl.name }}
-              </a-select-option>
-            </a-select>
-          </a-form-model-item>
-
-          <a-divider orientation="left" class="binding-form__divider">自动化配置</a-divider>
-
-          <a-form-model-item label="自动初始化">
-            <a-switch v-model="autoInitSwitch" @change="val => form.auto_init = val ? 1 : 0" />
-            <span style="margin-left: 8px; color: #888; font-size: 12px;">开启后按 Cron 表达式定时执行</span>
-          </a-form-model-item>
-
-          <a-form-model-item label="Cron 表达式" v-if="autoInitSwitch">
-            <a-input v-model="form.init_cron" placeholder="0 0 2 * * * （秒 分 时 日 月 周）" />
-            <div style="font-size: 12px; color: #aaa; margin-top: 2px;">格式：秒 分 时 日 月 周，示例每天凌晨2点：0 0 2 * * *</div>
-          </a-form-model-item>
-
-          <a-form-model-item label="新主机自动初始化" v-if="autoInitSwitch">
-            <a-switch v-model="initOnNewHostSwitch" @change="val => form.init_on_new_host = val ? 1 : 0" />
-            <span style="margin-left: 8px; color: #888; font-size: 12px;">主机组新增主机时自动执行</span>
-          </a-form-model-item>
-
-          <a-form-model-item label="最大重试次数">
-            <a-input-number v-model="form.max_retry" :min="0" :max="10" style="width: 100px;" />
-          </a-form-model-item>
-        </a-form-model>
+        <a-spin :spinning="systemDetailLoading">
+          <a-alert message="原始配置仅用于核对，不会保存、初始化或再次执行。" type="info" show-icon />
+          <a-descriptions v-if="systemDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
+            <a-descriptions-item label="名称">{{ systemDetailRecord.name || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="历史资产类型">{{ systemDetailRecord.type_code || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="Zabbix 实例">{{ getInstanceName(systemDetailRecord.zid) }}</a-descriptions-item>
+            <a-descriptions-item label="历史主机组">{{ formatGroupNames(systemDetailRecord) }}</a-descriptions-item>
+            <a-descriptions-item label="原自动化">{{ legacyAutomationLabel(systemDetailRecord) }}</a-descriptions-item>
+            <a-descriptions-item label="历史状态">{{ systemDetailRecord.status }}</a-descriptions-item>
+          </a-descriptions>
+          <div v-if="systemDetailRecord" class="raw-record">
+            <div class="raw-record__title">完整原始记录</div>
+            <pre data-testid="system-binding-detail-raw">{{ prettyRecord(systemDetailRecord) }}</pre>
+          </div>
+        </a-spin>
       </a-modal>
 
-      <!-- 执行历史 Modal -->
       <a-modal
-        title="初始化执行历史"
+        data-testid="metric-mapping-detail-modal"
+        title="旧指标映射详情（只读）"
+        :visible="metricMappingDetailVisible"
+        width="900px"
+        :footer="null"
+        @cancel="metricMappingDetailVisible = false"
+      >
+        <a-spin :spinning="metricMappingDetailLoading">
+          <a-alert message="完整指标配置仅用于核对，不会保存、执行或写入 Inventory。" type="info" show-icon />
+          <a-descriptions v-if="metricMappingDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
+            <a-descriptions-item label="历史系统类型">{{ metricMappingDetailRecord.system_type || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="Zabbix 实例">{{ getInstanceName(metricMappingDetailRecord.zid) }}</a-descriptions-item>
+            <a-descriptions-item label="历史主机组">{{ formatMetricMappingGroups(metricMappingDetailRecord) }}</a-descriptions-item>
+            <a-descriptions-item label="历史指标关联">{{ metricCount(metricMappingDetailRecord) }} 项</a-descriptions-item>
+            <a-descriptions-item label="原自动化">{{ legacyAutomationLabel(metricMappingDetailRecord) }}</a-descriptions-item>
+            <a-descriptions-item label="历史状态">{{ metricMappingDetailRecord.status }}</a-descriptions-item>
+          </a-descriptions>
+          <div v-if="metricMappingDetailRecord" class="raw-record">
+            <div class="raw-record__title">完整原始记录</div>
+            <pre data-testid="metric-mapping-detail-raw">{{ prettyRecord(metricMappingDetailRecord) }}</pre>
+          </div>
+        </a-spin>
+      </a-modal>
+
+      <a-modal
+        data-testid="system-binding-history-modal"
+        title="历史执行记录（只读）"
         :visible="historyVisible"
         width="900px"
         :footer="null"
         @cancel="historyVisible = false"
       >
+        <a-alert
+          message="历史记录仅用于审计和迁移核对，不会再次执行。"
+          type="info"
+          show-icon
+          style="margin-bottom: 12px;"
+        />
         <a-table
+          data-testid="system-binding-history-table"
           :loading="historyLoading"
           :columns="historyColumns"
           :data-source="historyList"
           :pagination="historyPagination"
-          rowKey="id"
+          row-key="id"
           @change="handleHistoryPageChange"
         >
           <span slot="exec_type" slot-scope="text">
@@ -515,635 +232,405 @@
           <span slot="duration" slot-scope="text">{{ text ? text + 's' : '-' }}</span>
         </a-table>
       </a-modal>
+
+      <a-modal
+        data-testid="metric-mapping-history-modal"
+        title="指标映射执行历史（只读）"
+        :visible="metricMappingHistoryVisible"
+        width="900px"
+        :footer="null"
+        @cancel="metricMappingHistoryVisible = false"
+      >
+        <a-alert
+          message="历史记录仅用于审计和迁移核对，不会再次执行或建立 Inventory 关联。"
+          type="info"
+          show-icon
+          style="margin-bottom: 12px;"
+        />
+        <a-table
+          data-testid="metric-mapping-history-table"
+          :loading="metricMappingHistoryLoading"
+          :columns="metricMappingHistoryColumns"
+          :data-source="metricMappingHistoryList"
+          :pagination="metricMappingHistoryPagination"
+          row-key="id"
+          @change="handleMetricMappingHistoryPageChange"
+        >
+          <span slot="mapping_history_row" slot-scope="text" data-testid="metric-mapping-history-row">{{ text || '-' }}</span>
+          <span slot="mapping_history_exec_type" slot-scope="text">
+            <a-tag :color="execTypeColor(text)">{{ execTypeLabel(text) }}</a-tag>
+          </span>
+          <span slot="mapping_history_status" slot-scope="text">
+            <a-tag :color="historyStatusColor(text)">{{ text }}</a-tag>
+          </span>
+          <span slot="mapping_history_start_time" slot-scope="text">{{ formatTime(text) }}</span>
+          <span slot="mapping_history_duration" slot-scope="text">{{ text ? text + 's' : '-' }}</span>
+        </a-table>
+      </a-modal>
     </div>
-  </page-layout>
+  </component>
 </template>
 
 <script>
-import PageLayout from "@/layouts/PageLayout";
+import PageLayout from '@/layouts/PageLayout'
 import {
-  getAssetTypes, getSystemBindings, createSystemBinding, updateSystemBinding,
-  deleteSystemBinding, initSystemBinding, getSystemBindingHistory,
-  hostgroupList, templateList, templateGetItemList,
-} from "@/services/admin";
-import { listZabbixInstance } from "@/services/zabbix";
-
-const METRIC_DEFS = [
-  { key: 'uptime',             field: 'uptime_id',             label: '在线时长' },
-  { key: 'cpu_core',           field: 'cpu_core',              label: 'CPU核心数' },
-  { key: 'cpu_utilization',    field: 'cpu_utilization_id',    label: 'CPU使用率' },
-  { key: 'memory_utilization', field: 'memory_utilization_id', label: '内存使用率' },
-  { key: 'memory_used',        field: 'memory_used_id',        label: '已用内存' },
-  { key: 'memory_total',       field: 'memory_total_id',       label: '总内存' },
-  { key: 'model',              field: 'model',                 label: '型号' },
-];
-
-function emptyItems() { return METRIC_DEFS.reduce((a, m) => { a[m.key] = undefined; return a; }, {}); }
-function emptyLists() { return METRIC_DEFS.reduce((a, m) => { a[m.key] = []; return a; }, {}); }
-function emptyLoading() { return METRIC_DEFS.reduce((a, m) => { a[m.key] = false; return a; }, {}); }
+  getAssetTypes,
+  getSystemBinding,
+  getSystemBindings,
+  getSystemBindingHistory,
+  hostgroupList,
+  metricMappingHistory,
+  metricMappingGet,
+  metricMappingList,
+} from '@/services/admin'
+import { listZabbixInstance } from '@/services/zabbix'
 
 export default {
   name: 'AssetBinding',
   components: { PageLayout },
   props: {
-    embedded: {
-      type: Boolean,
-      default: false,
-    },
+    embedded: { type: Boolean, default: false },
   },
   data() {
     return {
       loading: false,
       dataSource: [],
+      metricMappingLoading: false,
+      metricMappingDataSource: [],
       assetTypes: [],
       instanceList: [],
-      hostGroups: [],
-      templateList: [],
       groupNameMapByZid: {},
-      groupsLoading: false,
-      templatesLoading: false,
-      selectedGroups: [],
-      selectedItems: emptyItems(),
-      itemLists: emptyLists(),
-      itemsLoading: emptyLoading(),
-      metricDefs: METRIC_DEFS,
-      autoInitSwitch: true,
-      initOnNewHostSwitch: true,
-      modalVisible: false,
-      modalLoading: false,
-      isEdit: false,
-      isCopy: false,
-      editId: null,
-      form: this.emptyForm(),
-      rules: {
-        zid:       [{ required: true, message: '请选择 Zabbix 实例', trigger: 'change' }],
-        type_code: [{ required: true, message: '请选择资产类型', trigger: 'change' }],
-        group_id:  [{ required: true, message: '请选择主机组', trigger: 'change' }],
-      },
       columns: [
-        { title: '名称',       dataIndex: 'name',            key: 'name', scopedSlots: { customRender: 'name' }, width: 220 },
-        { title: '资产类型',   key: 'asset_type',            scopedSlots: { customRender: 'asset_type' }, width: 300 },
-        { title: 'Zabbix实例', key: 'zabbix_instance',       scopedSlots: { customRender: 'zabbix_instance' }, width: 180 },
-        { title: '主机组',     dataIndex: 'group_id',        key: 'group_id', scopedSlots: { customRender: 'group_id' }, ellipsis: true, width: 260 },
-        { title: '自动初始化', key: 'auto_init',             scopedSlots: { customRender: 'auto_init' }, width: 180 },
-        { title: '状态',       key: 'status',                scopedSlots: { customRender: 'status' }, width: 120 },
-        { title: '最近成功',   dataIndex: 'last_success_at', key: 'last_success_at', scopedSlots: { customRender: 'last_success_at' }, width: 190 },
-        { title: '操作',       key: 'action',                width: 320, scopedSlots: { customRender: 'action' }, fixed: 'right' },
+        { title: '名称', dataIndex: 'name', key: 'name', scopedSlots: { customRender: 'name' }, width: 220 },
+        { title: '历史资产类型', key: 'asset_type', scopedSlots: { customRender: 'asset_type' }, width: 300 },
+        { title: 'Zabbix 实例', key: 'zabbix_instance', scopedSlots: { customRender: 'zabbix_instance' }, width: 180 },
+        { title: '历史主机组', dataIndex: 'group_id', key: 'group_id', scopedSlots: { customRender: 'group_id' }, ellipsis: true, width: 260 },
+        { title: '旧自动化', key: 'legacy_automation', scopedSlots: { customRender: 'legacy_automation' }, width: 220 },
+        { title: '历史状态', key: 'status', scopedSlots: { customRender: 'status' }, width: 130 },
+        { title: '最近成功', dataIndex: 'last_success_at', key: 'last_success_at', scopedSlots: { customRender: 'last_success_at' }, width: 190 },
+        { title: '操作', key: 'action', width: 190, scopedSlots: { customRender: 'action' }, fixed: 'right' },
       ],
       historyVisible: false,
       historyLoading: false,
       historyList: [],
       currentSystemId: null,
-      historyPagination: { current: 1, pageSize: 20, total: 0, showTotal: t => `共 ${t} 条` },
+      historyPagination: { current: 1, pageSize: 20, total: 0, showTotal: total => `共 ${total} 条` },
       historyColumns: [
-        { title: '类型',     dataIndex: 'exec_type',     key: 'exec_type',     width: 80,  scopedSlots: { customRender: 'exec_type' } },
-        { title: '开始时间', dataIndex: 'start_time',    key: 'start_time',    width: 170, scopedSlots: { customRender: 'start_time' } },
-        { title: '耗时',     dataIndex: 'duration',      key: 'duration',      width: 70,  scopedSlots: { customRender: 'duration' } },
-        { title: '状态',     dataIndex: 'status',        key: 'status',        width: 80,  scopedSlots: { customRender: 'status' } },
+        { title: '原执行类型', dataIndex: 'exec_type', key: 'exec_type', width: 100, scopedSlots: { customRender: 'exec_type' } },
+        { title: '开始时间', dataIndex: 'start_time', key: 'start_time', width: 170, scopedSlots: { customRender: 'start_time' } },
+        { title: '耗时', dataIndex: 'duration', key: 'duration', width: 70, scopedSlots: { customRender: 'duration' } },
+        { title: '状态', dataIndex: 'status', key: 'status', width: 80, scopedSlots: { customRender: 'status' } },
         { title: '影响主机', dataIndex: 'affected_hosts', key: 'affected_hosts', width: 90 },
         { title: '错误信息', dataIndex: 'error_message', key: 'error_message', ellipsis: true },
       ],
-    };
-  },
-  computed: {
-    modalTitle() {
-      if (this.isEdit) return '编辑绑定配置';
-      if (this.isCopy) return '复制绑定配置';
-      return '新建绑定配置';
-    },
+      systemDetailVisible: false,
+      systemDetailLoading: false,
+      systemDetailRecord: null,
+      metricMappingColumns: [
+        { title: '历史系统类型', dataIndex: 'system_type', key: 'system_type', scopedSlots: { customRender: 'mapping_system_type' }, width: 220 },
+        { title: 'Zabbix 实例', key: 'mapping_instance', scopedSlots: { customRender: 'mapping_instance' }, width: 180 },
+        { title: '历史主机组', dataIndex: 'host_group_ids', key: 'host_group_ids', scopedSlots: { customRender: 'mapping_groups' }, width: 260 },
+        { title: '历史指标关联', key: 'metric_count', scopedSlots: { customRender: 'metric_count' }, width: 150 },
+        { title: '旧自动化', key: 'mapping_automation', scopedSlots: { customRender: 'mapping_automation' }, width: 220 },
+        { title: '历史状态', key: 'mapping_status', scopedSlots: { customRender: 'mapping_status' }, width: 130 },
+        { title: '最近成功', dataIndex: 'last_success_at', key: 'mapping_last_success_at', scopedSlots: { customRender: 'mapping_last_success_at' }, width: 190 },
+        { title: '操作', key: 'mapping_action', width: 190, scopedSlots: { customRender: 'mapping_action' }, fixed: 'right' },
+      ],
+      metricMappingDetailVisible: false,
+      metricMappingDetailLoading: false,
+      metricMappingDetailRecord: null,
+      metricMappingHistoryVisible: false,
+      metricMappingHistoryLoading: false,
+      metricMappingHistoryList: [],
+      currentMetricMappingId: null,
+      metricMappingHistoryPagination: { current: 1, pageSize: 20, total: 0, showTotal: total => `共 ${total} 条` },
+      metricMappingHistoryColumns: [
+        { title: '历史系统类型', dataIndex: 'system_type', key: 'system_type', width: 150, scopedSlots: { customRender: 'mapping_history_row' } },
+        { title: '原执行类型', dataIndex: 'exec_type', key: 'exec_type', width: 100, scopedSlots: { customRender: 'mapping_history_exec_type' } },
+        { title: '开始时间', dataIndex: 'start_time', key: 'start_time', width: 170, scopedSlots: { customRender: 'mapping_history_start_time' } },
+        { title: '耗时', dataIndex: 'duration', key: 'duration', width: 70, scopedSlots: { customRender: 'mapping_history_duration' } },
+        { title: '状态', dataIndex: 'status', key: 'status', width: 80, scopedSlots: { customRender: 'mapping_history_status' } },
+        { title: '影响主机', dataIndex: 'affected_hosts', key: 'affected_hosts', width: 90 },
+        { title: '错误信息', dataIndex: 'error_message', key: 'error_message', ellipsis: true },
+      ],
+    }
   },
   mounted() {
-    this.loadAssetTypes();
-    this.loadInstances();
-    this.loadData();
+    this.loadAssetTypes()
+    this.loadInstances()
+    this.loadData()
+    this.loadMetricMappings()
   },
   methods: {
-    emptyForm() {
-      return {
-        name: '', zid: undefined, type_code: undefined, group_id: '',
-        cpu_core: '', cpu_utilization_id: '', memory_utilization_id: '',
-        memory_used_id: '', memory_total_id: '', uptime_id: '', model: '',
-        ping_template_id: '', auto_init: 1, init_cron: '0 0 2 * * *',
-        init_on_new_host: 1, max_retry: 3,
-      };
-    },
     async loadAssetTypes() {
       try {
-        const res = await getAssetTypes();
-        const biz = (res && res.data) ? res.data : res;
-        if (biz && biz.code === 200) this.assetTypes = biz.data || [];
-      } catch (e) { console.error(e); }
+        const response = await getAssetTypes()
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) this.assetTypes = business.data || []
+      } catch (error) {
+        console.error(error)
+      }
     },
     async loadInstances() {
       try {
-        const res = await listZabbixInstance();
-        const biz = (res && res.data) ? res.data : res;
-        if (biz && biz.code === 200) {
-          const list = biz.data || [];
-          this.instanceList = list.map(item => ({
+        const response = await listZabbixInstance()
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) {
+          this.instanceList = (business.data || []).map(item => ({
             ...item,
             instance: String(item.id || item.instance || ''),
             name: item.name || item.host || String(item.id || item.instance || '-'),
-          }));
+          }))
         }
-      } catch (e) { console.error(e); }
+      } catch (error) {
+        console.error(error)
+      }
     },
     async loadData() {
-      this.loading = true;
+      this.loading = true
       try {
-        const res = await getSystemBindings();
-        const biz = (res && res.data) ? res.data : res;
-        if (biz && biz.code === 200) {
-          const d = biz.data;
-          this.dataSource = Array.isArray(d) ? d : (d && Array.isArray(d.items) ? d.items : []);
-          await this.loadGroupNamesForRows(this.dataSource);
-        } else { this.dataSource = []; }
-      } catch (e) {
-        this.$message.error('加载绑定配置失败');
-        this.dataSource = [];
-      } finally { this.loading = false; }
+        const response = await getSystemBindings()
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) {
+          const data = business.data
+          this.dataSource = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : [])
+          await this.loadGroupNamesForRows(this.dataSource)
+        } else {
+          this.dataSource = []
+        }
+      } catch (error) {
+        this.$message.error('加载历史绑定配置失败')
+        this.dataSource = []
+      } finally {
+        this.loading = false
+      }
+    },
+    async loadMetricMappings() {
+      this.metricMappingLoading = true
+      try {
+        const response = await metricMappingList()
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) {
+          const data = business.data
+          this.metricMappingDataSource = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : [])
+          await this.loadGroupNamesForRows(this.metricMappingDataSource.map(item => ({
+            ...item,
+            group_id: item.host_group_ids,
+          })))
+        } else {
+          this.metricMappingDataSource = []
+        }
+      } catch (error) {
+        this.$message.error('加载历史指标映射失败')
+        this.metricMappingDataSource = []
+      } finally {
+        this.metricMappingLoading = false
+      }
     },
     async loadGroupNamesForRows(rows) {
-      const zidList = [...new Set(
+      const zids = [...new Set(
         (rows || [])
-          .filter(row => row && row.group_id && row.zid !== undefined && row.zid !== null && String(row.zid) !== '' && String(row.zid) !== '0')
+          .filter(row => row && row.group_id && Number(row.zid) > 0)
           .map(row => String(row.zid))
-      )];
-      const uncachedZids = zidList.filter(zid => !this.groupNameMapByZid[zid]);
-      if (uncachedZids.length === 0) return;
+      )]
+      const pending = zids.filter(zid => !this.groupNameMapByZid[zid])
+      if (!pending.length) return
       try {
-        const results = await Promise.all(uncachedZids.map(zid => hostgroupList(zid)));
-        const nextMap = { ...this.groupNameMapByZid };
-        uncachedZids.forEach((zid, index) => {
-          const res = results[index];
-          const groups = res && res.data && res.data.code === 200 ? (res.data.data || []) : [];
-          nextMap[zid] = groups.reduce((acc, group) => {
-            const groupId = String(group.groupid || '');
-            if (groupId) acc[groupId] = group.name || groupId;
-            return acc;
-          }, {});
-        });
-        this.groupNameMapByZid = nextMap;
-      } catch (e) {
-        console.error(e);
+        const responses = await Promise.all(pending.map(zid => hostgroupList(zid)))
+        const next = { ...this.groupNameMapByZid }
+        pending.forEach((zid, index) => {
+          const response = responses[index]
+          const groups = response && response.data && response.data.code === 200 ? (response.data.data || []) : []
+          next[zid] = groups.reduce((result, group) => {
+            const id = String(group.groupid || '')
+            if (id) result[id] = group.name || id
+            return result
+          }, {})
+        })
+        this.groupNameMapByZid = next
+      } catch (error) {
+        console.error(error)
       }
-    },
-    async handleInstanceChange(zid) {
-      if (!zid) return;
-      this.hostGroups = [];
-      this.templateList = [];
-      this.selectedGroups = [];
-      this.form.group_id = '';
-      this.selectedItems = emptyItems();
-      this.itemLists = emptyLists();
-      this.groupsLoading = true;
-      this.templatesLoading = true;
-      try {
-        const [gRes, tRes] = await Promise.all([hostgroupList(zid), templateList(zid)]);
-        if (gRes.data && gRes.data.code === 200) {
-          const groups = gRes.data.data || [];
-          this.hostGroups = groups.map(group => ({
-            ...group,
-            groupid: String(group.groupid || ''),
-            name: group.name || String(group.groupid || '-'),
-          }));
-        }
-        if (tRes.data && tRes.data.code === 200) {
-          const templates = tRes.data.data || [];
-          this.templateList = templates.map(template => ({
-            ...template,
-            templateid: String(template.templateid || ''),
-            name: template.name || template.host || String(template.templateid || '-'),
-          }));
-        }
-      } catch (e) { this.$message.error('加载主机组或模板失败'); }
-      finally { this.groupsLoading = false; this.templatesLoading = false; }
-    },
-    updateGroupId() { this.form.group_id = this.selectedGroups.join(','); },
-    async handleTemplateChange(templateId, metricKey) {
-      if (!this.form.zid) { this.$message.warning('请先选择 Zabbix 实例'); return; }
-      this.$set(this.itemsLoading, metricKey, true);
-      try {
-        const res = await templateGetItemList(templateId, this.form.zid);
-        if (res.data && res.data.code === 200) {
-          const items = res.data.data || [];
-          const list = (items.length > 0 && items[0].items) ? items[0].items : items;
-          this.$set(this.itemLists, metricKey, list.map(item => ({
-            ...item,
-            itemid: String(item.itemid || ''),
-            name: item.name || item.key_ || String(item.itemid || '-'),
-          })));
-        }
-      } catch (e) { this.$message.error('加载监控项失败'); }
-      finally { this.$set(this.itemsLoading, metricKey, false); }
-    },
-    handleItemChange(itemId, formField) { this.form[formField] = itemId ? String(itemId) : ''; },
-    getDefaultInstanceId() {
-      return this.instanceList.length > 0 ? String(this.instanceList[0].instance) : undefined;
-    },
-    resolveInitialZid(zid) {
-      const normalized = zid !== undefined && zid !== null ? String(zid) : '';
-      if (normalized && normalized !== '0') return normalized;
-      return this.getDefaultInstanceId();
     },
     getAssetTypeName(typeCode) {
-      const at = this.assetTypes.find(t => t.type_code === typeCode);
-      return at ? at.name : (typeCode || '-');
+      const assetType = this.assetTypes.find(item => item.type_code === typeCode)
+      return assetType ? assetType.name : (typeCode || '-')
     },
     getAssetTypeIcon(typeCode) {
-      const at = this.assetTypes.find(t => t.type_code === typeCode);
-      return (at && at.icon) || 'folder';
+      const assetType = this.assetTypes.find(item => item.type_code === typeCode)
+      return (assetType && assetType.icon) || 'folder'
     },
     getInstanceName(zid) {
-      const inst = this.instanceList.find(i => String(i.instance) === String(zid));
-      if (inst) return inst.name;
-      return zid && String(zid) !== '0' ? zid : '-';
+      const instance = this.instanceList.find(item => String(item.instance) === String(zid))
+      return instance ? instance.name : (Number(zid) > 0 ? String(zid) : '-')
     },
     formatGroupNames(record) {
-      if (!record || !record.group_id) return '-';
-      const zid = record.zid !== undefined && record.zid !== null ? String(record.zid) : '';
-      const nameMap = this.groupNameMapByZid[zid] || {};
-      const groups = String(record.group_id)
-        .split(',')
-        .filter(Boolean)
-        .map(groupId => nameMap[groupId] || groupId);
-      if (groups.length <= 2) return groups.join(' , ');
-      return `${groups.slice(0, 2).join(' , ')} 等 ${groups.length} 个主机组`;
+      if (!record || !record.group_id) return '-'
+      const nameMap = this.groupNameMapByZid[String(record.zid)] || {}
+      const groups = String(record.group_id).split(',').filter(Boolean).map(id => nameMap[id] || id)
+      return groups.length <= 2 ? groups.join(' , ') : `${groups.slice(0, 2).join(' , ')} 等 ${groups.length} 个主机组`
+    },
+    formatMetricMappingGroups(record) {
+      return this.formatGroupNames({ zid: record.zid, group_id: record.host_group_ids })
+    },
+    metricCount(record) {
+      try {
+        const config = JSON.parse(record.metric_config || '{}')
+        return config && config.metrics && typeof config.metrics === 'object' ? Object.keys(config.metrics).length : 0
+      } catch (error) {
+        return 0
+      }
+    },
+    legacyAutomationLabel(record) {
+      const labels = []
+      if (record.auto_init === 1) labels.push('原定时')
+      if (record.init_on_new_host === 1) labels.push('原新主机触发')
+      return labels.length ? labels.join(' / ') : '原手动配置'
     },
     getRowClassName(record) {
-      if (record.status === 2) return 'row-failed';
-      if (record.status === 1) return 'row-success';
-      return '';
+      if (record.status === 2) return 'row-failed'
+      if (record.status === 1) return 'row-success'
+      return ''
     },
-    resetModal() {
-      this.form = this.emptyForm();
-      this.selectedGroups = [];
-      this.hostGroups = [];
-      this.templateList = [];
-      this.selectedItems = emptyItems();
-      this.itemLists = emptyLists();
-      this.itemsLoading = emptyLoading();
-      // 新建时默认开启自动初始化（编辑时由 handleEdit 按记录覆盖）
-      this.autoInitSwitch = true;
-      this.initOnNewHostSwitch = true;
-    },
-    async handleAdd() {
-      this.isEdit = false;
-      this.isCopy = false;
-      this.editId = null;
-      this.resetModal();
-      const defaultZid = this.getDefaultInstanceId();
-      if (defaultZid) {
-        this.form.zid = defaultZid;
-        await this.handleInstanceChange(defaultZid);
-      }
-      this.modalVisible = true;
-      this.$nextTick(() => { this.$refs.form && this.$refs.form.clearValidate(); });
-    },
-    async handleEdit(record) {
-      this.isEdit = true;
-      this.isCopy = false;
-      this.editId = record.id;
-      this.resetModal();
-      const initialZid = this.resolveInitialZid(record.zid);
-      this.form = {
-        name:                record.name || '',
-        zid:                 initialZid,
-        type_code:           record.type_code || undefined,
-        group_id:            record.group_id || '',
-        cpu_core:            record.cpu_core || '',
-        cpu_utilization_id:  record.cpu_utilization_id || '',
-        memory_utilization_id: record.memory_utilization_id || '',
-        memory_used_id:      record.memory_used_id || '',
-        memory_total_id:     record.memory_total_id || '',
-        uptime_id:           record.uptime_id || '',
-        model:               record.model || '',
-        ping_template_id:    record.ping_template_id ? String(record.ping_template_id) : '',
-        auto_init:           record.auto_init || 0,
-        init_cron:           record.init_cron || '0 0 2 * * *',
-        init_on_new_host:    record.init_on_new_host || 0,
-        max_retry:           record.max_retry !== undefined ? record.max_retry : 3,
-      };
-      this.autoInitSwitch = record.auto_init === 1;
-      this.initOnNewHostSwitch = record.init_on_new_host === 1;
-      this.modalVisible = true;
-      this.$nextTick(() => { this.$refs.form && this.$refs.form.clearValidate(); });
-      if (initialZid) {
-        await this.handleInstanceChange(initialZid);
-        // handleInstanceChange 会清空 selectedGroups 和 form.group_id，这里恢复并同步回填 group_id
-        if (record.group_id) {
-          this.selectedGroups = record.group_id.split(',').filter(Boolean).map(String);
-          this.updateGroupId();
-        }
-        if (record.ping_template_id) this.form.ping_template_id = record.ping_template_id;
-      }
-    },
-    async handleCopy(record) {
-      this.isEdit = false;
-      this.isCopy = true;
-      this.editId = null;
-      this.resetModal();
-      const initialZid = this.resolveInitialZid(record.zid);
-      this.form = {
-        name:                record.name || '',
-        zid:                 initialZid,
-        type_code:           record.type_code || undefined,
-        group_id:            record.group_id || '',
-        cpu_core:            record.cpu_core || '',
-        cpu_utilization_id:  record.cpu_utilization_id || '',
-        memory_utilization_id: record.memory_utilization_id || '',
-        memory_used_id:      record.memory_used_id || '',
-        memory_total_id:     record.memory_total_id || '',
-        uptime_id:           record.uptime_id || '',
-        model:               record.model || '',
-        ping_template_id:    record.ping_template_id ? String(record.ping_template_id) : '',
-        auto_init:           record.auto_init || 0,
-        init_cron:           record.init_cron || '0 0 2 * * *',
-        init_on_new_host:    record.init_on_new_host || 0,
-        max_retry:           record.max_retry !== undefined ? record.max_retry : 3,
-      };
-      this.autoInitSwitch = record.auto_init === 1;
-      this.initOnNewHostSwitch = record.init_on_new_host === 1;
-      this.modalVisible = true;
-      this.$nextTick(() => { this.$refs.form && this.$refs.form.clearValidate(); });
-      if (initialZid) {
-        await this.handleInstanceChange(initialZid);
-        // handleInstanceChange 会清空 selectedGroups 和 form.group_id，这里恢复并同步回填 group_id
-        if (record.group_id) {
-          this.selectedGroups = record.group_id.split(',').filter(Boolean).map(String);
-          this.updateGroupId();
-        }
-        if (record.ping_template_id) this.form.ping_template_id = String(record.ping_template_id);
-      }
-    },
-    handleCancel() { this.modalVisible = false; },
-    handleSubmit() {
-      this.$refs.form.validate(async (valid) => {
-        if (!valid) return;
-        this.modalLoading = true;
-        try {
-          const action = this.isEdit
-            ? updateSystemBinding(this.editId, this.form)
-            : createSystemBinding(this.form);
-          const res = await action;
-          const biz = (res && res.data) ? res.data : res;
-          if (biz && biz.code === 200) {
-            this.$message.success(this.isEdit ? '更新成功' : '创建成功');
-            this.modalVisible = false;
-            this.loadData();
-          } else {
-            this.$message.error((biz && biz.message) || '操作失败');
-          }
-        } catch (e) { this.$message.error('操作失败'); }
-        finally { this.modalLoading = false; }
-      });
-    },
-    handleInit(record) {
-      this.$confirm({
-        title: '确认立即初始化？',
-        content: `将对 ${this.getAssetTypeName(record.type_code)} 的主机组执行批量 inventory 写入操作。`,
-        onOk: async () => {
-          try {
-            const res = await initSystemBinding(record.id, record.zid);
-            const biz = (res && res.data) ? res.data : res;
-            if (biz && biz.code === 200) {
-              this.$message.success('初始化成功');
-              this.loadData();
-            } else {
-              this.$message.error((biz && biz.message) || '初始化失败');
-            }
-          } catch (e) { this.$message.error('初始化失败'); }
-        },
-      });
-    },
-    async handleDelete(record) {
+    async showSystemDetail(record) {
+      this.systemDetailVisible = true
+      this.systemDetailLoading = true
+      this.systemDetailRecord = null
       try {
-        const res = await deleteSystemBinding(record.id);
-        const biz = (res && res.data) ? res.data : res;
-        if (biz && biz.code === 200) {
-          this.$message.success('删除成功');
-          await this.loadData();
-        } else { this.$message.error((biz && biz.message) || '删除失败'); }
-      } catch (e) { this.$message.error('删除失败'); }
+        const response = await getSystemBinding(record.id)
+        const business = response && response.data ? response.data : response
+        if (!business || business.code !== 200) throw new Error('unexpected response')
+        const data = business.data || {}
+        this.systemDetailRecord = data.items && !Array.isArray(data.items) ? data.items : data
+      } catch (error) {
+        this.$message.error('加载历史绑定详情失败')
+      } finally {
+        this.systemDetailLoading = false
+      }
     },
     showHistory(record) {
-      this.currentSystemId = record.id;
-      this.historyPagination.current = 1;
-      this.historyVisible = true;
-      this.fetchHistory();
+      this.currentSystemId = record.id
+      this.historyPagination.current = 1
+      this.historyVisible = true
+      this.fetchHistory()
     },
     async fetchHistory() {
-      this.historyLoading = true;
+      this.historyLoading = true
       try {
-        const res = await getSystemBindingHistory(this.currentSystemId, {
+        const response = await getSystemBindingHistory(this.currentSystemId, {
           page: this.historyPagination.current,
           limit: this.historyPagination.pageSize,
-        });
-        const biz = (res && res.data) ? res.data : res;
-        if (biz && biz.code === 200) {
-          this.historyList = (biz.data && biz.data.items) ? biz.data.items : [];
-          this.historyPagination.total = (biz.data && biz.data.total) ? biz.data.total : 0;
+        })
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) {
+          this.historyList = business.data && business.data.items ? business.data.items : []
+          this.historyPagination.total = business.data && business.data.total ? business.data.total : 0
         }
-      } catch (e) { this.$message.error('加载历史失败'); }
-      finally { this.historyLoading = false; }
+      } catch (error) {
+        this.$message.error('加载历史记录失败')
+      } finally {
+        this.historyLoading = false
+      }
     },
     handleHistoryPageChange(pagination) {
-      this.historyPagination.current = pagination.current;
-      this.historyPagination.pageSize = pagination.pageSize;
-      this.fetchHistory();
+      this.historyPagination.current = pagination.current
+      this.historyPagination.pageSize = pagination.pageSize
+      this.fetchHistory()
     },
-    formatTime(t) { return t ? new Date(t).toLocaleString('zh-CN') : '-'; },
-    execTypeLabel(t) { return { manual: '手动', auto: '自动', retry: '重试' }[t] || t; },
-    execTypeColor(t) { return { manual: 'blue', auto: 'green', retry: 'orange' }[t] || 'default'; },
-    historyStatusColor(t) { return { success: 'green', failed: 'red', running: 'orange' }[t] || 'default'; },
+    showMetricMappingHistory(record) {
+      this.currentMetricMappingId = record.id
+      this.metricMappingHistoryPagination.current = 1
+      this.metricMappingHistoryVisible = true
+      this.fetchMetricMappingHistory()
+    },
+    async showMetricMappingDetail(record) {
+      this.metricMappingDetailVisible = true
+      this.metricMappingDetailLoading = true
+      this.metricMappingDetailRecord = null
+      try {
+        const response = await metricMappingGet(record.id)
+        const business = response && response.data ? response.data : response
+        if (!business || business.code !== 200) throw new Error('unexpected response')
+        this.metricMappingDetailRecord = business.data || null
+      } catch (error) {
+        this.$message.error('加载历史指标映射详情失败')
+      } finally {
+        this.metricMappingDetailLoading = false
+      }
+    },
+    async fetchMetricMappingHistory() {
+      this.metricMappingHistoryLoading = true
+      try {
+        const response = await metricMappingHistory({
+          mapping_id: this.currentMetricMappingId,
+          page: this.metricMappingHistoryPagination.current,
+          limit: this.metricMappingHistoryPagination.pageSize,
+        })
+        const business = response && response.data ? response.data : response
+        if (business && business.code === 200) {
+          this.metricMappingHistoryList = business.data && business.data.items ? business.data.items : []
+          this.metricMappingHistoryPagination.total = business.data && business.data.total ? business.data.total : 0
+        } else {
+          this.metricMappingHistoryList = []
+          this.metricMappingHistoryPagination.total = 0
+        }
+      } catch (error) {
+        this.$message.error('加载指标映射历史失败')
+        this.metricMappingHistoryList = []
+        this.metricMappingHistoryPagination.total = 0
+      } finally {
+        this.metricMappingHistoryLoading = false
+      }
+    },
+    handleMetricMappingHistoryPageChange(pagination) {
+      this.metricMappingHistoryPagination.current = pagination.current
+      this.metricMappingHistoryPagination.pageSize = pagination.pageSize
+      this.fetchMetricMappingHistory()
+    },
+    prettyRecord(record) { return JSON.stringify(record || {}, null, 2) },
+    formatTime(value) { return value ? new Date(value).toLocaleString('zh-CN') : '-' },
+    execTypeLabel(value) { return { manual: '原手动', auto: '原自动', retry: '原重试', new_host: '原新主机触发' }[value] || value },
+    execTypeColor(value) { return { manual: 'blue', auto: 'green', retry: 'orange', new_host: 'purple' }[value] || 'default' },
+    historyStatusColor(value) { return { success: 'green', failed: 'red', running: 'orange' }[value] || 'default' },
   },
-};
+}
 </script>
 
 <style lang="less" scoped>
-.asset-binding-page {
-  background: #f5f7fb;
-  min-height: 100%;
-}
-
-.table-card {
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(31, 35, 41, 0.04);
-  margin-bottom: 20px;
-}
-
-.table-card__title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.table-card__title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2329;
-}
-
-.table-card__subtitle {
-  color: #667085;
-  font-size: 13px;
-}
-
-.table-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+.asset-binding-page { min-height: 100%; background: #f5f7fb; }
+.legacy-alert { margin-bottom: 16px; }
+.table-card { margin-bottom: 20px; border-radius: 14px; box-shadow: 0 10px 30px rgba(31, 35, 41, 0.04); }
+.table-card__title-wrap { display: flex; flex-direction: column; gap: 4px; }
+.table-card__title { color: #1f2329; font-size: 18px; font-weight: 600; }
+.table-card__subtitle, .legacy-meta { color: #667085; font-size: 12px; }
 .binding-name-cell,
 .asset-type-cell,
 .instance-cell,
 .status-cell,
-.auto-init-cell,
-.last-success-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.binding-name-cell {
-  flex-wrap: nowrap;
-}
-
-.binding-name-icon,
-.asset-type-icon,
-.asset-type-option-icon {
-  color: #1890ff;
-}
-
-.binding-name {
-  font-weight: 600;
-  color: #1f2329;
-}
-
-.asset-type-cell {
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-.instance-cell,
-.last-success-cell {
-  color: #475467;
-}
-
-.group-cell {
+.last-success-cell { display: flex; align-items: center; gap: 8px; }
+.binding-name-icon, .asset-type-icon { color: #1890ff; }
+.binding-name { color: #1f2329; font-weight: 600; }
+.asset-type-cell { flex-wrap: nowrap; white-space: nowrap; }
+.instance-cell, .last-success-cell { color: #475467; }
+.group-cell { overflow: hidden; color: #344054; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.status-error-icon { color: #f5222d; }
+.detail-descriptions { margin-top: 16px; }
+.raw-record { margin-top: 16px; }
+.raw-record__title { margin-bottom: 8px; color: #344054; font-weight: 600; }
+.raw-record pre {
+  max-height: 360px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  background: #f8fafc;
   color: #344054;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-error-icon {
-  color: #ff4d4f;
-  cursor: pointer;
-}
-
-.auto-init-cell {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-.auto-init-cron {
   font-size: 12px;
-  color: #667085;
-  white-space: nowrap;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
-
-.action-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.binding-form__grid {
-  margin-bottom: 4px;
-}
-
-.binding-form__divider {
-  margin: 8px 0 14px;
-  font-size: 13px;
-}
-
-.binding-form__hint {
-  margin: -8px 0 10px 24px;
-  color: #999;
-  font-size: 12px;
-}
-
-.binding-form__metric-row {
-  margin-bottom: 4px;
-}
-
-/deep/ .ant-card-head {
-  border-bottom: 1px solid #f0f2f5;
-}
-
-/deep/ .ant-table-thead > tr > th {
-  background: #fafbfc;
-  color: #344054;
-  font-weight: 600;
-}
-
-/deep/ .ant-table-tbody > tr > td {
-  vertical-align: top;
-  padding-top: 18px;
-  padding-bottom: 18px;
-}
-
-/deep/ .ant-table-tbody > tr.row-failed > td {
-  background: #fff7f7;
-}
-
-/deep/ .ant-table-tbody > tr.row-success > td {
-  background: #fcfffc;
-}
-
-/deep/ .asset-binding-modal .ant-modal {
-  max-width: 880px;
-}
-
-/deep/ .asset-binding-modal .ant-modal-header {
-  padding: 14px 20px;
-}
-
-/deep/ .asset-binding-modal .ant-modal-footer {
-  padding: 10px 20px 14px;
-}
-
-/deep/ .binding-form .ant-form-item {
-  margin-bottom: 12px;
-}
-
-/deep/ .binding-form .ant-form-item-label > label {
-  color: #344054;
-}
-
-/deep/ .binding-form .ant-divider-horizontal.ant-divider-with-text-left::before,
-/deep/ .binding-form .ant-divider-horizontal.ant-divider-with-text-left::after {
-  top: 50%;
-}
-
-@media (max-width: 992px) {
-  .table-card__actions {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .binding-form__hint {
-    margin-left: 0;
-  }
-
-  /deep/ .asset-binding-modal .ant-modal {
-    max-width: calc(100vw - 24px);
-  }
-}
+::v-deep .row-failed td { background: #fff7f7 !important; }
+::v-deep .row-success td { background: #f7fff9 !important; }
 </style>

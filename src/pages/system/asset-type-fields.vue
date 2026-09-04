@@ -8,9 +8,8 @@
   >
     <div class="field-toolbar">
       <div class="field-hint">
-        内置字段可调整显示方式；自定义属性支持文本、数字、日期和单选下拉，保存后立即生效。
+        仅可调整字段的显示、顺序和内置字段渲染方式。历史自定义字段只读保留，不属于 CMDB；资产模型请在 CMDB 配置中心维护。
       </div>
-      <a-button type="primary" icon="plus" @click="addCustomField">新增自定义属性</a-button>
     </div>
 
     <a-spin :spinning="loading">
@@ -25,30 +24,31 @@
           <a-checkbox :checked="record.visible" @change="record.visible = !record.visible" />
         </span>
         <span slot="label" slot-scope="text, record">
-          <a-input v-model.trim="record.label" size="small" style="width: 140px;" />
+          <template v-if="record.custom">
+            <span>{{ record.label || record.key }}</span>
+            <a-tag color="orange" class="legacy-tag">历史只读 · 非 CMDB</a-tag>
+          </template>
+          <a-input v-else v-model.trim="record.label" size="small" style="width: 140px;" />
         </span>
         <span slot="fieldType" slot-scope="text, record">
-          <a-select
-            v-if="record.custom"
-            v-model="record.field_type"
-            :disabled="!!record.key"
-            size="small"
-            style="width: 100px;"
-          >
-            <a-select-option v-for="opt in fieldTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</a-select-option>
-          </a-select>
+          <a-tag v-if="record.custom">{{ fieldTypeLabel(record.field_type) }}</a-tag>
           <a-tag v-else>内置</a-tag>
         </span>
         <span slot="options" slot-scope="text, record">
-          <a-select
-            v-if="record.custom && record.field_type === 'select'"
-            v-model="record.options"
-            mode="tags"
-            size="small"
-            placeholder="输入后回车"
-            style="width: 220px;"
-          />
+          <template v-if="record.custom && record.field_type === 'select' && record.options && record.options.length">
+            <a-tag v-for="option in record.options" :key="option">{{ option }}</a-tag>
+          </template>
           <span v-else class="muted">--</span>
+        </span>
+        <span slot="width" slot-scope="text, record">
+          <a-input-number
+            v-model="record.width"
+            :min="0"
+            :max="2000"
+            :step="10"
+            size="small"
+            style="width: 88px;"
+          />
         </span>
         <span slot="render" slot-scope="text, record">
           <a-select
@@ -81,13 +81,6 @@
             :disabled="index === fields.length - 1"
             @click="moveDown(index)"
           />
-          <a-popconfirm
-            v-if="record.custom"
-            title="移除后不再展示该字段，历史值会保留。确定移除？"
-            @confirm="removeCustomField(index)"
-          >
-            <a-button icon="delete" size="small" type="danger" ghost style="margin-left: 4px;" />
-          </a-popconfirm>
         </span>
       </a-table>
     </a-spin>
@@ -123,7 +116,7 @@ const ALL_FIELDS = [
   { key: 'memory_utilization', label: '内存使用率', render: 'progress', group: '性能' },
   { key: 'memory_used',        label: '内存用量',  render: 'text',     group: '性能' },
   { key: 'memory_total',       label: '内存总量',  render: 'text',     group: '性能' },
-  { key: 'available',          label: '采集状态',  render: 'status',   group: '状态' },
+  { key: 'available',          label: '接口可用性', render: 'status',   group: '状态' },
   { key: 'ping',               label: 'Ping状态',  render: 'ping',     group: '状态' },
 ];
 
@@ -136,12 +129,12 @@ const RENDER_OPTIONS = [
   { value: 'link',     label: 'link',     color: 'purple'  },
 ];
 
-const FIELD_TYPE_OPTIONS = [
-  { value: 'text', label: '文本' },
-  { value: 'number', label: '数字' },
-  { value: 'date', label: '日期' },
-  { value: 'select', label: '单选下拉' },
-];
+const FIELD_TYPE_LABELS = {
+  text: '文本',
+  number: '数字',
+  date: '日期',
+  select: '单选下拉',
+};
 
 export default {
   name: 'AssetTypeFieldDrawer',
@@ -155,13 +148,13 @@ export default {
       saving: false,
       fields: [],
       renderOptions: RENDER_OPTIONS,
-      fieldTypeOptions: FIELD_TYPE_OPTIONS,
       tableColumns: [
         { title: '显示', key: 'visible', width: 60,  scopedSlots: { customRender: 'visible' } },
         { title: '字段键', dataIndex: 'key', key: 'key', width: 190, ellipsis: true },
         { title: '显示名称', key: 'label', width: 160, scopedSlots: { customRender: 'label' } },
         { title: '字段类型', key: 'field_type', width: 120, scopedSlots: { customRender: 'fieldType' } },
         { title: '下拉选项', key: 'options', width: 240, scopedSlots: { customRender: 'options' } },
+        { title: '列宽', key: 'width', width: 110, scopedSlots: { customRender: 'width' } },
         { title: '渲染', key: 'render', dataIndex: 'render', width: 110, scopedSlots: { customRender: 'render' } },
         { title: '操作', key: 'actions', width: 150, scopedSlots: { customRender: 'actions' } },
       ],
@@ -190,7 +183,20 @@ export default {
         });
         const custom = serverFields
           .filter((field) => field.custom)
-          .map((field) => ({ ...field, options: field.options || [], _rowKey: field.key }));
+          .map((field) => ({
+            ...field,
+            options: field.options || [],
+            _rowKey: field.key,
+            // 历史字段的身份与类型不能变更；列宽、显示和顺序仍属于本地展示配置。
+            _readOnlyDefinition: {
+              key: field.key,
+              label: field.label,
+              render: field.render,
+              sortable: field.sortable,
+              field_type: field.field_type,
+              options: [...(field.options || [])],
+            },
+          }));
         const merged = [...builtins, ...custom];
         merged.sort((a, b) => a.order - b.order);
         this.fields = merged;
@@ -200,16 +206,8 @@ export default {
         this.loading = false;
       }
     },
-    addCustomField() {
-      this.fields.push({
-        _rowKey: `new_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-        key: '', label: '', render: 'text', visible: true, sortable: false,
-        width: 0, order: this.fields.length, custom: true, field_type: 'text', options: [],
-      });
-    },
-    removeCustomField(index) {
-      this.fields.splice(index, 1);
-      this.fields.forEach((field, order) => { field.order = order; });
+    fieldTypeLabel(type) {
+      return FIELD_TYPE_LABELS[type] || type || '未知';
     },
     moveUp(idx) {
       if (idx === 0) return;
@@ -226,25 +224,28 @@ export default {
       this.fields = arr;
     },
     async handleSave() {
-      const invalid = this.fields.find((field) => !field.label || (field.custom && field.field_type === 'select' && (!field.options || !field.options.length)));
+      const invalid = this.fields.find((field) => !field.custom && !field.label);
       if (invalid) {
-        this.$message.warning('请填写字段名称，并为单选下拉配置至少一个选项');
+        this.$message.warning('请填写内置字段的显示名称');
         return;
       }
       this.saving = true;
       try {
-        const payload = this.fields.map((f, i) => ({
-          key:      f.key,
-          label:    f.label,
-          render:   f.render,
-          width:    f.width || 0,
-          visible:  !!f.visible,
-          sortable: !!f.sortable,
-          order:    i,
-          custom:   !!f.custom,
-          field_type: f.custom ? f.field_type : '',
-          options:  f.custom && f.field_type === 'select' ? (f.options || []) : [],
-        }));
+        const payload = this.fields.map((f, i) => {
+          const definition = f.custom && f._readOnlyDefinition ? f._readOnlyDefinition : f;
+          return {
+            key:      definition.key,
+            label:    definition.label,
+            render:   definition.render,
+            width:    f.width || 0,
+            visible:  !!f.visible,
+            sortable: !!definition.sortable,
+            order:    i,
+            custom:   !!f.custom,
+            field_type: f.custom ? definition.field_type : '',
+            options:  f.custom && definition.field_type === 'select' ? (definition.options || []) : [],
+          };
+        });
         const res = await updateAssetTypeFields(this.assetType.id, payload);
         const biz = res && res.data ? res.data : res;
         if (biz && biz.code === 200) {
@@ -284,5 +285,9 @@ export default {
 .field-hint, .muted {
   color: #888;
   font-size: 12px;
+}
+.legacy-tag {
+  margin-top: 4px;
+  white-space: nowrap;
 }
 </style>

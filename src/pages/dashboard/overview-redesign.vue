@@ -5,7 +5,7 @@
         <div>
           <p class="overview-kicker">运行脉络</p>
           <h1>资产运行总览</h1>
-          <p>沿资产状态、告警影响与可达性快速定位当前运行风险。</p>
+          <p>沿服务端采集健康、告警影响与可达性证据快速定位当前运行风险。</p>
         </div>
         <div class="smartops-heading-metric">纳管资产<strong>{{ totalAssets }}</strong></div>
       </div>
@@ -33,10 +33,10 @@
             <p>方块代表实际纳管资产，颜色与形状共同表达运行状态。</p>
           </div>
           <div class="status-legend" aria-label="状态图例">
-            <span><i class="legend-node healthy"></i>健康</span>
-            <span><i class="legend-node warning"></i>有告警</span>
-            <span><i class="legend-node error"></i>不可达</span>
-            <span><i class="legend-node unknown"></i>未知</span>
+            <span><i class="legend-node healthy"></i>采集健康</span>
+            <span><i class="legend-node warning"></i>等待 / 降级</span>
+            <span><i class="legend-node error"></i>监控不可用</span>
+            <span><i class="legend-node unknown"></i>未知 / 停用</span>
           </div>
         </header>
 
@@ -50,8 +50,8 @@
                     <h2>{{ section.name }}</h2>
                     <p>
                       共 <b data-smartops-mono>{{ section.hosts.length }}</b> 台，
-                      健康 <b data-smartops-mono>{{ getHealthyCount(section.hosts) }}</b> 台，
-                      关注 <b data-smartops-mono>{{ getWarningCount(section.hosts) + getErrorCount(section.hosts) }}</b> 台
+                      采集健康 <b data-smartops-mono>{{ getHealthyCount(section.hosts) }}</b> 台，
+                      关注 <b data-smartops-mono>{{ getAttentionCount(section.hosts) }}</b> 台
                     </p>
                   </div>
                 </div>
@@ -72,6 +72,8 @@
                       <p><strong>{{ $t('label_hostname') }}：</strong>{{ item.name }}</p>
                       <p v-if="item.instance_name"><strong>{{ $t('label_instance_name') }}：</strong>{{ item.instance_name }}</p>
                       <p><strong>{{ $t('label_IP') }}：</strong><span data-smartops-mono>{{ item.interfaces }}</span></p>
+                      <p><strong>采集健康：</strong>{{ getStatusLabel(item) }}</p>
+                      <p class="health-summary">{{ collectionHealth(item).summary }}</p>
                       <p><strong>{{ $t('label_cpu_usage') }}：</strong>{{ item.cpu_utilization }}</p>
                       <p><strong>{{ $t('label_memory_usage') }}：</strong>{{ item.memory_utilization }}</p>
                       <p><strong>{{ $t('label_num_errors') }}：</strong>{{ item.error }}</p>
@@ -100,6 +102,9 @@
 import PageLayout from '@/layouts/PageLayout'
 import { Empty } from 'ant-design-vue'
 import { indexOverview, getAssetTypes } from '@/services/admin'
+
+const monitoringHealthPolicy = require('@/utils/monitoring-health')
+const {unclassifiedMonitoringHosts} = require('../host/all-monitoring-devices')
 
 export default {
   i18n: require('./i18n'),
@@ -135,10 +140,10 @@ export default {
     signalMetrics() {
       return [
         { key: 'assets', index: '01', label: '资产总数', value: this.totalAssets, tone: 'blue' },
-        { key: 'healthy', index: '02', label: '健康运行', value: this.totalHealthy, tone: 'healthy' },
+        { key: 'healthy', index: '02', label: '采集健康', value: this.totalHealthy, tone: 'healthy' },
         { key: 'affected', index: '03', label: '受告警影响', value: this.totalAffected, tone: this.totalAffected ? 'warning' : 'muted' },
         { key: 'alarms', index: '04', label: '告警总数', value: this.totalAlarms, tone: this.totalAlarms ? 'warning' : 'muted' },
-        { key: 'unavailable', index: '05', label: '当前不可达', value: this.totalUnavailable, tone: this.totalUnavailable ? 'error' : 'muted' }
+        { key: 'unavailable', index: '05', label: '监控不可用', value: this.totalUnavailable, tone: this.totalUnavailable ? 'error' : 'muted' }
       ]
     }
   },
@@ -167,6 +172,10 @@ export default {
             icon: assetType.icon || '',
             hosts: dataMap[assetType.type_code] || []
           }))
+          const unclassified = unclassifiedMonitoringHosts(this.assetTypes, dataMap)
+          if (unclassified.length) {
+            this.sections.push({name: '未分类监控设备', type_code: '__unclassified__', icon: 'database', hosts: unclassified})
+          }
         }
       } finally {
         this.loading = false
@@ -181,28 +190,29 @@ export default {
       return fallback[typeCode] || 'folder'
     },
     getStatusClass(item) {
-      if (item.available == 1 && item.alarm == 0) return 'status-healthy'
-      if (item.available == 1 && item.alarm > 0) return 'status-warning'
-      if (item.available == 2) return 'status-error'
+      const state = this.collectionHealth(item).state
+      if (state === 'healthy') return 'status-healthy'
+      if (state === 'waiting_first_data' || state === 'degraded') return 'status-warning'
+      if (state === 'unavailable') return 'status-error'
       return 'status-unknown'
     },
     getStatusLabel(item) {
-      const labels = {
-        'status-healthy': '健康',
-        'status-warning': '有告警',
-        'status-error': '不可达',
-        'status-unknown': '状态未知'
-      }
-      return labels[this.getStatusClass(item)]
+      return this.collectionHealth(item).label
+    },
+    collectionHealth(item) {
+      return monitoringHealthPolicy.normalizeMonitoringHealth(item && item.monitoring_health)
     },
     getHealthyCount(hosts) {
-      return (hosts || []).filter(host => host.available == 1 && host.alarm == 0).length
+      return (hosts || []).filter(host => this.collectionHealth(host).state === 'healthy').length
     },
     getWarningCount(hosts) {
-      return (hosts || []).filter(host => host.available == 1 && host.alarm > 0).length
+      return (hosts || []).filter(host => ['waiting_first_data', 'degraded'].includes(this.collectionHealth(host).state)).length
     },
     getErrorCount(hosts) {
-      return (hosts || []).filter(host => host.available == 2 || host.available == 0).length
+      return (hosts || []).filter(host => this.collectionHealth(host).state === 'unavailable').length
+    },
+    getAttentionCount(hosts) {
+      return (hosts || []).filter(host => !['healthy', 'disabled'].includes(this.collectionHealth(host).state)).length
     },
     getAlarmCount(hosts) {
       return (hosts || []).filter(host => Number(host.alarm) > 0).length
@@ -260,6 +270,7 @@ export default {
 .host-node.status-unknown::after { border-color: #a6b2bf; }
 .popover-content p { margin: 6px 0; color: #43576d; font-size: 12px; }
 .popover-content strong { color: #0a1f44; font-weight: 650; }
+.popover-content .health-summary { max-width: 320px; color: #758497; line-height: 1.5; }
 .section-empty { margin: 26px 0 10px; }
 @media (max-width: 1180px) {
   .smartops-signal-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }

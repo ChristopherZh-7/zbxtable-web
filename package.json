@@ -28,6 +28,7 @@
 		"test:resource-discovery": "node --test tests/resource-discovery/*.test.js",
 		"test:script-discovery": "node --test tests/script-discovery/*.test.js",
 		"test:cmdb": "node --test tests/cmdb/*.test.js",
+		"test:monitoring-health": "node --test tests/monitoring-health/*.test.js",
 		"test:visualization-templates": "node --test tests/visualization-templates/*.test.js",
 		"test:big-screen": "node --test tests/big-screen/*.test.js",
 		"test:all": "node --test",

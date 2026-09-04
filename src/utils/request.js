@@ -5,6 +5,7 @@ import Cookie from 'js-cookie'
 const xsrfHeaderName = 'X-Token'
 const tenantHeaderName = 'X-Tenant-ID'
 const tenantStorageKey = 'smartops.currentTenant'
+const tenantContextChangingEvent = 'smartops:tenant-context-changing'
 const zbxSessionName = 'zbx_session'
 
 axios.defaults.timeout = 20000
@@ -40,8 +41,8 @@ async function request(url, method, params, config) {
 	const requestConfig = {
 		...(config || {}),
 		headers: {
-			...((config && config.headers) || {}),
 			...(tenant && tenant.id ? { [tenantHeaderName]: String(tenant.id) } : {}),
+			...((config && config.headers) || {}),
 		},
 	}
 	switch (method) {
@@ -73,13 +74,21 @@ function setTenantContext(tenant) {
 		return
 	}
 	const normalized = { id: Number(tenant.id), code: tenant.code, name: tenant.name }
+	notifyTenantContextChanging(normalized)
 	localStorage.setItem(tenantStorageKey, JSON.stringify(normalized))
 	Cookie.set(tenantHeaderName, String(normalized.id), { expires: 7, sameSite: 'strict' })
 }
 
 function removeTenantContext() {
+	notifyTenantContextChanging(null)
 	localStorage.removeItem(tenantStorageKey)
 	Cookie.remove(tenantHeaderName)
+}
+
+function notifyTenantContextChanging(tenant) {
+	if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+	if (typeof window.CustomEvent !== 'function') return
+	window.dispatchEvent(new window.CustomEvent(tenantContextChangingEvent, { detail: { tenant } }))
 }
 
 /**
@@ -278,4 +287,5 @@ export {
 	getTenantContext,
 	setTenantContext,
 	removeTenantContext,
+	tenantContextChangingEvent,
 }

@@ -93,7 +93,7 @@ const DETAIL_FIELDS = [
 
 const MONITORING_STATE_META = {
   unbound: {status: 'default', label: '未关联', tone: 'neutral'},
-  healthy: {status: 'success', label: '关联正常', tone: 'healthy'},
+  healthy: {status: 'success', label: '绑定对账正常', tone: 'healthy'},
   identity_drift: {status: 'warning', label: '身份信息有差异', tone: 'warning'},
   active_ci_host_disabled: {status: 'warning', label: '监控已停用', tone: 'warning'},
   retired_ci_host_enabled: {status: 'warning', label: '退役后仍在监控', tone: 'warning'},
@@ -104,7 +104,7 @@ const MONITORING_STATE_META = {
 const ADMISSION_STATE_META = {
   ready: {status: 'processing', label: '待人工审核', tone: 'ready', step: 1},
   binding_pending: {status: 'warning', label: '监控待关联', tone: 'pending', step: 2},
-  completed: {status: 'success', label: '闭环完成', tone: 'completed', step: 3},
+  completed: {status: 'success', label: '建档并绑定完成', tone: 'completed', step: 3},
   conflict: {status: 'error', label: '身份冲突', tone: 'conflict', step: 2},
 }
 
@@ -153,6 +153,130 @@ function isPlatformAdmin(user) {
 
 function mappingForTenant(mappings, tenantID) {
   return (Array.isArray(mappings) ? mappings : []).find((item) => Number(item.tenant_id) === Number(tenantID)) || null
+}
+
+function mappingPreviewContextChanged(mapping, preview) {
+  const source = mapping || {}
+  const result = preview || {}
+  const current = result.current_organization || {}
+  const mappedOrganizationID = Number(source.itop_organization_id || source.organization_id) || 0
+  const mappedGeneration = Number(source.generation) || 0
+  const previewOrganizationID = Number(current.id || current.organization_id) || 0
+  const previewGeneration = Number(result.generation) || 0
+  return !mappedOrganizationID || !mappedGeneration || !previewOrganizationID || !previewGeneration
+    || mappedOrganizationID !== previewOrganizationID
+    || mappedGeneration !== previewGeneration
+}
+
+function mappingFailureInvalidatesContext(reason) {
+  return [
+    'mapping_context_stale',
+    'mapping_generation_mismatch',
+    'mapping_transition_in_progress',
+  ].includes(String(reason || ''))
+}
+
+function governanceTenantIsCurrent(governanceTenantID, currentTenantID) {
+  const target = Number(governanceTenantID) || 0
+  const current = Number(currentTenantID) || 0
+  return target > 0 && current > 0 && target === current
+}
+
+function normalizedPositiveNumber(...values) {
+  const value = values.find((item) => Number(item) > 0)
+  return Number(value) > 0 ? Number(value) : 0
+}
+
+function normalizeCMDBContext(data, tenantID) {
+  const source = data || {}
+  const mapping = source.mapping || source.mapping_context || {}
+  const organization = source.organization || mapping.organization || {}
+  const normalizedTenantID = normalizedPositiveNumber(tenantID, mapping.tenant_id, source.tenant_id)
+  const mappedTenantID = normalizedPositiveNumber(mapping.tenant_id, source.tenant_id)
+  const organizationID = normalizedPositiveNumber(
+    organization.id,
+    organization.organization_id,
+    mapping.itop_organization_id,
+    mapping.organization_id,
+    source.organization_id,
+  )
+  const generation = normalizedPositiveNumber(mapping.generation, source.mapping_generation, source.generation)
+  const state = String(mapping.state || source.mapping_state || source.state || '')
+  const mappedOrganizationID = normalizedPositiveNumber(mapping.itop_organization_id, mapping.organization_id)
+  const identityConsistent = (!mappedTenantID || mappedTenantID === normalizedTenantID)
+    && (!mappedOrganizationID || !organizationID || mappedOrganizationID === organizationID)
+  const key = normalizedTenantID > 0 && organizationID > 0 && generation > 0
+    ? `${normalizedTenantID}:${organizationID}:${generation}`
+    : ''
+  return {
+    tenant_id: normalizedTenantID,
+    organization_id: organizationID,
+    generation,
+    state,
+    key,
+    ready: Boolean(key) && source.state === 'ready' && state === 'active' && identityConsistent,
+  }
+}
+
+function normalizedImpactCount(value) {
+  if (value && typeof value === 'object') return Math.max(0, Number(value.total || value.count) || 0)
+  return Math.max(0, Number(value) || 0)
+}
+
+function normalizeMappingTransitionPreview(data) {
+  const source = data || {}
+  const impact = source.impact || source.impacts || {}
+  const count = (...keys) => {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(impact, key)) return normalizedImpactCount(impact[key])
+      if (Object.prototype.hasOwnProperty.call(source, key)) return normalizedImpactCount(source[key])
+    }
+    return 0
+  }
+  const current = source.current_organization || source.current || {}
+  const target = source.target_organization || source.target || {}
+  return {
+    ...source,
+    current_organization: current,
+    target_organization: target,
+    generation: normalizedPositiveNumber(source.generation, source.current_generation),
+    preview_digest: String(source.preview_digest || source.digest || ''),
+    confirmation_phrase: String(source.confirmation_phrase || source.required_confirmation || source.confirmation || ''),
+    impact: {
+      assets: count('assets', 'asset_count', 'assets_count'),
+      asset_counts: impact.asset_counts && typeof impact.asset_counts === 'object' ? impact.asset_counts : {},
+      admissions: count('admissions', 'admission_count', 'admissions_count', 'discovery_admissions'),
+      monitoring: count('monitoring', 'monitoring_count', 'monitoring_bindings', 'monitoring_binding_count'),
+      person: count('person', 'people', 'person_count', 'person_bindings', 'person_binding_count'),
+      unresolved: count('unresolved', 'unresolved_count', 'legacy_unresolved'),
+      configuration_scenarios: count('configuration_scenarios', 'configuration_scenario_count'),
+      configuration_tasks: count('configuration_tasks', 'configuration_task_count'),
+      monitoring_provisions: count('monitoring_provisions'),
+      samples: impact.samples || source.samples || {},
+    },
+    samples: source.samples || impact.samples || {},
+  }
+}
+
+function mappingTransitionReasonMessage(reason, fallback) {
+  const messages = {
+    mapping_transition_required: '当前租户已绑定 Organization，请通过显式切换流程操作。',
+    mapping_context_stale: '映射上下文已变化，旧预览或旧表单已失效，请刷新后重试。',
+    mapping_generation_mismatch: '映射版本已变化，旧预览或旧表单已失效，请刷新后重试。',
+    cmdb_context_mismatch: 'CMDB Organization 上下文已变化，当前写入已拒绝。',
+    mapping_preview_stale: '预览后影响范围已变化，请重新预览并确认。',
+    mapping_transition_in_progress: '该租户的 Organization 切换正在执行，请等待完成后刷新。',
+    preview_digest_mismatch: '预览摘要已失效，请重新预览。',
+    organization_inactive: '目标 Organization 不是可绑定状态，请选择活动组织。',
+    organization_already_assigned: '目标 Organization 已被其他租户占用。',
+    organization_assigned: '目标 Organization 已被其他租户占用。',
+    organization_reserved: '目标 Organization 仍为原租户保留，不能绑定给其他租户。',
+    confirmation_mismatch: '确认短语不匹配，请按预览结果精确输入。',
+    mapping_confirmation_invalid: '确认短语不匹配，请按预览结果精确输入。',
+    idempotency_conflict: '幂等键已用于不同请求，请刷新后重试。',
+    mapping_idempotency_conflict: '幂等键已用于不同请求，请刷新后重试。',
+  }
+  return messages[String(reason || '')] || fallback || '请求失败，请刷新后重试。'
 }
 
 function statusMeta(status) {
@@ -277,9 +401,15 @@ module.exports = {
   editableFields,
   isPlatformAdmin,
   lifecycleMeta,
+  governanceTenantIsCurrent,
+  mappingFailureInvalidatesContext,
   mappingForTenant,
+  mappingPreviewContextChanged,
+  mappingTransitionReasonMessage,
   monitoringHostStatusLabel,
   monitoringStateMeta,
+  normalizeCMDBContext,
+  normalizeMappingTransitionPreview,
   candidateMatchLabel,
   relationBuckets,
   statusOptions,

@@ -9,9 +9,9 @@
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
-          <a-button v-if="platformAdmin" icon="setting" @click="openMapping">配置组织映射</a-button>
+          <a-button v-if="platformAdmin" data-testid="cmdb-mapping-open" icon="setting" @click="openMapping">配置组织映射</a-button>
           <a-button v-if="sourceReady" data-testid="cmdb-admission-open" icon="radar-chart" @click="openAdmissions">发现候选入库</a-button>
-          <a-button v-if="canCreate && sourceReady" type="primary" icon="plus" @click="openCreateAsset">新增资产</a-button>
+          <a-button v-if="canCreate && writeContextReady" type="primary" icon="plus" @click="openCreateAsset">新增资产</a-button>
         </div>
       </header>
 
@@ -27,6 +27,7 @@
         <div class="source-field">
           <span>当前 Organization</span>
           <strong>{{ organizationName }}</strong>
+          <small v-if="organizationIdentity">{{ organizationIdentity }}</small>
         </div>
         <div class="source-field">
           <span>数据边界</span>
@@ -143,7 +144,7 @@
                 </div>
               </div>
 
-              <div v-if="canUpdate || canOperate" class="inspector-actions">
+              <div v-if="writeContextReady && (canUpdate || canOperate)" class="inspector-actions">
                 <a-button v-if="canUpdate && !selectedLifecycle.retired" icon="edit" @click="openEditAsset">编辑资产</a-button>
                 <a-button
                   v-if="canOperate"
@@ -166,16 +167,29 @@
               </div>
 
               <div class="inspector-section monitoring-section">
-                <div class="inspector-title"><span>监控闭环</span><small>CMDB ↔ ZABBIX</small></div>
+                <div class="inspector-title"><span>监控状态</span><small>iTop ↔ Zabbix</small></div>
                 <a-spin :spinning="monitoringLoading">
                   <div v-if="monitoringError" class="monitoring-error">
                     <a-alert type="error" show-icon :message="monitoringError" />
                     <a-button size="small" icon="reload" @click="reloadMonitoring">重新对账</a-button>
                   </div>
                   <template v-else>
-                    <div class="monitoring-status-line">
-                      <a-badge :status="monitoringMeta.status" :text="monitoringMeta.label" />
-                      <span>{{ monitoringReconciliation.summary }}</span>
+                    <div class="monitoring-dimensions" aria-label="监控状态维度">
+                      <article data-testid="cmdb-binding-reconciliation">
+                        <span>绑定对账</span>
+                        <a-badge :status="monitoringMeta.status" :text="monitoringMeta.label" />
+                        <small>{{ monitoringReconciliation.summary }}</small>
+                      </article>
+                      <article data-testid="cmdb-monitoring-configuration">
+                        <span>配置状态</span>
+                        <a-badge :status="monitoringConfigurationBadge.status" :text="monitoringConfigurationBadge.label" />
+                        <small>{{ monitoringConfigurationSummary }}</small>
+                      </article>
+                      <article data-testid="cmdb-collection-health" :data-health-state="collectionHealth.state">
+                        <span>采集健康</span>
+                        <a-badge :status="collectionHealthBadge.status" :text="collectionHealthBadge.label" />
+                        <small>{{ collectionHealth.summary }}</small>
+                      </article>
                     </div>
 
                     <div v-if="monitoringBound" class="monitoring-bridge" :data-tone="monitoringMeta.tone">
@@ -188,7 +202,7 @@
                       <div class="bridge-node bridge-node--zabbix">
                         <span>Zabbix 实际</span>
                         <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.actual_host_status) }}</strong>
-                        <small>{{ monitoring.host ? monitoring.host.address || '未采集地址' : '无法读取主机' }}</small>
+                        <small>{{ monitoring.host ? monitoring.host.address || (monitoring.binding && monitoring.binding.origin === 'smartops_created' && monitoring.host.interface_count === 0 ? '无独立接口，采集目标由策略确定' : '未采集地址') : '无法读取主机' }}</small>
                       </div>
                     </div>
 
@@ -215,7 +229,17 @@
                       <a-tag v-for="issue in monitoringIssueLabels" :key="issue">{{ issue }}</a-tag>
                     </div>
 
-                    <div v-if="canOperate" class="monitoring-actions">
+                    <div v-if="monitoringEvidenceReasons.length" class="monitoring-issues monitoring-evidence-reasons">
+                      <a-tag v-for="reason in monitoringEvidenceReasons" :key="reason">{{ reason }}</a-tag>
+                    </div>
+
+                    <dl class="monitoring-evidence">
+                      <div><dt>已启用 / 可用项</dt><dd>{{ collectionHealth.enabled_item_count }} / {{ collectionHealth.supported_item_count }}</dd></div>
+                      <div><dt>新鲜 / 陈旧值</dt><dd>{{ collectionHealth.fresh_item_count }} / {{ collectionHealth.stale_item_count }}</dd></div>
+                      <div><dt>最近监控值</dt><dd>{{ collectionLastValueLabel }}</dd></div>
+                    </dl>
+
+                    <div v-if="canOperate && writeContextReady" class="monitoring-actions">
                       <a-button size="small" icon="link" @click="openMonitoringBinding">{{ monitoringBound ? '更换绑定' : '关联监控主机' }}</a-button>
                       <a-button
                         v-if="monitoringReconciliation.can_repair"
@@ -227,6 +251,18 @@
                       >按 CMDB 状态修复监控</a-button>
                       <a-button v-if="monitoringBound" size="small" type="link" icon="disconnect" @click="confirmMonitoringUnbind">解除关联</a-button>
                     </div>
+                    <monitoring-provision
+                      v-if="writeContextReady && !detailLoading && selectedAsset && selectedDetail && assetKey(selectedAsset) === assetKey(selectedDetail) && ['Server', 'VirtualMachine', 'NetworkDevice'].includes(selectedAsset.class)"
+                      :key="`${cmdbContext.key}/${assetKey(selectedAsset)}`"
+                      :asset="selectedDetail"
+                      :context="cmdbContext"
+                      :writable="canOperate && writeContextReady"
+                      :bound="monitoringBound"
+                      :retired="selectedLifecycle.retired"
+                      :configured="monitoring.configuration && monitoring.configuration.state === 'ready'"
+                      @changed="reloadMonitoring"
+                      @context-stale="loadOverviewAndAssets"
+                    />
                   </template>
                 </a-spin>
               </div>
@@ -351,21 +387,20 @@
               v-model.trim="admissionSearch"
               allow-clear
               placeholder="搜索主机、IP、Host ID"
-              :loading="admissionLoading"
-              @search="loadAdmissions"
+              @search="applyAdmissionFilters"
             />
-            <a-select v-model="admissionStateFilter" allow-clear placeholder="全部阶段" @change="loadAdmissions">
+            <a-select v-model="admissionStateFilter" allow-clear placeholder="全部阶段" @change="applyAdmissionFilters">
               <a-select-option value="ready">待人工审核</a-select-option>
               <a-select-option value="binding_pending">监控待关联</a-select-option>
               <a-select-option value="conflict">身份冲突</a-select-option>
-              <a-select-option value="completed">闭环完成</a-select-option>
+              <a-select-option value="completed">建档并绑定完成</a-select-option>
             </a-select>
           </div>
           <a-alert v-if="admissionError" type="error" show-icon :message="admissionError" class="admission-error" />
           <a-spin :spinning="admissionLoading">
             <div class="admission-queue__summary">
               <span>{{ admissionPage.total }} 台候选主机</span>
-              <a-button type="link" size="small" icon="reload" @click="loadAdmissions">刷新证据</a-button>
+              <a-button type="link" size="small" icon="reload" @click="refreshAdmissions">刷新证据</a-button>
             </div>
             <div v-if="admissionCandidates.length" class="admission-list">
               <button
@@ -390,6 +425,16 @@
               </button>
             </div>
             <a-empty v-else-if="!admissionLoading" :image-style="{height: '46px'}" description="当前条件下没有发现候选" />
+            <div v-if="admissionPage.total > admissionPage.page_size" class="admission-pagination">
+              <a-pagination
+                data-testid="cmdb-admission-pagination"
+                :current="admissionPage.page"
+                :page-size="admissionPage.page_size"
+                :total="admissionPage.total"
+                :show-less-items="true"
+                @change="changeAdmissionPage"
+              />
+            </div>
           </a-spin>
         </aside>
 
@@ -438,7 +483,7 @@
               class="admission-policy-alert"
             />
 
-            <div v-if="selectedAdmission.state === 'ready' && canCreate" class="admission-form-panel">
+            <div v-if="selectedAdmission.state === 'ready' && canCreate && writeContextReady" class="admission-form-panel">
               <div class="admission-section-title">
                 <span><strong>人工确认资产与责任</strong><small>引用只来自当前 iTop Organization</small></span>
                 <a-tag color="blue">类型建议可修改</a-tag>
@@ -505,7 +550,7 @@
 
             <div v-else-if="selectedAdmission.state === 'completed'" class="admission-result admission-result--completed">
               <span class="admission-result__icon"><a-icon type="check" /></span>
-              <div><strong>责任与监控已闭环</strong><p>{{ selectedAdmission.state_message }}</p><small>{{ selectedAdmission.asset_key }}</small></div>
+              <div><strong>责任建档并绑定完成</strong><p>{{ selectedAdmission.state_message }}</p><small>{{ selectedAdmission.asset_key }} · 采集健康需另行判定</small></div>
               <a-button icon="database" @click="showAdmissionAsset">查看 CMDB 资产</a-button>
             </div>
 
@@ -583,36 +628,150 @@
 
     <a-modal
       :visible="mappingVisible"
-      title="配置租户 CMDB 组织映射"
-      :confirm-loading="mappingSaving"
+      title="Organization 来源边界治理"
       :mask-closable="false"
-      width="620px"
-      ok-text="保存映射"
-      @ok="saveMapping"
+      :destroy-on-close="true"
+      :footer="null"
+      width="880px"
+      :body-style="{ maxHeight: 'calc(100vh - 190px)', overflowY: 'auto', padding: '18px 22px 20px' }"
       @cancel="closeMapping"
     >
       <a-alert
-        type="warning"
+        type="info"
         show-icon
-        message="一个 iTop Organization 只能绑定一个 SmartOps 租户；映射会作为服务端数据边界。"
+        message="Organization 数字 ID 是 CMDB 数据边界；名称和编码只用于识别。"
+        description="已建立的来源不能直接改写。切换必须先预览影响，再精确确认并留下原因。"
         class="mapping-alert"
       />
       <a-spin :spinning="mappingLoading">
-        <a-form-model layout="vertical">
+        <a-alert
+          v-if="mappingError"
+          data-testid="cmdb-mapping-error"
+          type="error"
+          show-icon
+          :message="mappingError"
+          :description="mappingErrorDetail"
+          class="mapping-inline-error"
+        />
+        <a-form-model layout="vertical" class="mapping-governance-form">
           <a-form-model-item label="SmartOps 租户" required>
-            <a-select v-model="mappingForm.tenant_id" show-search option-filter-prop="children" placeholder="选择租户" @change="syncMappingSelection">
+            <a-select v-model="mappingForm.tenant_id" :disabled="mappingSaving || mappingPreviewLoading" show-search option-filter-prop="children" placeholder="选择租户" @change="syncMappingSelection">
               <a-select-option v-for="tenant in mappingTenants" :key="tenant.id" :value="tenant.id">{{ tenant.name }}（{{ tenant.code }}）</a-select-option>
             </a-select>
           </a-form-model-item>
-          <a-form-model-item label="iTop Organization" required>
-            <a-select v-model="mappingForm.itop_organization_id" show-search option-filter-prop="children" placeholder="选择数据组织">
-              <a-select-option v-for="organization in mappingOrganizations" :key="organization.id" :value="organization.id" :disabled="organizationAssignedElsewhere(organization.id)">
-                {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template>
-              </a-select-option>
-            </a-select>
-          </a-form-model-item>
+
+          <section v-if="mappingForm.tenant_id && !selectedMapping" class="mapping-initial-state">
+            <header><span>INITIAL BINDING</span><strong>建立首次数据边界</strong><small>首次绑定后 generation 从 1 开始；之后只能通过显式切换变更。</small></header>
+            <a-form-model-item label="iTop Organization" required>
+              <a-select v-model="mappingForm.itop_organization_id" show-search option-filter-prop="children" placeholder="选择活动 Organization">
+                <a-select-option v-for="organization in mappingOrganizations" :key="organization.id" :value="organization.id" :disabled="organizationAssignedElsewhere(organization.id) || !organizationSelectable(organization)">
+                  {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · ID {{ organization.id }}
+                </a-select-option>
+              </a-select>
+            </a-form-model-item>
+          </section>
+
+          <template v-else-if="mappingForm.tenant_id && selectedMapping">
+            <section class="organization-boundary" aria-label="Organization 来源边界轨" data-testid="cmdb-mapping-boundary">
+              <article class="boundary-node boundary-node--current" data-testid="cmdb-mapping-current">
+                <span class="boundary-node__index">CURRENT / LOCKED</span>
+                <strong>{{ mappingCurrentOrganization.name || '未知组织' }}</strong>
+                <code>{{ mappingCurrentOrganization.code || 'NO-CODE' }} · ID {{ mappingCurrentOrganization.id || selectedMapping.itop_organization_id }}</code>
+                <small>已锁定来源，不可在普通保存中改写</small>
+              </article>
+              <div class="boundary-transfer" aria-hidden="true">
+                <span></span>
+                <b>GEN {{ mappingCurrentGeneration }}</b>
+                <small>PREVIEW FIRST</small>
+              </div>
+              <article class="boundary-node boundary-node--target">
+                <span class="boundary-node__index">TARGET / PROPOSED</span>
+                <a-select
+                  v-model="mappingTransitionForm.target_organization_id"
+                  data-testid="cmdb-mapping-target"
+                  :disabled="mappingSaving || mappingPreviewLoading"
+                  show-search
+                  option-filter-prop="children"
+                  placeholder="选择目标 Organization"
+                  @change="resetMappingPreview"
+                >
+                  <a-select-option v-for="organization in mappingTargetOptions" :key="organization.id" :value="organization.id" :disabled="organizationAssignedElsewhere(organization.id) || !organizationSelectable(organization)">
+                    {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · ID {{ organization.id }}
+                  </a-select-option>
+                </a-select>
+                <small v-if="mappingTargetOrganization.id">{{ mappingTargetOrganization.code || 'NO-CODE' }} · ID {{ mappingTargetOrganization.id }}</small>
+                <small v-else>目标只能是未占用的活动 Organization</small>
+              </article>
+            </section>
+
+            <div class="mapping-preview-action">
+              <span><a-icon type="safety-certificate" /> 预览只计算边界变更，不会修改映射或外部数据。</span>
+              <a-button data-testid="cmdb-mapping-preview" :loading="mappingPreviewLoading" :disabled="!mappingTransitionForm.target_organization_id || mappingSaving" icon="audit" @click="previewMappingTransition">预览切换影响</a-button>
+            </div>
+
+            <template v-if="mappingPreview">
+              <section class="mapping-impact" data-testid="cmdb-mapping-impact">
+                <header><span>IMPACT LEDGER</span><strong>本地关联影响账本</strong><small>以本次预览 digest 为准</small></header>
+                <div class="mapping-impact__grid">
+                  <article v-for="item in mappingImpactRows" :key="item.key" :data-testid="`cmdb-mapping-impact-${item.key}`" :class="{'mapping-impact--warning': item.key === 'unresolved' && item.count}">
+                    <span>{{ item.code }}</span><strong>{{ item.count }}</strong><small>{{ item.label }}</small>
+                  </article>
+                </div>
+                <div class="mapping-impact__configuration-samples">
+                  <article v-for="item in mappingConfigurationSampleRows" :key="item.key" :data-testid="`cmdb-mapping-impact-${item.key}-samples`">
+                    <span>{{ item.code }} SAMPLES</span>
+                    <div v-if="item.samples.length">
+                      <code v-for="sample in item.samples" :key="sample">{{ sample }}</code>
+                    </div>
+                    <small v-else>本次切换没有{{ item.label }}</small>
+                  </article>
+                </div>
+                <footer><span>DIGEST</span><code>{{ mappingPreview.preview_digest }}</code></footer>
+              </section>
+
+              <a-alert
+                type="warning"
+                show-icon
+                message="外部权威数据保留"
+                description="切换只归档 SmartOps 本地监控关联、Person 账号关联、F24 配置场景与任务，以及遗留 unresolved 活动行。iTop CI、Team、Person、关系，以及 Zabbix Host、模板、指标历史都不会删除、迁移或自动恢复。"
+                class="mapping-retention-alert"
+              />
+
+              <section class="mapping-execution">
+                <header><span>EXPLICIT CONFIRMATION</span><strong>执行不可静默的 Organization 切换</strong></header>
+                <a-form-model-item label="精确确认短语" required>
+                  <a-input v-model="mappingTransitionForm.confirmation" data-testid="cmdb-mapping-confirmation" :disabled="mappingSaving" :placeholder="mappingPreview.confirmation_phrase" autocomplete="off" />
+                  <small class="mapping-field-help">请完整输入：<code>{{ mappingPreview.confirmation_phrase }}</code></small>
+                </a-form-model-item>
+                <a-form-model-item label="切换原因" required>
+                  <a-textarea v-model="mappingTransitionForm.reason" data-testid="cmdb-mapping-reason" :disabled="mappingSaving" :rows="3" :max-length="500" placeholder="记录客户、变更单或数据边界调整原因（必填）" />
+                </a-form-model-item>
+              </section>
+            </template>
+          </template>
         </a-form-model>
       </a-spin>
+      <footer class="mapping-actions">
+        <a-button :disabled="mappingSaving || mappingPreviewLoading" @click="closeMapping">取消</a-button>
+        <a-button
+          v-if="mappingForm.tenant_id && !selectedMapping"
+          data-testid="cmdb-mapping-initial-submit"
+          type="primary"
+          icon="link"
+          :loading="mappingSaving"
+          :disabled="!mappingForm.itop_organization_id"
+          @click="saveMapping"
+        >建立映射</a-button>
+        <a-button
+          v-else-if="selectedMapping && mappingPreview"
+          data-testid="cmdb-mapping-transition-submit"
+          type="danger"
+          icon="swap"
+          :loading="mappingSaving"
+          :disabled="!mappingCanExecute"
+          @click="executeMappingTransition"
+        >确认切换 Organization</a-button>
+      </footer>
     </a-modal>
   </page-layout>
 </template>
@@ -625,6 +784,7 @@ import {
   admitCMDBCandidate,
   bindCMDBMonitoring,
   createCMDBAsset,
+  executeCMDBMappingTransition,
   getCMDBAsset,
   getCMDBMonitoring,
   getCMDBOverview,
@@ -635,6 +795,7 @@ import {
   listCMDBMappings,
   listCMDBMonitoringCandidates,
   listCMDBOrganizations,
+  previewCMDBMappingTransition,
   repairCMDBMonitoring,
   retryCMDBAdmission,
   retireCMDBAsset,
@@ -654,21 +815,30 @@ import {
   createAdmissionForm,
   detailRows,
   editableFields,
+  governanceTenantIsCurrent,
   isPlatformAdmin,
   lifecycleMeta,
+  mappingFailureInvalidatesContext,
   mappingForTenant,
+  mappingPreviewContextChanged,
+  mappingTransitionReasonMessage,
   monitoringHostStatusLabel,
   monitoringStateMeta,
+  normalizeCMDBContext,
+  normalizeMappingTransitionPreview,
   relationBuckets,
   statusOptions,
   statusMeta,
   validateAssetForm,
 } from './cmdb-model'
+import {tenantContextChangingEvent} from '@/utils/request'
+import MonitoringProvision from './MonitoringProvision.vue'
 
 const {canPerform} = require('@/utils/permission-policy')
+const monitoringHealthPolicy = require('@/utils/monitoring-health')
 
 const emptyAssetPage = () => ({items: [], total: 0, page: 1, page_size: 30, counts: {}})
-const emptyAdmissionPage = () => ({items: [], total: 0, limit: 200})
+const emptyAdmissionPage = () => ({items: [], total: 0, page: 1, page_size: 100, limit: 200})
 const emptyMonitoring = () => ({
   binding: null,
   host: null,
@@ -676,11 +846,34 @@ const emptyMonitoring = () => ({
     state: 'unbound', label: '未关联', severity: 'default', summary: '尚未选择对应的 Zabbix 监控主机。',
     issues: [], can_repair: false, expected_host_status: 'enabled', actual_host_status: '',
   },
+  configuration: {
+    state: 'unknown', label: '配置状态未知', severity: 'default', reasons: [],
+    explicit_requirements: false, latest_success_task_id: 0,
+  },
+  collection_health: {
+    state: 'unknown', label: '健康未知', severity: 'default',
+    summary: '暂无服务端健康证据，不能判定采集健康。', reasons: [],
+    enabled_item_count: 0, supported_item_count: 0, fresh_item_count: 0, stale_item_count: 0,
+  },
 })
+const emptyReferences = () => ({locations: [], network_device_types: [], teams: [], people: [], applications: []})
+const emptyMappingTransitionForm = () => ({target_organization_id: undefined, confirmation: '', reason: ''})
+
+function newIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = crypto.getRandomValues(new Uint8Array(16))
+    bytes[6] = bytes[6] & 0x0f | 0x40
+    bytes[8] = bytes[8] & 0x3f | 0x80
+    const value = Array.from(bytes, item => item.toString(16).padStart(2, '0')).join('')
+    return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`
+  }
+  return ''
+}
 
 export default {
   name: 'CMDBCenter',
-  components: {PageLayout},
+  components: {PageLayout, MonitoringProvision},
   data() {
     return {
       loading: false,
@@ -693,6 +886,7 @@ export default {
       monitoringBindingSaving: false,
       monitoringRepairing: false,
       monitoringCandidatesLoading: false,
+      monitoringCandidateSequence: 0,
       monitoringCandidateError: '',
       monitoringCandidateSearch: '',
       monitoringCandidates: [],
@@ -704,6 +898,7 @@ export default {
       admissionRetrying: false,
       admissionError: '',
       admissionFormError: '',
+      admissionSequence: 0,
       admissionSearch: '',
       admissionStateFilter: undefined,
       admissionCandidates: [],
@@ -719,6 +914,9 @@ export default {
         {label: 'Zabbix 关联', caption: '唯一 Host 身份'},
       ],
       overview: {state: 'loading', message: '', total: 0, counts: {}},
+      overviewSequence: 0,
+      assetSequence: 0,
+      activeCMDBContextKey: '',
       assets: [],
       assetPage: emptyAssetPage(),
       filters: {search: '', class: undefined, status: undefined},
@@ -734,15 +932,23 @@ export default {
       assetForm: createAssetForm('Server'),
       assetFormRevision: '',
       assetFormError: '',
-      cmdbReferences: {locations: [], network_device_types: [], teams: [], people: [], applications: []},
-      referencesLoaded: false,
+      cmdbReferences: emptyReferences(),
+      referencesContextKey: '',
+      referenceSequence: 0,
       mappingVisible: false,
       mappingLoading: false,
       mappingSaving: false,
+      mappingPreviewLoading: false,
+      mappingSequence: 0,
+      mappingError: '',
+      mappingErrorDetail: '',
+      mappingPreview: null,
+      mappingIdempotencyKey: '',
       mappingTenants: [],
       mappingOrganizations: [],
       mappings: [],
       mappingForm: {tenant_id: undefined, itop_organization_id: undefined},
+      mappingTransitionForm: emptyMappingTransitionForm(),
       columns: [
         {title: '配置项', key: 'asset', scopedSlots: {customRender: 'asset'}, width: 240},
         {title: '类型', key: 'class', scopedSlots: {customRender: 'class'}, width: 105},
@@ -756,11 +962,14 @@ export default {
     user() { return this.$store.getters['account/user'] || {} },
     permissions() { return this.$store.getters['account/permissions'] || [] },
     currentTenant() { return this.$store.getters['account/currentTenant'] || {} },
+    currentTenantID() { return Number(this.currentTenant.id) || 0 },
     platformAdmin() { return isPlatformAdmin(this.user) },
     canCreate() { return canPerform(this.permissions, 'tenant.cmdb', 'create') },
     canUpdate() { return canPerform(this.permissions, 'tenant.cmdb', 'update') },
     canOperate() { return canPerform(this.permissions, 'tenant.cmdb', 'operate') },
     sourceReady() { return this.overview.state === 'ready' },
+    cmdbContext() { return normalizeCMDBContext(this.overview, this.currentTenantID) },
+    writeContextReady() { return this.cmdbContext.ready && this.activeCMDBContextKey === this.cmdbContext.key },
     sourceStateLabel() {
       if (this.loading || this.overview.state === 'loading') return '读取中'
       if (this.overview.state === 'ready') return '已连接'
@@ -772,6 +981,12 @@ export default {
       if (this.overview.state === 'error') return '读取失败'
       if (this.overview.state === 'unconfigured') return '未配置'
       return '—'
+    },
+    organizationIdentity() {
+      if (!this.cmdbContext.organization_id) return ''
+      const organization = this.overview.organization || {}
+      const code = organization.code || organization.organization_code || 'NO-CODE'
+      return `${code} · ID ${this.cmdbContext.organization_id} · GEN ${this.cmdbContext.generation || '—'}`
     },
     classOptions() {
       return Object.keys(CLASS_META).map((value) => ({value, label: CLASS_META[value].label}))
@@ -786,6 +1001,38 @@ export default {
     selectedLifecycle() { return lifecycleMeta(this.selectedDetail || this.selectedAsset) },
     monitoringReconciliation() { return this.monitoring && this.monitoring.reconciliation || emptyMonitoring().reconciliation },
     monitoringMeta() { return monitoringStateMeta(this.monitoringReconciliation) },
+    collectionHealth() {
+      return monitoringHealthPolicy.normalizeMonitoringHealth(this.monitoring && this.monitoring.collection_health)
+    },
+    collectionHealthBadge() { return monitoringHealthPolicy.monitoringHealthMeta(this.collectionHealth) },
+    monitoringConfiguration() {
+      const value = this.monitoring && this.monitoring.configuration || this.collectionHealth.configuration
+      return monitoringHealthPolicy.normalizeMonitoringConfiguration(value)
+    },
+    monitoringConfigurationBadge() {
+      return monitoringHealthPolicy.monitoringConfigurationMeta(this.monitoringConfiguration)
+    },
+    monitoringConfigurationSummary() {
+      if (this.monitoringConfiguration.state === 'ready') {
+        const taskID = this.monitoringConfiguration.latest_success_task_id
+        return taskID ? `配置任务 #${taskID} 已应用，仍需独立核对采集证据。` : '配置已应用，仍需独立核对采集证据。'
+      }
+      const reasons = (this.monitoringConfiguration.reasons || []).map(monitoringHealthPolicy.monitoringReasonLabel).filter(Boolean)
+      return reasons[0] || '暂无足够证据确认监控配置已应用。'
+    },
+    monitoringEvidenceReasons() {
+      const reasons = [
+        ...monitoringHealthPolicy.monitoringReasonLabels(this.collectionHealth),
+        ...(this.monitoringConfiguration.reasons || []).map(monitoringHealthPolicy.monitoringReasonLabel),
+      ]
+      return [...new Set(reasons.filter(Boolean))]
+    },
+    collectionLastValueLabel() {
+      const value = this.collectionHealth.last_value_at
+      if (!value) return this.collectionHealth.state === 'waiting_first_data' ? '等待首采' : '—'
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', {hour12: false})
+    },
     monitoringBound() { return Boolean(this.monitoring && this.monitoring.binding) },
     monitoringIssueLabels() {
       const labels = {
@@ -828,9 +1075,80 @@ export default {
       ].filter((section) => section.fields.length)
     },
     assetStatusOptions() { return statusOptions(this.assetFormClass) },
+    selectedMapping() { return mappingForTenant(this.mappings, this.mappingForm.tenant_id) },
+    mappingCurrentOrganization() {
+      const preview = this.mappingPreview && this.mappingPreview.current_organization || {}
+      const mapping = this.selectedMapping || {}
+      const organizationID = Number(preview.id || mapping.itop_organization_id || mapping.organization_id) || 0
+      const listed = this.mappingOrganizations.find(item => Number(item.id) === organizationID) || {}
+      return {
+        ...listed,
+        ...mapping.organization,
+        ...preview,
+        id: organizationID,
+        name: preview.name || mapping.itop_organization_name || mapping.organization_name || listed.name || '',
+        code: preview.code || mapping.itop_organization_code || mapping.organization_code || listed.code || '',
+      }
+    },
+    mappingTargetOptions() {
+      const currentID = Number(this.mappingCurrentOrganization.id) || 0
+      return this.mappingOrganizations.filter(item => Number(item.id) !== currentID)
+    },
+    mappingTargetOrganization() {
+      const preview = this.mappingPreview && this.mappingPreview.target_organization || {}
+      const targetID = Number(this.mappingTransitionForm.target_organization_id) || 0
+      const listed = this.mappingOrganizations.find(item => Number(item.id) === targetID) || {}
+      return {...listed, ...preview, id: Number(preview.id || targetID) || 0}
+    },
+    mappingCurrentGeneration() {
+      return Number(this.mappingPreview && this.mappingPreview.generation || this.selectedMapping && this.selectedMapping.generation) || '—'
+    },
+    mappingImpactRows() {
+      const impact = this.mappingPreview && this.mappingPreview.impact || {}
+      return [
+        {key: 'assets', code: 'CI', label: '资产与配置项', count: Number(impact.assets) || 0},
+        {key: 'admissions', code: 'ADM', label: '发现 / 入库记录', count: Number(impact.admissions) || 0},
+        {key: 'monitoring', code: 'MON', label: '本地监控关联', count: Number(impact.monitoring) || 0},
+        {key: 'person', code: 'PER', label: 'Person 账号关联', count: Number(impact.person) || 0},
+        {key: 'configuration_scenarios', code: 'SCN', label: 'F24 配置场景', count: Number(impact.configuration_scenarios) || 0},
+        {key: 'configuration_tasks', code: 'TSK', label: 'F24 配置任务', count: Number(impact.configuration_tasks) || 0},
+        {key: 'monitoring_provisions', code: 'NEW', label: '监控对象创建任务', count: Number(impact.monitoring_provisions) || 0},
+        {key: 'unresolved', code: 'ERR', label: '遗留 unresolved（待归档）', count: Number(impact.unresolved) || 0},
+      ]
+    },
+    mappingConfigurationSampleRows() {
+      const impact = this.mappingPreview && this.mappingPreview.impact || {}
+      const samples = impact.samples && typeof impact.samples === 'object' ? impact.samples : {}
+      const bounded = key => Array.isArray(samples[key])
+        ? samples[key].filter(item => typeof item === 'string' && item).slice(0, 10)
+        : []
+      return [
+        {key: 'configuration_scenarios', code: 'SCN', label: '受影响的配置场景', samples: bounded('configuration_scenarios')},
+        {key: 'configuration_tasks', code: 'TSK', label: '受影响的配置任务', samples: bounded('configuration_tasks')},
+        {key: 'monitoring_provisions', code: 'NEW', label: '受影响的监控创建任务', samples: bounded('monitoring_provisions')},
+      ]
+    },
+    mappingCanExecute() {
+      if (!this.mappingPreview || !this.mappingPreview.preview_digest || !this.mappingPreview.confirmation_phrase) return false
+      return this.mappingTransitionForm.confirmation === this.mappingPreview.confirmation_phrase
+        && Boolean(String(this.mappingTransitionForm.reason || '').trim())
+        && Boolean(this.mappingIdempotencyKey)
+    },
+  },
+  watch: {
+    currentTenantID(next, previous) {
+      if (previous && next !== previous) {
+        this.invalidateCMDBContext('租户上下文已切换，旧 CMDB 表单已关闭。')
+        this.loadOverviewAndAssets()
+      }
+    },
   },
   created() {
+    if (typeof window !== 'undefined') window.addEventListener(tenantContextChangingEvent, this.handleTenantContextChanging)
     this.loadOverviewAndAssets()
+  },
+  beforeDestroy() {
+    if (typeof window !== 'undefined') window.removeEventListener(tenantContextChangingEvent, this.handleTenantContextChanging)
   },
   methods: {
     admissionEvidenceLabel,
@@ -840,11 +1158,23 @@ export default {
     classMeta,
     monitoringHostStatusLabel,
     statusMeta,
+    cmdbFailure(error, fallback) {
+      const business = error && error.data && typeof error.data === 'object' ? error.data : {}
+      const data = error && error.businessData || business.data || {}
+      const reason = String(error && error.businessReason || data && data.reason || '')
+      return {
+        reason,
+        data,
+        message: mappingTransitionReasonMessage(reason, business.message || error && error.message || fallback),
+      }
+    },
     unwrap(response) {
       const result = response && response.data
       if (!result || Number(result.code) !== 200) {
         const error = new Error(result && result.message || '请求失败')
         error.businessCode = Number(result && result.code) || 0
+        error.businessData = result && result.data
+        error.businessReason = result && result.data && result.data.reason
         throw error
       }
       return result.data
@@ -853,21 +1183,100 @@ export default {
       const data = this.unwrap(response)
       return data && Array.isArray(data.items) ? data.items : []
     },
+    writeContext() {
+      const context = this.cmdbContext
+      if (!this.writeContextReady) {
+        const error = new Error('CMDB Organization 上下文未就绪，请刷新后重试。')
+        error.businessReason = 'cmdb_context_mismatch'
+        throw error
+      }
+      return {organization_id: context.organization_id, generation: context.generation, key: context.key}
+    },
+    contextIsCurrent(context) {
+      return Boolean(context && context.key) && context.key === this.cmdbContext.key && context.key === this.activeCMDBContextKey
+    },
+    resetCMDBWorkspaces() {
+      this.assetSequence += 1
+      this.detailSequence += 1
+      this.admissionSequence += 1
+      this.monitoringCandidateSequence += 1
+      this.referenceSequence += 1
+      this.mappingSequence += 1
+      this.assetFormVisible = false
+      this.assetFormError = ''
+      this.admissionVisible = false
+      this.admissionError = ''
+      this.admissionFormError = ''
+      this.admissionCandidates = []
+      this.admissionPage = emptyAdmissionPage()
+      this.selectedAdmission = null
+      this.monitoringBindingVisible = false
+      this.monitoringCandidateError = ''
+      this.monitoringCandidates = []
+      this.selectedMonitoringCandidate = null
+      this.cmdbReferences = emptyReferences()
+      this.referencesContextKey = ''
+      this.mappingVisible = false
+      this.mappingPreview = null
+      this.mappingIdempotencyKey = ''
+      this.mappingForm = {tenant_id: undefined, itop_organization_id: undefined}
+      this.mappingTransitionForm = emptyMappingTransitionForm()
+      this.resetLedger()
+    },
+    invalidateCMDBContext(message) {
+      this.overviewSequence += 1
+      this.activeCMDBContextKey = ''
+      this.overview = {state: 'loading', message: '', total: 0, counts: {}}
+      this.resetCMDBWorkspaces()
+      if (message) this.$message.warning(message)
+    },
+    handleTenantContextChanging(event) {
+      const targetID = Number(event && event.detail && event.detail.tenant && event.detail.tenant.id) || 0
+      if (!targetID || targetID !== this.currentTenantID) {
+        this.invalidateCMDBContext('租户正在切换，已关闭旧 CMDB 写入表单。')
+        return
+      }
+      // A failed tenant switch restores the previous tenant through the same pre-change event.
+      // Reload on the next tick, after its localStorage header has also been restored.
+      if (!this.activeCMDBContextKey) this.$nextTick(() => {
+        if (!this.activeCMDBContextKey && targetID === this.currentTenantID) this.loadOverviewAndAssets()
+      })
+    },
+    handleCMDBContextFailure(error, fallback) {
+      const failure = this.cmdbFailure(error, fallback)
+      if (['cmdb_context_mismatch', 'mapping_context_stale', 'mapping_generation_mismatch', 'mapping_transition_in_progress', 'mapping_preview_stale', 'preview_digest_mismatch'].includes(failure.reason)) {
+        this.resetCMDBWorkspaces()
+        this.activeCMDBContextKey = ''
+        this.loadOverviewAndAssets()
+      }
+      return failure
+    },
     async loadOverviewAndAssets() {
+      const sequence = ++this.overviewSequence
+      const tenantID = this.currentTenantID
       this.loading = true
       try {
-        this.overview = this.unwrap(await getCMDBOverview()) || {state: 'error', total: 0, counts: {}}
+        const overview = this.unwrap(await getCMDBOverview()) || {state: 'error', total: 0, counts: {}}
+        if (sequence !== this.overviewSequence || tenantID !== this.currentTenantID) return
+        const nextContext = normalizeCMDBContext(overview, tenantID)
+        if (this.activeCMDBContextKey && nextContext.key && this.activeCMDBContextKey !== nextContext.key) this.resetCMDBWorkspaces()
+        this.overview = overview
+        this.activeCMDBContextKey = nextContext.key
         if (this.overview.state === 'ready') await this.loadAssets(1)
         else this.resetLedger()
       } catch (error) {
+        if (sequence !== this.overviewSequence || tenantID !== this.currentTenantID) return
         this.overview = {state: 'error', message: error.message, total: 0, counts: {}}
+        this.activeCMDBContextKey = ''
         this.resetLedger()
         this.$message.error(error.message || 'CMDB 数据加载失败')
       } finally {
-        this.loading = false
+        if (sequence === this.overviewSequence) this.loading = false
       }
     },
     async loadAssets(page) {
+      const sequence = ++this.assetSequence
+      const contextKey = this.activeCMDBContextKey
       this.assetsLoading = true
       try {
         const data = this.unwrap(await listCMDBAssets({
@@ -877,6 +1286,7 @@ export default {
           page: page || this.assetPage.page || 1,
           page_size: this.assetPage.page_size || 30,
         })) || emptyAssetPage()
+        if (sequence !== this.assetSequence || contextKey !== this.activeCMDBContextKey) return
         this.assetPage = {...emptyAssetPage(), ...data, counts: data.counts || {}}
         this.assets = Array.isArray(data.items) ? data.items : []
         const retained = this.selectedAsset && this.assets.find((asset) => assetKey(asset) === assetKey(this.selectedAsset))
@@ -884,10 +1294,11 @@ export default {
         else if (this.assets.length) await this.selectAsset(this.assets[0])
         else this.clearSelection()
       } catch (error) {
+        if (sequence !== this.assetSequence || contextKey !== this.activeCMDBContextKey) return
         this.resetLedger()
         this.$message.error(error.message || '资产台账加载失败')
       } finally {
-        this.assetsLoading = false
+        if (sequence === this.assetSequence) this.assetsLoading = false
       }
     },
     async selectAsset(asset) {
@@ -986,12 +1397,15 @@ export default {
     },
     async loadMonitoringCandidates() {
       if (!this.selectedAsset) return
+      const sequence = ++this.monitoringCandidateSequence
+      const contextKey = this.activeCMDBContextKey
       this.monitoringCandidatesLoading = true
       this.monitoringCandidateError = ''
       try {
         const data = this.unwrap(await listCMDBMonitoringCandidates(this.selectedAsset.class, this.selectedAsset.id, {
           search: this.monitoringCandidateSearch || undefined,
         })) || {items: [], total: 0, limit: 200}
+        if (sequence !== this.monitoringCandidateSequence || contextKey !== this.activeCMDBContextKey) return
         this.monitoringCandidates = Array.isArray(data.items) ? data.items : []
         this.monitoringCandidatePage = {total: Number(data.total) || 0, limit: Number(data.limit) || 200}
         if (this.selectedMonitoringCandidate) {
@@ -999,11 +1413,12 @@ export default {
           this.selectedMonitoringCandidate = this.monitoringCandidates.find((candidate) => this.monitoringCandidateKey(candidate) === selectedKey) || null
         }
       } catch (error) {
+        if (sequence !== this.monitoringCandidateSequence || contextKey !== this.activeCMDBContextKey) return
         this.monitoringCandidates = []
         this.monitoringCandidatePage = {total: 0, limit: 200}
         this.monitoringCandidateError = error.message || '监控主机候选加载失败'
       } finally {
-        this.monitoringCandidatesLoading = false
+        if (sequence === this.monitoringCandidateSequence) this.monitoringCandidatesLoading = false
       }
     },
     selectMonitoringCandidate(candidate) {
@@ -1018,19 +1433,24 @@ export default {
       this.monitoringBindingSaving = true
       this.monitoringCandidateError = ''
       try {
-        this.monitoring = this.unwrap(await bindCMDBMonitoring(
+        const context = this.writeContext()
+        const monitoring = this.unwrap(await bindCMDBMonitoring(
           this.selectedAsset.class,
           this.selectedAsset.id,
           this.selectedMonitoringCandidate.zid,
           this.selectedMonitoringCandidate.host_id,
+          context,
         )) || emptyMonitoring()
+        if (!this.contextIsCurrent(context)) return
+        this.monitoring = monitoring
         this.monitoringError = ''
         this.monitoringBindingVisible = false
         this.$message.success('Zabbix 监控主机已关联')
       } catch (error) {
+        const failure = this.handleCMDBContextFailure(error, '监控主机关联失败')
         this.monitoringCandidateError = error.businessCode === 1013
           ? '该监控主机已绑定其他 CMDB 资产，请选择其他主机。'
-          : error.message || '监控主机关联失败'
+          : failure.message
       } finally {
         this.monitoringBindingSaving = false
       }
@@ -1048,11 +1468,14 @@ export default {
     },
     async runMonitoringUnbind() {
       try {
-        this.monitoring = this.unwrap(await unbindCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id)) || emptyMonitoring()
+        const context = this.writeContext()
+        const monitoring = this.unwrap(await unbindCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id, context)) || emptyMonitoring()
+        if (!this.contextIsCurrent(context)) return
+        this.monitoring = monitoring
         this.monitoringError = ''
         this.$message.success('Zabbix 监控关联已解除')
       } catch (error) {
-        this.$message.error(error.message || '解除监控关联失败')
+        this.$message.error(this.handleCMDBContextFailure(error, '解除监控关联失败').message)
       }
     },
     confirmMonitoringRepair() {
@@ -1069,12 +1492,15 @@ export default {
     async runMonitoringRepair() {
       this.monitoringRepairing = true
       try {
-        this.monitoring = this.unwrap(await repairCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id)) || emptyMonitoring()
+        const context = this.writeContext()
+        const monitoring = this.unwrap(await repairCMDBMonitoring(this.selectedAsset.class, this.selectedAsset.id, context)) || emptyMonitoring()
+        if (!this.contextIsCurrent(context)) return
+        this.monitoring = monitoring
         this.monitoringError = ''
         this.$message.success('Zabbix 监控状态已按 CMDB 修复')
       } catch (error) {
-        this.$message.error(error.message || '监控状态修复失败')
-        await this.loadMonitoring(this.selectedAsset, this.detailSequence)
+        this.$message.error(this.handleCMDBContextFailure(error, '监控状态修复失败').message)
+        if (this.selectedAsset) await this.loadMonitoring(this.selectedAsset, this.detailSequence)
       } finally {
         this.monitoringRepairing = false
       }
@@ -1087,6 +1513,10 @@ export default {
       if (!this.sourceReady) return
       this.admissionVisible = true
       this.admissionError = ''
+      // Start the queue request before the potentially multi-page reference
+      // aggregation. Any filter/page request made by the operator then owns a
+      // newer sequence and cannot be overwritten by this initial page.
+      const initialAdmissionLoad = this.loadAdmissions()
       if (this.canCreate) {
         try {
           await this.ensureCMDBReferences()
@@ -1094,35 +1524,64 @@ export default {
           this.admissionError = error.message || 'iTop 责任引用加载失败'
         }
       }
-      await this.loadAdmissions()
+      await initialAdmissionLoad
     },
     closeAdmissions() {
       if (this.admissionSaving || this.admissionRetrying) return
       this.admissionVisible = false
       this.admissionFormError = ''
     },
-    async loadAdmissions() {
+    applyAdmissionFilters() {
+      return this.loadAdmissions(1)
+    },
+    refreshAdmissions() {
+      return this.loadAdmissions(this.admissionPage.page)
+    },
+    changeAdmissionPage(page) {
+      return this.loadAdmissions(page)
+    },
+    async loadAdmissions(page) {
       const retainedKey = this.selectedAdmissionKey
+      const requestedPage = Number(page) > 0 ? Math.floor(Number(page)) : Number(this.admissionPage.page) || 1
+      const requestedPageSize = Number(this.admissionPage.page_size) || 100
+      const sequence = ++this.admissionSequence
+      const contextKey = this.activeCMDBContextKey
       this.admissionLoading = true
       this.admissionError = ''
       try {
         const data = this.unwrap(await listCMDBAdmissions({
           search: this.admissionSearch || undefined,
           state: this.admissionStateFilter || undefined,
+          page: requestedPage,
+          page_size: requestedPageSize,
         })) || emptyAdmissionPage()
+        if (sequence !== this.admissionSequence || contextKey !== this.activeCMDBContextKey) return
+        const total = Math.max(0, Number(data.total) || 0)
+        const pageSize = Number(data.page_size) > 0 ? Math.floor(Number(data.page_size)) : requestedPageSize
+        const responsePage = Number(data.page) > 0 ? Math.floor(Number(data.page)) : requestedPage
+        const lastPage = Math.max(1, Math.ceil(total / pageSize))
+        if (responsePage > lastPage) {
+          await this.loadAdmissions(lastPage)
+          return
+        }
         this.admissionCandidates = Array.isArray(data.items) ? data.items : []
-        this.admissionPage = {...emptyAdmissionPage(), ...data}
+        this.admissionPage = {
+          ...emptyAdmissionPage(),
+          ...data,
+          total,
+          page: responsePage,
+          page_size: pageSize,
+          limit: Number(data.limit) > 0 ? Number(data.limit) : 200,
+        }
         const selected = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
           || this.admissionCandidates[0]
           || null
         this.selectAdmission(selected)
       } catch (error) {
-        this.admissionCandidates = []
-        this.admissionPage = emptyAdmissionPage()
-        this.selectedAdmission = null
+        if (sequence !== this.admissionSequence || contextKey !== this.activeCMDBContextKey) return
         this.admissionError = error.message || '发现候选加载失败'
       } finally {
-        this.admissionLoading = false
+        if (sequence === this.admissionSequence) this.admissionLoading = false
       }
     },
     selectAdmission(candidate) {
@@ -1178,14 +1637,16 @@ export default {
       this.admissionFormError = ''
       const retainedKey = this.selectedAdmissionKey
       try {
+        const context = this.writeContext()
         const result = this.unwrap(await admitCMDBCandidate({
           zid: Number(this.selectedAdmission.zid),
           host_id: String(this.selectedAdmission.host_id),
           class: this.admissionFormClass,
           fields: buildAssetFields(this.admissionFormClass, this.admissionForm, true),
           application_id: Number(this.admissionApplicationID) || 0,
-        })) || {}
-        if (result.state === 'completed') this.$message.success(result.message || '发现候选已完成入库与监控关联')
+        }, context)) || {}
+        if (!this.contextIsCurrent(context)) return
+        if (result.state === 'completed') this.$message.success(result.message || '发现候选已完成 iTop 建档与 F49 绑定')
         else if (result.state === 'binding_pending') this.$message.warning(result.message || 'iTop 已建档，Zabbix 关联待重试')
         else this.$message.warning(result.message || '入库结果需要人工处理')
         await this.loadOverviewAndAssets()
@@ -1194,7 +1655,7 @@ export default {
         if (retained) this.selectAdmission(retained)
       } catch (error) {
         if (error.businessCode === 1013) this.admissionFormError = '同类型同名 CI 或监控身份已存在，请核对现有资产。'
-        else this.admissionFormError = error.message || '发现候选入库失败'
+        else this.admissionFormError = this.handleCMDBContextFailure(error, '发现候选入库失败').message
       } finally {
         this.admissionSaving = false
       }
@@ -1204,14 +1665,16 @@ export default {
       this.admissionRetrying = true
       const retainedKey = this.selectedAdmissionKey
       try {
-        const result = this.unwrap(await retryCMDBAdmission(this.selectedAdmission.zid, this.selectedAdmission.host_id)) || {}
+        const context = this.writeContext()
+        const result = this.unwrap(await retryCMDBAdmission(this.selectedAdmission.zid, this.selectedAdmission.host_id, context)) || {}
+        if (!this.contextIsCurrent(context)) return
         if (result.state === 'completed') this.$message.success(result.message || 'Zabbix 关联已补齐')
         else this.$message.warning(result.message || 'Zabbix 关联仍待重试')
         await this.loadAdmissions()
         const retained = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
         if (retained) this.selectAdmission(retained)
       } catch (error) {
-        this.$message.error(error.message || '监控关联重试失败')
+        this.$message.error(this.handleCMDBContextFailure(error, '监控关联重试失败').message)
       } finally {
         this.admissionRetrying = false
       }
@@ -1225,8 +1688,12 @@ export default {
       await this.selectAsset(target)
     },
     async ensureCMDBReferences() {
-      if (this.referencesLoaded) return
+      const contextKey = this.activeCMDBContextKey
+      if (!contextKey) throw new Error('CMDB Organization 上下文未就绪')
+      if (this.referencesContextKey === contextKey) return
+      const sequence = ++this.referenceSequence
       const data = this.unwrap(await getCMDBReferences()) || {}
+      if (sequence !== this.referenceSequence || contextKey !== this.activeCMDBContextKey) throw new Error('CMDB Organization 上下文已变化，请重新打开表单。')
       this.cmdbReferences = {
         locations: Array.isArray(data.locations) ? data.locations : [],
         network_device_types: Array.isArray(data.network_device_types) ? data.network_device_types : [],
@@ -1234,10 +1701,10 @@ export default {
         people: Array.isArray(data.people) ? data.people : [],
         applications: Array.isArray(data.applications) ? data.applications : [],
       }
-      this.referencesLoaded = true
+      this.referencesContextKey = contextKey
     },
     async openCreateAsset() {
-      if (!this.canCreate || !this.sourceReady) return
+      if (!this.canCreate || !this.writeContextReady) return
       try {
         await this.ensureCMDBReferences()
         this.assetEditing = false
@@ -1251,11 +1718,13 @@ export default {
       }
     },
     async openEditAsset() {
-      if (!this.canUpdate || this.selectedLifecycle.retired || !this.selectedAsset) return
+      if (!this.canUpdate || !this.writeContextReady || this.selectedLifecycle.retired || !this.selectedAsset) return
+      const contextKey = this.activeCMDBContextKey
       try {
         await this.ensureCMDBReferences()
         let asset = this.selectedDetail
         if (!asset || !asset.revision) asset = this.unwrap(await getCMDBAsset(this.selectedAsset.class, this.selectedAsset.id))
+        if (contextKey !== this.activeCMDBContextKey) return
         if (!asset || !asset.revision) throw new Error('资产版本信息缺失，请刷新后重试')
         this.selectedDetail = asset
         this.assetEditing = true
@@ -1287,11 +1756,13 @@ export default {
       this.assetSaving = true
       this.assetFormError = ''
       try {
+        const context = this.writeContext()
         const fields = buildAssetFields(this.assetFormClass, this.assetForm, !this.assetEditing)
         const response = this.assetEditing
-          ? await updateCMDBAsset(this.assetFormClass, this.selectedAsset.id, this.assetFormRevision, fields)
-          : await createCMDBAsset(this.assetFormClass, fields)
+          ? await updateCMDBAsset(this.assetFormClass, this.selectedAsset.id, this.assetFormRevision, fields, context)
+          : await createCMDBAsset(this.assetFormClass, fields, context)
         const asset = this.unwrap(response)
+        if (!this.contextIsCurrent(context)) return
         this.assetFormVisible = false
         this.$message.success(this.assetEditing ? 'CMDB 资产已更新' : 'CMDB 资产已新增')
         this.selectedAsset = asset
@@ -1303,14 +1774,14 @@ export default {
         } else if (error.businessCode === 1013) {
           this.assetFormError = '同一 Organization 下已存在同类型同名资产。'
         } else {
-          this.assetFormError = error.message || 'CMDB 资产保存失败'
+          this.assetFormError = this.handleCMDBContextFailure(error, 'CMDB 资产保存失败').message
         }
       } finally {
         this.assetSaving = false
       }
     },
     confirmLifecycleTransition() {
-      if (!this.canOperate || !this.selectedAsset || !this.selectedDetail || !this.selectedDetail.revision) {
+      if (!this.canOperate || !this.writeContextReady || !this.selectedAsset || !this.selectedDetail || !this.selectedDetail.revision) {
         this.$message.warning('资产版本信息尚未就绪，请刷新后重试')
         return
       }
@@ -1329,8 +1800,10 @@ export default {
     async runLifecycleTransition(transition) {
       this.lifecycleSaving = true
       try {
+        const context = this.writeContext()
         const operation = transition.retired ? activateCMDBAsset : retireCMDBAsset
-        this.unwrap(await operation(this.selectedDetail.class, this.selectedDetail.id, this.selectedDetail.revision))
+        this.unwrap(await operation(this.selectedDetail.class, this.selectedDetail.id, this.selectedDetail.revision, context))
+        if (!this.contextIsCurrent(context)) return
         this.$message.success(transition.retired ? 'CMDB 资产已重新启用' : 'CMDB 资产已退役并保留记录')
         await this.loadOverviewAndAssets()
       } catch (error) {
@@ -1338,58 +1811,211 @@ export default {
           this.$message.warning('资产已被其他操作更新，已刷新当前详情，请确认后重试。')
           await this.selectAsset(this.selectedAsset)
         } else {
-          this.$message.error(error.message || `${transition.label}失败`)
+          this.$message.error(this.handleCMDBContextFailure(error, `${transition.label}失败`).message)
         }
       } finally {
         this.lifecycleSaving = false
       }
     },
-    async openMapping() {
-      if (!this.platformAdmin) return
+    async loadMappingGovernance(preferredTenantID) {
+      const sequence = ++this.mappingSequence
       this.mappingVisible = true
       this.mappingLoading = true
+      this.mappingSaving = false
+      this.mappingPreviewLoading = false
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
+      this.mappingPreview = null
+      this.mappingIdempotencyKey = ''
+      this.mappingTransitionForm = emptyMappingTransitionForm()
       try {
+        const preferredTenant = Number(preferredTenantID) || Number(this.currentTenant.id) || 0
         const [tenants, organizations, mappings] = await Promise.all([
-          listTenants(), listCMDBOrganizations(), listCMDBMappings(),
+          listTenants(), listCMDBOrganizations(), listCMDBMappings(preferredTenant),
         ])
+        if (sequence !== this.mappingSequence || !this.mappingVisible) return false
         this.mappingTenants = this.pageItems(tenants)
         this.mappingOrganizations = this.pageItems(organizations)
         this.mappings = this.pageItems(mappings)
-        const preferredTenant = Number(this.currentTenant.id) || (this.mappingTenants[0] && this.mappingTenants[0].id)
-        this.mappingForm.tenant_id = preferredTenant
-        this.syncMappingSelection(preferredTenant)
+        const selectedTenant = this.mappingTenants.some(tenant => Number(tenant.id) === preferredTenant)
+          ? preferredTenant
+          : Number(this.mappingTenants[0] && this.mappingTenants[0].id) || undefined
+        this.mappingForm.tenant_id = selectedTenant
+        this.syncMappingSelection(selectedTenant, false)
+        return true
       } catch (error) {
-        this.$message.error(error.message || '映射选项加载失败')
+        if (sequence !== this.mappingSequence) return false
+        const failure = this.cmdbFailure(error, '映射选项加载失败')
+        this.mappingError = failure.message
+        this.mappingErrorDetail = '未修改任何 Organization 映射；请刷新后重试。'
+        return false
       } finally {
-        this.mappingLoading = false
+        if (sequence === this.mappingSequence) this.mappingLoading = false
       }
     },
+    async openMapping() {
+      if (!this.platformAdmin) return
+      await this.loadMappingGovernance(this.currentTenantID)
+    },
+    async recoverMappingGovernanceContext(tenantID, message) {
+      const targetTenantID = Number(tenantID) || 0
+      const affectsCurrentTenant = governanceTenantIsCurrent(targetTenantID, this.currentTenantID)
+      if (affectsCurrentTenant) {
+        this.invalidateCMDBContext('检测到当前租户的 CMDB Organization 上下文已变化，旧表单已关闭。')
+      }
+      const overviewReload = affectsCurrentTenant ? this.loadOverviewAndAssets() : Promise.resolve()
+      const [mappingLoaded] = await Promise.all([
+        this.loadMappingGovernance(targetTenantID),
+        overviewReload,
+      ])
+      if (!mappingLoaded || !this.mappingVisible || Number(this.mappingForm.tenant_id) !== targetTenantID) return
+      this.mappingError = message || '映射上下文已变化，旧预览已失效。'
+      this.mappingErrorDetail = affectsCurrentTenant
+        ? '已关闭旧资产、关系、监控和入库表单，并重新加载当前租户的映射与 CMDB 数据。'
+        : '已重新加载目标租户的映射数据；当前租户的 CMDB 工作区未受影响。'
+    },
     closeMapping() {
+      if (this.mappingSaving || this.mappingPreviewLoading) return
+      this.mappingSequence += 1
       this.mappingVisible = false
       this.mappingForm = {tenant_id: undefined, itop_organization_id: undefined}
+      this.mappingTransitionForm = emptyMappingTransitionForm()
+      this.mappingPreview = null
+      this.mappingIdempotencyKey = ''
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
     },
-    syncMappingSelection(tenantID) {
-      const mapping = mappingForTenant(this.mappings, tenantID)
-      this.mappingForm.itop_organization_id = mapping ? Number(mapping.itop_organization_id) : undefined
+    syncMappingSelection(tenantID, invalidateRequest = true) {
+      this.mappingForm.tenant_id = Number(tenantID) || undefined
+      this.mappingForm.itop_organization_id = undefined
+      this.resetMappingPreview(invalidateRequest)
+    },
+    resetMappingPreview(invalidateRequest = true) {
+      if (invalidateRequest) this.mappingSequence += 1
+      this.mappingPreview = null
+      this.mappingIdempotencyKey = ''
+      this.mappingTransitionForm.confirmation = ''
+      this.mappingTransitionForm.reason = ''
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
+    },
+    organizationSelectable(organization) {
+      const status = String(organization && (organization.status || organization.state) || '').toLowerCase()
+      return !status || ['active', 'enabled', 'production', 'ready'].includes(status)
     },
     organizationAssignedElsewhere(organizationID) {
       return this.mappings.some((mapping) => Number(mapping.itop_organization_id) === Number(organizationID)
         && Number(mapping.tenant_id) !== Number(this.mappingForm.tenant_id))
     },
+    async previewMappingTransition() {
+      const mapping = this.selectedMapping
+      const governanceTenantID = Number(this.mappingForm.tenant_id) || 0
+      const targetID = Number(this.mappingTransitionForm.target_organization_id) || 0
+      if (!mapping || !targetID || targetID === Number(this.mappingCurrentOrganization.id)) {
+        this.mappingError = '请选择与当前来源不同的目标 Organization。'
+        this.mappingErrorDetail = '预览未发起，当前映射保持不变。'
+        return
+      }
+      const sequence = ++this.mappingSequence
+      this.mappingPreviewLoading = true
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
+      this.mappingPreview = null
+      this.mappingIdempotencyKey = ''
+      try {
+        const data = this.unwrap(await previewCMDBMappingTransition(this.mappingForm.tenant_id, {
+          target_organization_id: targetID,
+        }))
+        if (sequence !== this.mappingSequence || targetID !== Number(this.mappingTransitionForm.target_organization_id)) return
+        const preview = normalizeMappingTransitionPreview(data)
+        if (!preview.preview_digest || !preview.confirmation_phrase || !preview.generation) throw new Error('预览结果缺少 digest、generation 或确认短语')
+        if (preview.state !== 'active' || preview.external_data_preserved !== true) throw new Error('预览未证明活动映射与外部数据保留边界')
+        if (mappingPreviewContextChanged(mapping, preview)) {
+          await this.recoverMappingGovernanceContext(governanceTenantID, '映射已在其他会话中变化，旧预览已失效。')
+          return
+        }
+        if (Number(preview.target_organization.id) !== targetID) throw new Error('预览返回的目标 Organization 与当前选择不一致')
+        this.mappingPreview = preview
+        this.mappingIdempotencyKey = newIdempotencyKey()
+        if (!this.mappingIdempotencyKey) throw new Error('当前浏览器无法生成安全幂等键，请升级浏览器后重试')
+      } catch (error) {
+        if (sequence !== this.mappingSequence) return
+        const failure = this.cmdbFailure(error, '切换影响预览失败')
+        this.mappingError = failure.message
+        this.mappingErrorDetail = '未修改映射或任何外部数据。请按提示调整目标，或刷新映射状态后重新预览。'
+      } finally {
+        if (sequence === this.mappingSequence) this.mappingPreviewLoading = false
+      }
+    },
     async saveMapping() {
-      if (!this.mappingForm.tenant_id || !this.mappingForm.itop_organization_id) {
-        this.$message.warning('请完整选择租户和 iTop Organization')
+      if (!this.mappingForm.tenant_id || !this.mappingForm.itop_organization_id || this.selectedMapping) {
+        this.mappingError = this.selectedMapping ? '已绑定租户必须使用显式 Organization 切换。' : '请完整选择租户和 iTop Organization。'
+        this.mappingErrorDetail = '普通映射保存只用于首次绑定，不会静默覆盖既有来源。'
         return
       }
       this.mappingSaving = true
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
       try {
         this.unwrap(await upsertCMDBMapping(this.mappingForm.tenant_id, this.mappingForm.itop_organization_id))
-        this.$message.success('CMDB 组织映射已更新')
-        this.referencesLoaded = false
+        this.$message.success('CMDB Organization 首次映射已建立')
+        this.cmdbReferences = emptyReferences()
+        this.referencesContextKey = ''
+        this.mappingSaving = false
         this.closeMapping()
         await this.loadOverviewAndAssets()
       } catch (error) {
-        this.$message.error(error.message || '映射保存失败')
+        const failure = this.cmdbFailure(error, '映射建立失败')
+        this.mappingError = failure.message
+        this.mappingErrorDetail = failure.reason === 'mapping_transition_required'
+          ? '服务端检测到该租户已有来源。当前值未改写，请关闭后重新打开治理页。'
+          : '映射和外部数据保持不变；请核对 Organization 占用与状态。'
+      } finally {
+        this.mappingSaving = false
+      }
+    },
+    async executeMappingTransition() {
+      const mapping = this.selectedMapping
+      const preview = this.mappingPreview
+      const governanceTenantID = Number(this.mappingForm.tenant_id) || 0
+      if (!mapping || !preview || !this.mappingCanExecute) {
+        this.mappingError = '请先完成有效预览，精确输入确认短语并填写切换原因。'
+        this.mappingErrorDetail = '当前映射未变更。'
+        return
+      }
+      this.mappingSaving = true
+      this.mappingError = ''
+      this.mappingErrorDetail = ''
+      try {
+        const result = this.unwrap(await executeCMDBMappingTransition(this.mappingForm.tenant_id, {
+          expected_organization_id: Number(preview.current_organization.id),
+          target_organization_id: Number(preview.target_organization.id),
+          expected_generation: Number(preview.generation),
+          preview_digest: preview.preview_digest,
+          confirmation: this.mappingTransitionForm.confirmation,
+          reason: String(this.mappingTransitionForm.reason || '').trim(),
+          idempotency_key: this.mappingIdempotencyKey,
+        })) || {}
+        if (result.external_data_preserved !== true || !result.mapping) throw new Error('切换结果未证明新映射与外部数据保留边界')
+        this.$message.success(`Organization 切换已完成，归档监控关联 ${Number(result.archived_monitoring) || 0} 项、监控创建任务 ${Number(result.archived_monitoring_provisions) || 0} 项、Person 关联 ${Number(result.archived_person) || 0} 项、配置场景 ${Number(result.archived_configuration_scenarios) || 0} 项、配置任务 ${Number(result.archived_configuration_tasks) || 0} 项、遗留 unresolved ${Number(result.archived_unresolved) || 0} 项；外部数据保留。`)
+        this.cmdbReferences = emptyReferences()
+        this.referencesContextKey = ''
+        this.mappingSaving = false
+        this.closeMapping()
+        await this.loadOverviewAndAssets()
+      } catch (error) {
+        const failure = this.cmdbFailure(error, 'Organization 切换失败')
+        if (mappingFailureInvalidatesContext(failure.reason)) {
+          await this.recoverMappingGovernanceContext(governanceTenantID, failure.message)
+          return
+        }
+        this.mappingError = failure.message
+        this.mappingErrorDetail = '切换事务未生效，既有映射和外部数据保持不变。'
+        if (['mapping_context_stale', 'mapping_preview_stale', 'mapping_confirmation_invalid', 'mapping_idempotency_conflict'].includes(failure.reason)) {
+          this.mappingPreview = null
+          this.mappingIdempotencyKey = ''
+          this.mappingTransitionForm.confirmation = ''
+        }
       } finally {
         this.mappingSaving = false
       }
@@ -1410,6 +2036,7 @@ export default {
 .source-strip__eyebrow { margin-bottom: 3px; color: #82b5df; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 700; letter-spacing: .13em; }
 .source-field > span, .source-total > span { margin-bottom: 5px; color: #9fb3c9; font-size: 11px; }
 .source-field strong { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.source-field small { overflow: hidden; margin-top: 2px; color: #83a6c2; font-family: var(--smartops-font-mono); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .source-strip /deep/ .ant-badge-status-text { color: #fff; font-size: 13px; }
 .source-total { align-items: flex-end; border-right: 0; }
 .source-total strong { font-family: var(--smartops-font-mono); font-size: 25px; font-weight: 650; line-height: 1; }
@@ -1466,8 +2093,10 @@ export default {
 .detail-grid .detail-wide { grid-column-start: 1; grid-column-end: -1; }
 
 .monitoring-section { background: #fbfcfe; }
-.monitoring-status-line { display: flex; align-items: flex-start; flex-direction: column; gap: 6px; }
-.monitoring-status-line > span:last-child { color: var(--smartops-muted); font-size: 11px; line-height: 1.55; }
+.monitoring-dimensions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.monitoring-dimensions article { display: flex; min-width: 0; min-height: 96px; padding: 9px; border: 1px solid #d8e2ec; background: #fff; flex-direction: column; gap: 6px; }
+.monitoring-dimensions article > span:first-child { color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .06em; }
+.monitoring-dimensions article small { color: #6e7f92; font-size: 9px; line-height: 1.5; }
 .monitoring-bridge { display: grid; align-items: stretch; margin-top: 13px; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); }
 .bridge-node { min-width: 0; padding: 10px; border: 1px solid #ccd9e5; background: #fff; }
 .bridge-node > span { display: block; color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .07em; }
@@ -1493,9 +2122,18 @@ export default {
 .monitoring-unbound { border-style: dashed; }
 .monitoring-issues { display: flex; margin-top: 9px; flex-wrap: wrap; gap: 4px; }
 .monitoring-issues .ant-tag { margin: 0; color: #765716; }
+.monitoring-evidence-reasons .ant-tag { white-space: normal; }
+.monitoring-evidence { display: grid; margin: 10px 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #dfe7ef; }
+.monitoring-evidence > div { min-width: 0; padding: 8px; background: #fff; }
+.monitoring-evidence dt { color: var(--smartops-muted); font-size: 9px; }
+.monitoring-evidence dd { overflow: hidden; margin: 3px 0 0; color: #243b55; font-family: var(--smartops-font-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .monitoring-actions { display: flex; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 6px; }
 .monitoring-actions .ant-btn { margin: 0; }
 .monitoring-error .ant-btn { margin-top: 10px; }
+
+@media (max-width: 1280px) {
+  .monitoring-dimensions { grid-template-columns: 1fr; }
+}
 
 .monitoring-modal-context { display: flex; align-items: center; margin: -4px 0 16px; padding: 13px 15px; border: 1px solid #bfd0df; background: #f1f6fa; gap: 12px; }
 .monitoring-modal-context > span { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
@@ -1556,6 +2194,7 @@ export default {
 .admission-error { margin-top: 12px; }
 .admission-queue__summary { display: flex; align-items: center; justify-content: space-between; min-height: 46px; color: var(--smartops-muted); font-size: 11px; }
 .admission-list { max-height: calc(100vh - 280px); overflow: auto; margin: 0 -6px; padding: 0 6px 20px; }
+.admission-pagination { display: flex; justify-content: center; padding: 12px 0 2px; border-top: 1px solid #e1e8ef; }
 .admission-card { display: flex; width: 100%; margin: 0 0 8px; padding: 12px; border: 1px solid #d7e1eb; border-radius: 0; background: #fff; color: inherit; text-align: left; cursor: pointer; flex-direction: column; gap: 6px; appearance: none; }
 .admission-card:hover { border-color: #84a7c7; background: #f8fbfe; }
 .admission-card--selected { border-color: var(--smartops-signal-blue); background: #eef5fb; box-shadow: inset 3px 0 0 var(--smartops-signal-blue); }
@@ -1620,7 +2259,60 @@ export default {
 .admission-result--completed .admission-result__icon { background: #dcefe5; color: #287752; }
 .admission-result--conflict { border-color: #dfabab; background: #fff7f7; }
 .admission-result--conflict .admission-result__icon { background: #f7dddd; color: #aa3f3f; }
-.mapping-alert { margin-bottom: 18px; }
+.mapping-alert { margin-bottom: 16px; }
+.mapping-inline-error { margin-bottom: 14px; }
+.mapping-governance-form /deep/ .ant-form-item { margin-bottom: 14px; }
+.mapping-initial-state { display: grid; padding: 16px 17px 4px; border: 1px solid #cbd9e4; border-left: 4px solid var(--smartops-signal-blue); background: #f7fafc; grid-template-columns: minmax(220px, .8fr) minmax(300px, 1.2fr); gap: 22px; }
+.mapping-initial-state header { display: flex; flex-direction: column; }
+.mapping-initial-state header > span, .mapping-impact header > span, .mapping-execution header > span { color: var(--smartops-signal-blue); font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.mapping-initial-state header strong, .mapping-impact header strong, .mapping-execution header strong { margin-top: 4px; color: var(--smartops-command-navy); font-size: 14px; }
+.mapping-initial-state header small, .mapping-impact header small { margin-top: 4px; color: var(--smartops-muted); font-size: 10px; line-height: 1.55; }
+.organization-boundary { display: grid; align-items: stretch; padding: 16px; border: 1px solid #173b63; background: #0d2c43; grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1fr); }
+.boundary-node { display: flex; min-width: 0; min-height: 116px; padding: 14px 15px; border: 1px solid rgba(162, 195, 217, .27); background: rgba(255, 255, 255, .045); flex-direction: column; justify-content: center; }
+.boundary-node--current { border-left: 3px solid #20a4d8; }
+.boundary-node--target { border-left: 3px solid #d98622; }
+.boundary-node__index { color: #71b9dd; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.boundary-node strong { overflow: hidden; margin: 7px 0 3px; color: #fff; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.boundary-node code, .boundary-node small { overflow: hidden; color: #a7c0d1; font-family: var(--smartops-font-mono); font-size: 9px; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
+.boundary-node small:last-child { margin-top: 6px; color: #83a1b6; font-family: inherit; }
+.boundary-node /deep/ .ant-select { width: 100%; margin: 8px 0 2px; }
+.boundary-node /deep/ .ant-select-selection { border-color: #87a8bd; background: #f7fbfd; }
+.boundary-transfer { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; color: #9fb9ca; flex-direction: column; }
+.boundary-transfer::before { position: absolute; right: 0; left: 0; height: 1px; background: #54778f; content: ''; }
+.boundary-transfer span { position: relative; z-index: 1; width: 13px; height: 13px; border: 3px solid #d98622; border-radius: 50%; background: #0d2c43; }
+.boundary-transfer b, .boundary-transfer small { position: relative; z-index: 1; padding: 1px 5px; background: #0d2c43; font-family: var(--smartops-font-mono); }
+.boundary-transfer b { margin-top: 8px; color: #f0c175; font-size: 10px; }
+.boundary-transfer small { color: #7fa9c2; font-size: 8px; letter-spacing: .08em; }
+.mapping-preview-action { display: flex; align-items: center; justify-content: space-between; padding: 11px 13px; border: 1px solid #d8e2e9; border-top: 0; background: #f7f9fb; gap: 14px; }
+.mapping-preview-action > span { color: #61788a; font-size: 10px; line-height: 1.55; }
+.mapping-preview-action .anticon { color: var(--smartops-signal-blue); }
+.mapping-impact { margin-top: 14px; border: 1px solid #cad7e1; background: #fff; }
+.mapping-impact > header { display: flex; padding: 12px 14px; border-bottom: 1px solid #dce4ea; background: #f7fafc; flex-direction: column; }
+.mapping-impact__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mapping-impact__grid article { display: grid; min-width: 0; padding: 12px 13px; border-right: 1px solid #e0e7ec; border-bottom: 1px solid #e0e7ec; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto auto; }
+.mapping-impact__grid article:nth-child(4n) { border-right: 0; }
+.mapping-impact__grid article:nth-last-child(-n+3) { border-bottom: 0; }
+.mapping-impact__grid article > span { grid-row: span 2; align-self: center; color: #7e91a0; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 800; }
+.mapping-impact__grid article strong { color: var(--smartops-command-navy); font-family: var(--smartops-font-mono); font-size: 22px; line-height: 1; }
+.mapping-impact__grid article small { overflow: hidden; margin-top: 3px; color: var(--smartops-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mapping-impact__grid article.mapping-impact--warning { background: #fff8ec; }
+.mapping-impact__grid article.mapping-impact--warning strong { color: #b66c12; }
+.mapping-impact__configuration-samples { display: grid; border-top: 1px solid #e0e7ec; background: #f8fbfd; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mapping-impact__configuration-samples article { min-width: 0; padding: 10px 13px; }
+.mapping-impact__configuration-samples article + article { border-left: 1px solid #e0e7ec; }
+.mapping-impact__configuration-samples article > span { display: block; margin-bottom: 5px; color: #6d8799; font-family: var(--smartops-font-mono); font-size: 8px; font-weight: 800; letter-spacing: .08em; }
+.mapping-impact__configuration-samples article > div { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
+.mapping-impact__configuration-samples code { overflow: hidden; max-width: 100%; padding: 2px 5px; border: 1px solid #cddbe5; background: #fff; color: #36566e; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mapping-impact__configuration-samples small { color: #8797a3; font-size: 9px; }
+.mapping-impact > footer { display: flex; align-items: center; padding: 7px 13px; border-top: 1px solid #e1e7ec; background: #fbfcfd; gap: 9px; }
+.mapping-impact > footer span { color: #8294a3; font-family: var(--smartops-font-mono); font-size: 8px; font-weight: 800; }
+.mapping-impact > footer code { overflow: hidden; color: #4f6577; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mapping-retention-alert { margin-top: 12px; }
+.mapping-execution { margin-top: 12px; padding: 15px 16px 3px; border: 1px solid #e0c18c; border-left: 4px solid #d98622; background: #fffbf3; }
+.mapping-execution header { display: flex; margin-bottom: 12px; flex-direction: column; }
+.mapping-field-help { display: block; margin-top: 5px; color: #7c6c50; font-size: 10px; }
+.mapping-field-help code { color: #9b5f14; font-size: 10px; font-weight: 700; }
+.mapping-actions { display: flex; justify-content: flex-end; margin: 18px -22px -20px; padding: 12px 22px; border-top: 1px solid #dce4ea; background: #f7f9fb; gap: 8px; }
 
 @media (max-width: 1240px) {
   .source-strip { grid-template-columns: 190px 140px minmax(180px, 1fr) 105px; }
@@ -1642,6 +2334,14 @@ export default {
   .admission-stage-rail { grid-template-columns: 1fr 1fr; }
   .admission-stage:nth-child(2) { border-right: 0; }
   .admission-stage:nth-child(-n+2) { border-bottom: 1px solid #dde5ec; }
+  .organization-boundary { grid-template-columns: 1fr; }
+  .boundary-transfer { min-height: 70px; }
+  .boundary-transfer::before { top: 0; bottom: 0; left: 50%; width: 1px; height: auto; }
+  .mapping-impact__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mapping-impact__grid article:nth-child(4n) { border-right: 1px solid #e0e7ec; }
+  .mapping-impact__grid article:nth-child(2n) { border-right: 0; }
+  .mapping-impact__grid article:nth-last-child(-n+3) { border-bottom: 1px solid #e0e7ec; }
+  .mapping-impact__grid article:last-child { border-bottom: 0; }
 }
 @media (max-width: 640px) {
   .heading-actions { width: 100%; flex-wrap: wrap; }
@@ -1664,5 +2364,11 @@ export default {
   .admission-review { padding: 18px 14px 32px; }
   .admission-evidence__facts { grid-template-columns: 1fr; }
   .admission-submit-row, .admission-result { align-items: stretch; grid-template-columns: 1fr; flex-direction: column; }
+  .mapping-initial-state { grid-template-columns: 1fr; gap: 10px; }
+  .mapping-preview-action { align-items: stretch; flex-direction: column; }
+  .mapping-impact__grid, .mapping-impact__configuration-samples { grid-template-columns: 1fr; }
+  .mapping-impact__grid article, .mapping-impact__grid article:nth-child(4n), .mapping-impact__grid article:nth-child(2n) { border-right: 0; border-bottom: 1px solid #e0e7ec; }
+  .mapping-impact__grid article:last-child { border-bottom: 0; }
+  .mapping-impact__configuration-samples article + article { border-top: 1px solid #e0e7ec; border-left: 0; }
 }
 </style>

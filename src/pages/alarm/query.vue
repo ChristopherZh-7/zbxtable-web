@@ -51,7 +51,7 @@
     </a-form-model>
 
     <div class="linux-list smartops-data-panel">
-      <a-table :loading="loading" :columns="columns" :data-source="list" @expand="getEvent" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
+      <a-table :loading="loading" :columns="columns" :data-source="list" :expanded-row-keys="expandedAlarmKeys" @expand="getEvent" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <!-- 主表格的插槽 -->
         <div slot="instance_name" slot-scope="record">
           <a-tag :color="themeColor">{{getInstanceName(record.zid)}}</a-tag>
@@ -59,6 +59,7 @@
         <div slot="status" slot-scope="record">
           <a-tag v-if="record.status==0" color="#2f6f62">{{ $t('alarm_type_recovery') }}</a-tag>
           <a-tag v-else-if="record.status==1" color="#c94b4b">{{ $t('alarm_type_alarm') }}</a-tag>
+          <div data-testid="alarm-source-status" :data-source-state="normalizeAlarmSource(record.source).state" class="alarm-source-status"><a-tag :color="alarmSourceMeta(record.source).color">{{ alarmSourceMeta(record.source).label }}</a-tag></div>
         </div>
         <div slot="level" slot-scope="record">
           <a-tag v-if="record.level==0" color="#97AAB3">{{ $t('level_unclassified') }}</a-tag>
@@ -70,7 +71,7 @@
         </div>
         <span slot="occur_time" slot-scope="record">{{ record.occur_time | parsetime }}</span>
         <span slot="aggregation" slot-scope="record">
-          <a-tag :color="Number(record.repeat_count || 1) > 1 ? '#1b5a96' : 'default'">
+          <a-tag :color="Number(record.repeat_count || 1) > 1 ? '#1b5a96' : ''">
             {{ $t('aggregation_repeat_count', { count: Number(record.repeat_count || 1) }) }}
           </a-tag>
           <div v-if="Number(record.repeat_count || 1) > 1" class="aggregation-last-time">
@@ -78,15 +79,16 @@
           </div>
         </span>
         <span slot="notify_status" slot-scope="record">
-          <a-badge v-if="record.notify_status==0" status="success"></a-badge>
-          <a-badge v-else-if="record.notify_status==1" status="default"></a-badge>
-          <a-badge v-else-if="record.notify_status==2" status="processing"></a-badge>
-          <template v-if="record.notify_status==0">{{ $t('notify_status_notified') }}</template>
-          <template v-else-if="record.notify_status==1">{{ $t('notify_status_muted') }}</template>
-          <template v-else-if="record.notify_status==2">{{ $t('notify_status_default_rule') }}</template>
+          <a-badge v-if="record.notify_status === '0' || record.notify_status === '2'" status="processing"></a-badge>
+          <a-badge v-else status="default"></a-badge>
+          <template v-if="record.notify_status === '0'">{{ $t('notify_status_notified') }}</template>
+          <template v-else-if="record.notify_status === '1'">{{ $t('notify_status_muted') }}</template>
+          <template v-else-if="record.notify_status === '2'">{{ $t('notify_status_default_rule') }}</template>
+          <template v-else-if="record.notify_status === '3'">{{ $t('notify_status_source_recovered') }}</template>
+          <template v-else>{{ $t('notify_status_unrecorded') }}</template>
         </span>
         <span slot="handling_status" slot-scope="record">
-          <a-tag :color="handlingStatusColor(record.handling_status)">{{ handlingStatusLabel(record.handling_status) }}</a-tag>
+          <a-tag :color="canHandleProblem(record) ? handlingStatusColor(record.handling_status) : ''">{{ canHandleProblem(record) ? handlingStatusLabel(record.handling_status) : '来源事件（只读）' }}</a-tag>
         </span>
         <span slot="pipeline_assignment" slot-scope="record">
           <div>{{ $t('pipeline_duty') }}：{{ record.dispatched_username || $t('handling_unassigned') }}</div>
@@ -98,18 +100,7 @@
 		  <a-button v-auth="'operate'" class="pd20" type="link" size="small" @click="analyzeWithDeepseek(record)">{{ $t('btn_ai_analysis') }}</a-button>
         </span>
         
-        <!-- 展开行的嵌套表格 -->
-        <a-table slot="expandedRowRender" slot-scope="record" :columns="innerColumns" :data-source="(record && record.innerData) ? record.innerData : []" :loading="record ? record.innerLoading : false" :pagination="false" :rowKey="(r) => r.id || r.notify_time || r.rule + '-' + r.user + '-' + r.channel">
-          <span slot="channel" slot-scope="text">{{ formatChannel(text) }}</span>
-          <span slot="notify_time" slot-scope="record">{{ record.notify_time | parsetime }}</span>
-          <span slot="status" slot-scope="record">
-            <a-badge v-if="record.status==0" status="success"></a-badge>
-            <a-badge v-else-if="record.status==1" status="error"></a-badge>
-            <a-badge v-else-if="record.status==2" status="processing"></a-badge>
-            <template v-if="record.status==0">{{ $t('notify_result_delivered') }}</template>
-            <template v-else-if="record.status==1">{{ $t('notify_result_failed') }}</template>
-          </span>
-        </a-table>
+        <notification-delivery-panel slot="expandedRowRender" slot-scope="record" :deliveries="(record && record.innerData) ? record.innerData : []" :can-operate="$can('tenant.alarms', 'operate')" :retrying="retryingDeliveries" @retry="retryNotification(record, $event)" />
       </a-table>
     </div>
 
@@ -122,9 +113,11 @@
       @close="closeHandling">
       <a-spin :spinning="handlingLoading">
         <template v-if="handlingDetail">
+          <alarm-source-card :source="handlingDetail.source" />
+          <a-button size="small" icon="reload" data-testid="alarm-handling-refresh" :loading="handlingLoading" :disabled="handlingSubmitting" @click="loadHandling">刷新来源与处置</a-button>
           <a-descriptions bordered size="small" :column="1">
             <a-descriptions-item :label="$t('handling_status')">
-              <a-tag :color="handlingStatusColor(handlingDetail.handling_status)">{{ handlingStatusLabel(handlingDetail.handling_status) }}</a-tag>
+              <a-tag :color="canHandleProblem(handlingRecord) ? handlingStatusColor(handlingDetail.handling_status) : ''">{{ canHandleProblem(handlingRecord) ? handlingStatusLabel(handlingDetail.handling_status) : '来源事件（只读）' }}</a-tag>
             </a-descriptions-item>
             <a-descriptions-item :label="$t('handling_assignee')">
               {{ handlingDetail.assignee_username || $t('handling_unassigned') }}
@@ -164,7 +157,7 @@
             </a-list-item>
           </a-list>
 
-          <div v-if="$can('tenant.alarms', 'operate')" class="handling-actions">
+          <div v-if="$can('tenant.alarms', 'operate') && canHandleProblem(handlingRecord)" class="handling-actions">
             <a-button
               v-if="handlingDetail.handling_status === 'unclaimed'"
               type="primary"
@@ -362,8 +355,13 @@
 
 <script>
 import PageLayout from "@/layouts/PageLayout";
-import { alarm, alarmExport, eventLogGet, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline, getAlarmAggregation, updateAlarmAggregation } from "@/services/admin";
+import { alarm, alarmExport, eventLogGet, retryNotificationDelivery, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline, getAlarmAggregation, updateAlarmAggregation } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
+import {tenantContextChangingEvent} from '@/utils/request'
+import AlarmSourceCard from './AlarmSourceCard.vue'
+import NotificationDeliveryPanel from './NotificationDeliveryPanel.vue'
+import {normalizeAlarmSource, alarmSourceMeta, canHandleProblem} from './source-model'
+import {newNotificationRetryKey} from './notification-delivery-model'
 import { parseTimeFun } from "@/utils/formatter";
 import { buildAlarmTimeRanges, getDefaultAlarmTimeRange } from "./timeRange";
 import moment from "moment";
@@ -459,12 +457,16 @@ export default {
   mixins: [themeMixin],
   components: {
     PageLayout,
+    AlarmSourceCard,
+    NotificationDeliveryPanel,
   },
   data() {
     return {
       page: 1,
       pageSize: 10,
       loading: false,
+      listSequence: 0,
+      handlingSequence: 0,
       instanceList: [],
       instanceMap: {},
       selectedInstance: '',
@@ -474,8 +476,10 @@ export default {
       levellist: [],
       columns: [],
       innerColumns: [],
+      retryingDeliveries: {},
       // tenantlist/tenantid 已取消：跟随“当前 Zabbix 连接”
       list: [],
+      expandedAlarmKeys: [],
       pagination: {
         total: 0,
         current: 1,
@@ -521,6 +525,7 @@ export default {
     };
   },
   computed: {
+    sourceTenantKey() { const tenant = this.$store.getters['account/currentTenant']; return String(tenant && tenant.id || '') },
 	pipelineWeekdays() {
 	  return [
 		{ value: 1, label: this.$t('week_monday') },
@@ -542,6 +547,7 @@ export default {
     }
   },
   created() {
+    window.addEventListener(tenantContextChangingEvent, this.invalidateAlarmContext)
     this.timeRanges = buildAlarmTimeRanges(this.$t.bind(this));
     this.applyTimeRange(getDefaultAlarmTimeRange());
     this.initOptions();
@@ -551,6 +557,16 @@ export default {
     this.init();
   },
   methods: {
+    normalizeAlarmSource, alarmSourceMeta, canHandleProblem,
+    invalidateAlarmContext() {
+      this.listSequence += 1
+      this.list = []
+      this.expandedAlarmKeys = []
+      this.pagination.total = 0
+      this.closeHandling()
+      this.pipelineVisible = false
+      this.aggregationVisible = false
+    },
     applyTimeRange(range = []) {
       if (!range.length) {
         this.timeValue = null
@@ -593,16 +609,6 @@ export default {
         { title: this.$t('handling_assignee'), dataIndex: "assignee_username", align: "left", width: 110, customRender: value => value || this.$t('handling_unassigned') },
 		{ title: this.$t('pipeline_assignment'), key: "pipeline_assignment", align: "left", width: 170, scopedSlots: { customRender: "pipeline_assignment" } },
         { title: this.$t('col_operation'), key: "operation", align: "center", scopedSlots: { customRender: "operation" } },
-      ];
-      this.innerColumns = [
-        { title: this.$t('col_rule_name'), dataIndex: "rule", align: "left" },
-        { title: this.$t('col_alarm_channel'), dataIndex: "channel", align: "left", scopedSlots: { customRender: "channel" } },
-        { title: this.$t('col_receiving_user'), dataIndex: "user", align: "left" },
-        { title: this.$t('col_receiving_account'), dataIndex: "account", align: "left" },
-        { title: this.$t('col_notification_time'), key: "notify_time", align: "left", scopedSlots: { customRender: "notify_time" } },
-        { title: this.$t('col_notification_content'), dataIndex: "notify_content", align: "left", width: "300px", ellipsis: true },
-        { title: this.$t('col_notification_result'), key: "status", align: "left", scopedSlots: { customRender: "status" } },
-        { title: this.$t('col_error_message'), dataIndex: "notify_error", align: "left", width: "300px", ellipsis: true },
       ];
     },
     loadInstances() {
@@ -687,6 +693,8 @@ export default {
       return usedVars.filter(v => !supported.includes(v))
     },
     init() {
+      const sequence = ++this.listSequence, tenant = this.sourceTenantKey
+      this.expandedAlarmKeys = []
       this.loading = true;
       let req = {
         page: this.page, limit: this.pageSize,
@@ -704,6 +712,7 @@ export default {
         req.end = this.endTime;
       }
       alarm(req).then((resp) => {
+        if (sequence !== this.listSequence || tenant !== this.sourceTenantKey) return
         let res = resp.data;
         if (res.code == 200) {
           this.pagination.total = res.data.total;
@@ -712,7 +721,7 @@ export default {
           this.list = res.data.items || [];
         }
       }).finally(() => {
-        this.loading = false;
+        if (sequence === this.listSequence && tenant === this.sourceTenantKey) this.loading = false;
       });
       // alarmTenantGet 已不再需要
     },
@@ -733,7 +742,7 @@ export default {
       return labels[status || 'unclaimed'] || status || this.$t('handling_unclaimed')
     },
     handlingStatusColor(status) {
-      return ({ unclaimed: 'default', processing: 'blue', resolved: 'green', closed: 'purple' })[status || 'unclaimed'] || 'default'
+      return ({ unclaimed: '', processing: 'blue', resolved: 'green', closed: 'purple' })[status || 'unclaimed'] || ''
     },
     handlingActionLabel(action) {
 	  return ({ dispatch: this.$t('pipeline_dispatch'), escalate: this.$t('pipeline_escalate'), claim: this.$t('handling_claim'), note: this.$t('handling_add_note'), resolve: this.$t('handling_resolve'), close: this.$t('handling_close') })[action] || action
@@ -873,12 +882,17 @@ export default {
 	  })
 	},
     openHandling(record) {
+      this.handlingSequence += 1
       this.handlingRecord = record
+      this.handlingDetail = null
       this.handlingVisible = true
       this.handlingNote = ''
       this.loadHandling()
     },
     closeHandling() {
+      this.handlingSequence += 1
+      this.handlingSubmitting = false
+      this.handlingLoading = false
       this.handlingVisible = false
       this.handlingRecord = null
       this.handlingDetail = null
@@ -886,8 +900,10 @@ export default {
     },
     loadHandling() {
       if (!this.handlingRecord) return
+      const sequence = ++this.handlingSequence, tenant = this.sourceTenantKey
       this.handlingLoading = true
       alarmHandlingDetail(this.handlingRecord.id).then(resp => {
+        if (sequence !== this.handlingSequence || tenant !== this.sourceTenantKey || !this.handlingVisible) return
         const res = resp.data
         if (res.code === 200) {
           this.handlingDetail = res.data
@@ -895,31 +911,37 @@ export default {
           this.$message.error(res.message || this.$t('msg_get_data_failed'))
         }
       }).catch(() => {
-        this.$message.error(this.$t('msg_get_data_failed'))
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.$message.error(this.$t('msg_get_data_failed'))
       }).finally(() => {
-        this.handlingLoading = false
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.handlingLoading = false
       })
     },
     claimHandling() {
-      if (!this.handlingRecord) return
+      if (!this.handlingRecord || this.handlingSubmitting || !canHandleProblem(this.handlingRecord) || !this.$can('tenant.alarms', 'operate')) return
+      const sequence = this.handlingSequence, tenant = this.sourceTenantKey
       this.handlingSubmitting = true
-      claimAlarm(this.handlingRecord.id).then(resp => this.finishHandlingAction(resp, 'handling_claim_success')).catch(() => {
-        this.$message.error(this.$t('handling_action_failed'))
+      claimAlarm(this.handlingRecord.id).then(resp => {
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.finishHandlingAction(resp, 'handling_claim_success')
+      }).catch(() => {
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.$message.error(this.$t('handling_action_failed'))
       }).finally(() => {
-        this.handlingSubmitting = false
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.handlingSubmitting = false
       })
     },
     submitHandling(action) {
-      if (!this.handlingRecord) return
+      if (!this.handlingRecord || this.handlingSubmitting || !canHandleProblem(this.handlingRecord) || !this.$can('tenant.alarms', 'operate')) return
+      const sequence = this.handlingSequence, tenant = this.sourceTenantKey
       if (!this.handlingNote) {
         this.$message.warning(this.$t('handling_note_required'))
         return
       }
       this.handlingSubmitting = true
-      handleAlarm(this.handlingRecord.id, action, this.handlingNote).then(resp => this.finishHandlingAction(resp, 'handling_action_success')).catch(() => {
-        this.$message.error(this.$t('handling_action_failed'))
+      handleAlarm(this.handlingRecord.id, action, this.handlingNote).then(resp => {
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.finishHandlingAction(resp, 'handling_action_success')
+      }).catch(() => {
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.$message.error(this.$t('handling_action_failed'))
       }).finally(() => {
-        this.handlingSubmitting = false
+        if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.handlingSubmitting = false
       })
     },
     finishHandlingAction(resp, successKey) {
@@ -984,23 +1006,59 @@ export default {
       this.init();
     },
     getEvent(exp, record) {
-      console.log(exp, record)
+      this.expandedAlarmKeys = exp
+        ? Array.from(new Set([...this.expandedAlarmKeys, record.id]))
+        : this.expandedAlarmKeys.filter(id => id !== record.id)
       if (!exp) {
         return
       }
 
-      if (record.innerData && record.innerData.length) {
+      if ((record.innerData && record.innerData.length) || record.innerLoading) {
         return
       }
 
+      const sequence = this.listSequence
+      const tenant = this.sourceTenantKey
       this.$set(record, 'innerLoading', true)
       eventLogGet(record.id).then((resp) => {
         let res = resp.data;
-        if (res.code == 200) {
+        if (res.code == 200 && sequence === this.listSequence && tenant === this.sourceTenantKey && this.list.some(item => item.id === record.id)) {
           this.$set(record, 'innerData', res.data.items || [])
         }
       }).finally(() => {
-        this.$set(record, 'innerLoading', false)
+        if (sequence === this.listSequence && tenant === this.sourceTenantKey) this.$set(record, 'innerLoading', false)
+      })
+    },
+    loadNotificationDeliveries(record) {
+      const sequence = this.listSequence
+      const tenant = this.sourceTenantKey
+      return eventLogGet(record.id).then((resp) => {
+        const res = resp.data
+        if (res.code === 200 && sequence === this.listSequence && tenant === this.sourceTenantKey && this.list.some(item => item.id === record.id)) {
+          this.$set(record, 'innerData', res.data.items || [])
+        }
+      })
+    },
+    retryNotification(record, delivery) {
+      const key = newNotificationRetryKey()
+      if (!key || !delivery || !delivery.can_retry) return
+      const identity = String(delivery.delivery_id)
+      const sequence = this.listSequence
+      const tenant = this.sourceTenantKey
+      this.$set(this.retryingDeliveries, identity, true)
+      retryNotificationDelivery(record.id, delivery.delivery_id, delivery.version, key).then((resp) => {
+        if (sequence !== this.listSequence || tenant !== this.sourceTenantKey) return
+        const res = resp.data
+        if (res.code !== 200) {
+          this.$message.error(res.message || this.$t('notification_delivery_retry_failed'))
+          return
+        }
+        this.$message.success(this.$t('notification_delivery_retry_accepted'))
+        return this.loadNotificationDeliveries(record)
+      }).catch(() => {
+        if (sequence === this.listSequence && tenant === this.sourceTenantKey) this.$message.error(this.$t('notification_delivery_retry_failed'))
+      }).finally(() => {
+        if (sequence === this.listSequence && tenant === this.sourceTenantKey) this.$set(this.retryingDeliveries, identity, false)
       })
     },
     // 打开 AI 助手分析
@@ -1306,7 +1364,7 @@ export default {
       return res;
     },
     notifyStatusFilter(v) {
-      let res = this.$t('notify_status_notified');
+      let res = this.$t('notify_status_unrecorded');
       switch (v) {
         case "0":
           res = this.$t('notify_status_notified');
@@ -1317,11 +1375,14 @@ export default {
         case "2":
           res = this.$t('notify_status_default_rule');
           break;
+        case "3":
+          res = this.$t('notify_status_source_recovered');
+          break;
       }
       return res;
     },
     notifyResult(v) {
-      let res = this.$t('notify_status_notified');
+      let res = this.$t('notify_result_unknown');
       switch (v) {
         case "0":
           res = this.$t('notify_result_delivered');
@@ -1334,6 +1395,8 @@ export default {
     },
   },
   beforeDestroy() {
+    window.removeEventListener(tenantContextChangingEvent, this.invalidateAlarmContext)
+    this.invalidateAlarmContext()
     // 组件销毁时确保请求被取消
     if (this.abortController) {
       this.abortController.abort();

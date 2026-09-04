@@ -4,9 +4,9 @@
       <div>
         <p class="asset-kicker">统一台账</p>
         <h1>资产管理</h1>
-        <p>按资产分类查看设备清单、连接状态与详细信息。</p>
+        <p>查看全部监控设备，或按已有分类浏览；资产档案在 CMDB 配置中心维护。</p>
       </div>
-      <div class="smartops-heading-metric">资产总数<strong>{{ totalAssets }}</strong></div>
+      <div class="smartops-heading-metric">监控设备总数<strong>{{ totalAssets }}</strong></div>
     </div>
     <div class="asset-browser" :style="themeVars">
       <a-layout class="asset-browser__layout">
@@ -23,6 +23,16 @@
             >
               <a-icon slot="prefix" type="search" style="color:#bbb;" />
             </a-input>
+          </div>
+
+          <div class="all-devices-nav">
+            <a-button
+              block
+              icon="database"
+              :type="selectedType && selectedType.typeCode === allDeviceType ? 'primary' : 'default'"
+              :aria-pressed="Boolean(selectedType && selectedType.typeCode === allDeviceType)"
+              @click="selectAllDevices"
+            >全部监控设备</a-button>
           </div>
 
           <a-spin :spinning="treeLoading" size="small">
@@ -164,7 +174,8 @@
 import PageLayout from '@/layouts/PageLayout'
 import GenericDeviceList from './GenericDeviceList.vue'
 import themeMixin from '@/mixins/themeMixin'
-import { getAssetGroups, getAssetTypes } from '@/services/admin'
+import { getAssetGroups, getAssetTypes, hostList } from '@/services/admin'
+const {ALL_DEVICE_TYPE} = require('./all-monitoring-devices')
 
 // 用 INDEX_INFO 获取设备数量
 const INDEX_INFO = '/v1/index/baseinfo'
@@ -184,11 +195,13 @@ export default {
       selectedGroupName: '',
       searchText: '',
       hostCounts: {},      // typeCode → count
+      allDeviceType: ALL_DEVICE_TYPE,
+      totalHostCount: null,
     }
   },
   computed: {
     totalAssets() {
-      return this.treeData.reduce((sum, group) => sum + (Number(group.total) || 0), 0)
+      return this.totalHostCount == null ? '—' : this.totalHostCount
     },
     // 注入主题色 CSS 变量，供 /deep/ 选择器（hover/选中态）使用
     themeVars() {
@@ -265,12 +278,34 @@ export default {
 
       // 数量统计走 Zabbix（约 2s），后台异步加载，不阻塞树渲染
       this.loadHostCounts()
+      this.loadTotalHostCount()
+    },
+
+    async loadTotalHostCount() {
+      this.totalHostCount = null
+      try {
+        const response = await hostList({page: 1, limit: 1})
+        const payload = response.data || {}
+        if (payload.code === 200 && payload.data && Number.isFinite(Number(payload.data.total))) {
+          this.totalHostCount = Math.max(0, Number(payload.data.total))
+        }
+      } catch (e) { /* 未获取真实总数时显示未知，不用已分类数量冒充全量 */ }
+    },
+
+    selectAllDevices() {
+      this.selectedType = {key: ALL_DEVICE_TYPE, typeCode: ALL_DEVICE_TYPE, name: '全部监控设备', icon: 'database'}
+      this.selectedGroupName = '监控设备'
+      this.selectedKeys = []
     },
 
     // 根据路由 query.type 自动选中设备类型（详情页返回时定位）
     applyTypeFromQuery() {
       const code = this.$route.query.type
       if (!code) return
+      if (code === ALL_DEVICE_TYPE) {
+        this.selectAllDevices()
+        return
+      }
       for (const group of this.treeData) {
         const found = group.children.find((t) => t.typeCode === code)
         if (found) {
@@ -353,6 +388,10 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.all-devices-nav {
+  padding: 10px 12px 2px;
+}
+
 .asset-heading {
   margin-bottom: 14px;
 }

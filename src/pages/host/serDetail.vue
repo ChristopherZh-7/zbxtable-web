@@ -2,6 +2,7 @@
   <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems">
     <a-button slot="action" icon="arrow-left" @click="goBack">返回</a-button>
     <div slot="headerContent" class="linux-detail">
+      <monitoring-health-card :health="(detail && detail.monitoring_health) || {}" />
       <!-- 主机基本信息 -->
       <a-card :headStyle="{...$cardHeadStyle, marginBottom: '12px'}" :bodyStyle="{padding: '12px'}" :title="$t('ser_card_basic_info')">
         <a-row :gutter="[24, 8]">
@@ -116,12 +117,13 @@ import PageLayout from "@/layouts/PageLayout";
 import { hostDetail } from "@/services/admin";
 import { parseTimeFun, expiryStatus } from "@/utils/formatter";
 import themeMixin from '@/mixins/themeMixin';
+import MonitoringHealthCard from '@/components/MonitoringHealthCard'
 
 export default {
   i18n: require('./i18n'),
   name: "SerDetail",
   mixins: [themeMixin],
-  components: { PageLayout },
+  components: { PageLayout, MonitoringHealthCard },
   data() {
     return {
       id: "",

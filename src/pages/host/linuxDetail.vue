@@ -2,6 +2,7 @@
   <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems">
     <a-button slot="action" icon="arrow-left" @click="goBack">返回</a-button>
     <div slot="headerContent" class="linux-detail">
+      <monitoring-health-card :health="(detail && detail.monitoring_health) || {}" />
       <a-card :bodyStyle="{padding: '12px 20px'}" style="margin-bottom: 12px;">
         <!-- 第一行 -->
         <a-row :gutter="[24, 8]" style="margin-bottom: 8px;">
@@ -269,13 +270,14 @@ import echarts from 'echarts';
 require('echarts-liquidfill');
 import { exportTableToXlsx } from '@/utils/exportXlsx'
 import themeMixin from '@/mixins/themeMixin'
+import MonitoringHealthCard from '@/components/MonitoringHealthCard'
 
 
 export default {
   i18n: require('./i18n'),
   name: "LinuxDetail",
   mixins: [themeMixin],
-  components: { PageLayout },
+  components: { PageLayout, MonitoringHealthCard },
   data() {
     return {
       moment,

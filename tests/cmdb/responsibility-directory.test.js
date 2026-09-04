@@ -43,8 +43,24 @@ test('page explains account, tenant membership and iTop responsibility as separa
     '\u5916\u90e8\u4eba\u5458\u53ef\u7559\u7a7a', '\u8d26\u53f7\u5df2\u505c\u7528', '\u5df2\u79fb\u51fa\u79df\u6237', '\u8d26\u53f7\u5df2\u5220\u9664',
   ]) assert.ok(`${page}\n${model}`.includes(copy), `missing responsibility boundary copy: ${copy}`)
   assert.match(page, /v-if="!canUpdate"[\s\S]*\u53ea\u8bfb\u89c6\u56fe/)
-  assert.match(page, /v-if="canCreate && directory\.state === 'ready'"[\s\S]*\u65b0\u589e\u56e2\u961f/)
+  assert.match(page, /v-if="canCreate && writeContextReady"[\s\S]*\u65b0\u589e\u56e2\u961f/)
   assert.doesNotMatch(page, /\u81ea\u52a8\u6388\u6743|\u5220\u9664\u8d1f\u8d23\u4eba|\u5220\u9664\u56e2\u961f/)
+})
+
+test('responsibility writes use the same tenant Organization generation and discard old responses', () => {
+  const page = source('src/pages/cmdb/responsibilities/index.vue')
+  const service = source('src/services/cmdb.js')
+  assert.match(page, /Promise\.all\(\[getCMDBResponsibilities\(\), getCMDBOverview\(\)\]\)/)
+  assert.match(page, /normalizeCMDBContext\(overview, tenantID\)/)
+  assert.match(page, /activeCMDBContextKey/)
+  assert.match(page, /resetContextWorkspaces\(\)[\s\S]*editorVisible = false[\s\S]*impactVisible = false/)
+  assert.match(page, /mapping_transition_in_progress[\s\S]*resetContextWorkspaces\(\)/)
+  assert.match(page, /updateCMDBTeam\([^\n]*fields, context\)/)
+  assert.match(page, /createCMDBPerson\(fields, context\)/)
+  assert.match(page, /setCMDBPersonAccount\([^\n]*context\)/)
+  assert.match(page, /transitionCMDBPerson\([^\n]*context\)/)
+  assert.match(service, /function createCMDBTeam\(fields, context\)[\s\S]*cmdbWriteConfig\(context\)/)
+  assert.match(service, /function setCMDBPersonAccount\(id, userID, context\)[\s\S]*cmdbWriteConfig\(context\)/)
 })
 
 test('directory normalization keeps inactive records, memberships, impacts and broken account states visible', () => {

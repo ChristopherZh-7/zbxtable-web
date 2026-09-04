@@ -329,6 +329,20 @@ import {
   isSecretConfigKey,
   normalizeSecretValue
 } from './system-management-policy'
+
+const DEPRECATED_INVENTORY_TASK_KEYS = new Set([
+  'sync_inventory',
+  'sync_inventory_cron',
+  'auto_metric_mapping_enabled',
+  'auto_metric_mapping_cron',
+  'retry_failed_mapping_enabled',
+  'retry_failed_mapping_cron',
+  'binding_auto_init_enabled',
+  'binding_auto_init_cron',
+  'binding_retry_enabled',
+  'binding_retry_cron',
+])
+
 export default {
   name: 'edit',
   i18n: require('./config-i18n'),
@@ -379,7 +393,9 @@ export default {
       )
     },
     taskConfigs() {
-      return this.list.filter(item => this.isTaskConfig(item.config_key))
+      return this.list.filter(item =>
+        this.isTaskConfig(item.config_key) && !DEPRECATED_INVENTORY_TASK_KEYS.has(item.config_key)
+      )
     },
     taskConfigColumns() {
       const groups = this.taskConfigGroups

@@ -11,8 +11,8 @@
           <span class="context-chip"><i />{{ currentTenant.name || '当前租户' }}</span>
           <a-tag v-if="!canUpdate" color="blue">只读视图</a-tag>
           <a-button icon="reload" :loading="loading" @click="reload">刷新</a-button>
-          <a-button v-if="canCreate && directory.state === 'ready'" data-testid="responsibility-create-team" icon="team" @click="openCreate('team')">新增团队</a-button>
-          <a-button v-if="canCreate && directory.state === 'ready'" data-testid="responsibility-create-person" type="primary" icon="user-add" @click="openCreate('person')">录入负责人</a-button>
+          <a-button v-if="canCreate && writeContextReady" data-testid="responsibility-create-team" icon="team" @click="openCreate('team')">新增团队</a-button>
+          <a-button v-if="canCreate && writeContextReady" data-testid="responsibility-create-person" type="primary" icon="user-add" @click="openCreate('person')">录入负责人</a-button>
         </div>
       </header>
 
@@ -51,7 +51,7 @@
 
         <template v-else>
           <section class="directory-summary">
-            <article><span>ORGANIZATION</span><strong>{{ organizationName }}</strong><small>iTop 责任真源</small></article>
+            <article><span>ORGANIZATION</span><strong>{{ organizationName }}</strong><small>{{ organizationIdentity }} · iTop 责任真源</small></article>
             <article><span>ACTIVE TEAMS</span><strong>{{ summary.activeTeams }}</strong><small>共 {{ directory.teams.length }} 个团队</small></article>
             <article><span>ACTIVE PEOPLE</span><strong>{{ summary.activePeople }}</strong><small>共 {{ directory.people.length }} 位负责人</small></article>
             <article :class="{'summary-warning': summary.accountWarnings}"><span>ACCOUNT LINKS</span><strong>{{ summary.linkedAccounts }}</strong><small>{{ summary.accountWarnings ? `${summary.accountWarnings} 项需重新关联` : '身份关联正常' }}</small></article>
@@ -92,7 +92,7 @@
               <template slot="impact" slot-scope="record"><div class="impact-cell" :class="{'impact-cell--used': record.impact.total}"><strong>{{ record.impact.total }}</strong><span>{{ impactText(record) }}</span></div></template>
               <template slot="contact" slot-scope="record"><div class="contact-lines"><span>{{ record.email || '未填邮箱' }}</span><small>{{ record.phone || '未填电话' }}</small></div></template>
               <template slot="operation" slot-scope="record">
-                <div v-if="canUpdate" class="row-actions">
+                <div v-if="canUpdate && writeContextReady" class="row-actions">
                   <a-button type="link" @click="openEdit('team', record)">编辑</a-button>
                   <a-button v-if="canOperate" type="link" :class="record.status === 'active' ? 'danger-link' : ''" @click="requestTransition('team', record)">{{ record.status === 'active' ? '停用' : '重新启用' }}</a-button>
                 </div>
@@ -122,7 +122,7 @@
               </template>
               <template slot="impact" slot-scope="record"><div class="impact-cell" :class="{'impact-cell--used': record.impact.total}"><strong>{{ record.impact.total }}</strong><span>{{ impactText(record) }}</span></div></template>
               <template slot="operation" slot-scope="record">
-                <div v-if="canUpdate" class="row-actions">
+                <div v-if="canUpdate && writeContextReady" class="row-actions">
                   <a-button type="link" @click="openEdit('person', record)">编辑 / 关联</a-button>
                   <a-button v-if="canOperate" type="link" :class="record.status === 'active' ? 'danger-link' : ''" @click="requestTransition('person', record)">{{ record.status === 'active' ? '停用' : '重新启用' }}</a-button>
                 </div>
@@ -142,7 +142,7 @@
         cancel-text="取消"
         @ok="saveRecord"
       >
-        <div class="editor-boundary"><a-icon type="info-circle" /><span v-if="editorType === 'person'">Person 保存责任信息；可选账号关联仅用于身份对应，不会改变租户角色。</span><span v-else>Team 保存在 iTop；成员归属通过负责人资料维护。</span></div>
+        <div class="editor-boundary"><a-icon type="info-circle" /><span><strong>写入 {{ organizationName }}</strong>（{{ organizationIdentity }}）。<template v-if="editorType === 'person'">Person 账号关联只用于身份对应，不会改变租户角色。</template><template v-else>Team 保存在 iTop，成员归属由负责人资料维护。</template></span></div>
         <a-form-model :model="editorForm" layout="vertical" class="editor-form">
           <div class="form-grid">
             <a-form-model-item :label="editorType === 'team' ? '团队名称' : '姓 / 姓名主体'" required><a-input v-model.trim="editorForm.name" :max-length="255" /></a-form-model-item>
@@ -192,6 +192,7 @@ import PageLayout from '@/layouts/PageLayout'
 import {
   createCMDBPerson,
   createCMDBTeam,
+  getCMDBOverview,
   getCMDBResponsibilities,
   listCMDBResponsibilityAccountOptions,
   setCMDBPersonAccount,
@@ -212,9 +213,11 @@ import {
   normalizeDirectory,
   validateResponsibilityForm,
 } from './responsibility-model'
+import {mappingTransitionReasonMessage, normalizeCMDBContext} from '../cmdb-model'
+import {tenantContextChangingEvent} from '@/utils/request'
 import {businessPayload, canPerform} from '@/utils/permission-policy'
 
-const emptyDirectory = (state = 'unconfigured', message = '') => ({state, message, organization: null, teams: [], people: []})
+const emptyDirectory = (state = 'unconfigured', message = '') => ({state, message, organization: null, mapping: null, teams: [], people: []})
 const sortedIDs = values => (values || []).map(Number).filter(Boolean).sort((a, b) => a - b)
 const sameIDs = (left, right) => JSON.stringify(sortedIDs(left)) === JSON.stringify(sortedIDs(right))
 
@@ -224,6 +227,8 @@ export default {
   data: () => ({
     loading: false,
     saving: false,
+    loadSequence: 0,
+    activeCMDBContextKey: '',
     activeTab: 'team',
     search: '',
     statusFilter: '',
@@ -255,10 +260,18 @@ export default {
   computed: {
     permissions() { return this.$store.getters['account/permissions'] || [] },
     currentTenant() { return this.$store.getters['account/currentTenant'] || {} },
+    currentTenantID() { return Number(this.currentTenant.id) || 0 },
     canCreate() { return canPerform(this.permissions, 'tenant.cmdb.responsibility', 'create') },
     canUpdate() { return canPerform(this.permissions, 'tenant.cmdb.responsibility', 'update') },
     canOperate() { return canPerform(this.permissions, 'tenant.cmdb.responsibility', 'operate') },
+    cmdbContext() { return normalizeCMDBContext(this.directory, this.currentTenantID) },
+    writeContextReady() { return this.cmdbContext.ready && this.activeCMDBContextKey === this.cmdbContext.key },
     organizationName() { return this.directory.organization && this.directory.organization.name || '未配置' },
+    organizationIdentity() {
+      if (!this.cmdbContext.organization_id) return 'Organization 未就绪'
+      const code = this.directory.organization && this.directory.organization.code || 'NO-CODE'
+      return `${code} · ID ${this.cmdbContext.organization_id} · GEN ${this.cmdbContext.generation || '—'}`
+    },
     filteredTeams() { return filterContacts(this.directory.teams, this.search, this.statusFilter) },
     filteredPeople() { return filterContacts(this.directory.people, this.search, this.statusFilter) },
     activeTeams() { return this.directory.teams.filter(team => team.status === 'active') },
@@ -285,35 +298,118 @@ export default {
       return this.accountOptions.filter(option => !used.has(Number(option.user_id)))
     },
   },
+  watch: {
+    currentTenantID(next, previous) {
+      if (previous && next !== previous) {
+        this.invalidateCMDBContext('租户上下文已切换，旧 CMDB 基础资料表单已关闭。')
+        this.reload()
+      }
+    },
+  },
   created() {
+    if (typeof window !== 'undefined') window.addEventListener(tenantContextChangingEvent, this.handleTenantContextChanging)
     this.reload()
   },
+  beforeDestroy() {
+    if (typeof window !== 'undefined') window.removeEventListener(tenantContextChangingEvent, this.handleTenantContextChanging)
+  },
   methods: {
+    cmdbFailure(error, fallback) {
+      const business = error && error.data && typeof error.data === 'object' ? error.data : {}
+      const data = error && error.businessData || business.data || {}
+      const reason = String(error && error.businessReason || data && data.reason || '')
+      return {
+        reason,
+        data,
+        message: mappingTransitionReasonMessage(reason, business.message || error && error.message || fallback),
+      }
+    },
     unwrap(response) {
       const business = businessPayload(response)
       if (!business || Number(business.code) !== 200) {
         const error = new Error(business && business.message || '请求失败')
         error.businessData = business && business.data
+        error.businessReason = business && business.data && business.data.reason
         throw error
       }
       return business.data
     },
+    writeContext() {
+      if (!this.writeContextReady) {
+        const error = new Error('CMDB Organization 上下文未就绪，请刷新后重试。')
+        error.businessReason = 'cmdb_context_mismatch'
+        throw error
+      }
+      return {organization_id: this.cmdbContext.organization_id, generation: this.cmdbContext.generation, key: this.cmdbContext.key}
+    },
+    contextIsCurrent(context) {
+      return Boolean(context && context.key) && context.key === this.cmdbContext.key && context.key === this.activeCMDBContextKey
+    },
+    resetContextWorkspaces() {
+      this.editorVisible = false
+      this.editingRecord = null
+      this.editorForm = createResponsibilityForm('person')
+      this.impactVisible = false
+      this.impactTarget = null
+      this.accountOptions = []
+    },
+    invalidateCMDBContext(message) {
+      this.loadSequence += 1
+      this.activeCMDBContextKey = ''
+      this.resetContextWorkspaces()
+      this.directory = emptyDirectory()
+      if (message) this.$message.warning(message)
+    },
+    handleTenantContextChanging(event) {
+      const targetID = Number(event && event.detail && event.detail.tenant && event.detail.tenant.id) || 0
+      if (!targetID || targetID !== this.currentTenantID) {
+        this.invalidateCMDBContext('租户正在切换，已关闭旧 CMDB 基础资料表单。')
+        return
+      }
+      if (!this.activeCMDBContextKey) this.$nextTick(() => {
+        if (!this.activeCMDBContextKey && targetID === this.currentTenantID) this.reload()
+      })
+    },
+    handleWriteFailure(error, fallback) {
+      const failure = this.cmdbFailure(error, fallback)
+      if (['cmdb_context_mismatch', 'mapping_context_stale', 'mapping_generation_mismatch', 'mapping_transition_in_progress'].includes(failure.reason)) {
+        this.resetContextWorkspaces()
+        this.activeCMDBContextKey = ''
+        this.reload()
+      }
+      return failure
+    },
     async reload() {
+      const sequence = ++this.loadSequence
+      const tenantID = this.currentTenantID
       this.loading = true
       try {
-        this.directory = normalizeDirectory(this.unwrap(await getCMDBResponsibilities()))
-        if (this.canUpdate && this.directory.state === 'ready') {
+        const [directoryResponse, overviewResponse] = await Promise.all([getCMDBResponsibilities(), getCMDBOverview()])
+        if (sequence !== this.loadSequence || tenantID !== this.currentTenantID) return
+        const rawDirectory = this.unwrap(directoryResponse) || {}
+        const overview = this.unwrap(overviewResponse) || {}
+        const context = normalizeCMDBContext(overview, tenantID)
+        if (rawDirectory.state === 'ready' && (!context.ready || Number(rawDirectory.organization && rawDirectory.organization.id) !== context.organization_id)) {
+          throw new Error('CMDB 基础资料与 Overview 的 Organization 上下文不一致')
+        }
+        if (this.activeCMDBContextKey && context.key && this.activeCMDBContextKey !== context.key) this.resetContextWorkspaces()
+        this.directory = normalizeDirectory({...rawDirectory, mapping: overview.mapping || null})
+        this.activeCMDBContextKey = context.key
+        if (this.canUpdate && this.directory.state === 'ready' && context.ready) {
           const data = this.unwrap(await listCMDBResponsibilityAccountOptions())
+          if (sequence !== this.loadSequence || context.key !== this.activeCMDBContextKey) return
           this.accountOptions = data && Array.isArray(data.items) ? data.items : []
         } else {
           this.accountOptions = []
         }
       } catch (error) {
+        if (sequence !== this.loadSequence || tenantID !== this.currentTenantID) return
         this.directory = emptyDirectory('error', error.message || 'iTop 或 SmartOps 接口暂时不可用')
+        this.activeCMDBContextKey = ''
         this.accountOptions = []
         this.$message.error(error.message || '加载 CMDB 基础资料失败')
       } finally {
-        this.loading = false
+        if (sequence === this.loadSequence) this.loading = false
       }
     },
     statusMeta(status) { return contactStatusMeta(status) },
@@ -341,12 +437,14 @@ export default {
       return {operations_team: '运维团队', primary_owner: '主负责人', backup_owner: '备份负责人'}[role] || '责任引用'
     },
     openCreate(type) {
+      if (!this.canCreate || !this.writeContextReady) return
       this.editorType = type
       this.editingRecord = null
       this.editorForm = createResponsibilityForm(type)
       this.editorVisible = true
     },
     openEdit(type, record) {
+      if (!this.canUpdate || !this.writeContextReady) return
       this.editorType = type
       this.editingRecord = record
       this.editorForm = createResponsibilityForm(type, record)
@@ -361,48 +459,56 @@ export default {
       this.saving = true
       const fields = buildResponsibilityFields(this.editorType, this.editorForm)
       try {
+        const context = this.writeContext()
         if (this.editorType === 'team') {
-          if (this.editingRecord) this.unwrap(await updateCMDBTeam(this.editingRecord.id, this.editingRecord.revision, fields))
-          else this.unwrap(await createCMDBTeam(fields))
+          if (this.editingRecord) this.unwrap(await updateCMDBTeam(this.editingRecord.id, this.editingRecord.revision, fields, context))
+          else this.unwrap(await createCMDBTeam(fields, context))
         } else {
-          await this.savePerson(fields)
+          await this.savePerson(fields, context)
         }
+        if (!this.contextIsCurrent(context)) return
         this.$message.success(this.editingRecord ? '基础资料已更新' : '基础资料已录入')
         this.editorVisible = false
         await this.reload()
       } catch (error) {
-        this.$message.error(error.message || '保存 CMDB 基础资料失败')
-        await this.reload()
+        this.$message.error(this.handleWriteFailure(error, '保存 CMDB 基础资料失败').message)
+        if (this.activeCMDBContextKey) await this.reload()
       } finally {
         this.saving = false
       }
     },
-    async savePerson(fields) {
+    async savePerson(fields, context) {
       let person
-      if (this.editingRecord) person = this.unwrap(await updateCMDBPerson(this.editingRecord.id, this.editingRecord.revision, fields))
-      else person = this.unwrap(await createCMDBPerson(fields))
+      if (this.editingRecord) person = this.unwrap(await updateCMDBPerson(this.editingRecord.id, this.editingRecord.revision, fields, context))
+      else person = this.unwrap(await createCMDBPerson(fields, context))
+      if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
 
       const oldTeams = this.editingRecord ? this.editingRecord.team_ids : []
       const teamChanged = !sameIDs(oldTeams, this.editorForm.team_ids)
       if (teamChanged) {
         try {
-          person = this.unwrap(await updateCMDBPersonTeams(person.id, person.revision, this.editorForm.team_ids))
+          person = this.unwrap(await updateCMDBPersonTeams(person.id, person.revision, this.editorForm.team_ids, context))
+          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
         } catch (error) {
-          throw new Error(`负责人资料已保存，但团队归属未完成：${error.message}`)
+          const failure = this.cmdbFailure(error, '团队归属未完成')
+          throw Object.assign(new Error(`负责人资料已保存，但团队归属未完成：${failure.message}`), {businessReason: failure.reason, businessData: failure.data})
         }
       }
       const oldUserID = this.editingRecord && this.editingRecord.account ? Number(this.editingRecord.account.user_id) : 0
       const nextUserID = Number(this.editorForm.user_id) || 0
       if (oldUserID !== nextUserID) {
         try {
-          this.unwrap(await setCMDBPersonAccount(person.id, nextUserID))
+          this.unwrap(await setCMDBPersonAccount(person.id, nextUserID, context))
+          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
         } catch (error) {
-          throw new Error(`负责人与团队资料已保存，但账号关联未完成：${error.message}`)
+          const failure = this.cmdbFailure(error, '账号关联未完成')
+          throw Object.assign(new Error(`负责人与团队资料已保存，但账号关联未完成：${failure.message}`), {businessReason: failure.reason, businessData: failure.data})
         }
       }
       return person
     },
     requestTransition(type, record) {
+      if (!this.canOperate || !this.writeContextReady) return
       if (record.status === 'active' && Number(record.impact.total) > 0) {
         this.impactTarget = record
         this.impactVisible = true
@@ -419,18 +525,21 @@ export default {
     },
     async performTransition(type, record, activate) {
       try {
-        if (type === 'team') this.unwrap(await transitionCMDBTeam(record.id, record.revision, activate))
-        else this.unwrap(await transitionCMDBPerson(record.id, record.revision, activate))
+        const context = this.writeContext()
+        if (type === 'team') this.unwrap(await transitionCMDBTeam(record.id, record.revision, activate, context))
+        else this.unwrap(await transitionCMDBPerson(record.id, record.revision, activate, context))
+        if (!this.contextIsCurrent(context)) return
         this.$message.success(activate ? '已重新启用' : '已安全停用')
       } catch (error) {
-        if (error.businessData && Number(error.businessData.total) > 0) {
-          this.impactTarget = {...record, impact: error.businessData}
+        const failure = this.handleWriteFailure(error, '状态变更失败')
+        if (failure.data && Number(failure.data.total) > 0) {
+          this.impactTarget = {...record, impact: failure.data}
           this.impactVisible = true
         } else {
-          this.$message.error(error.message || '状态变更失败')
+          this.$message.error(failure.message)
         }
       } finally {
-        await this.reload()
+        if (this.activeCMDBContextKey) await this.reload()
       }
     },
     goToAssets() {

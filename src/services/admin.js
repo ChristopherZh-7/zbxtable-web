@@ -47,6 +47,19 @@ import {
 } from '@/services/api'
 import { request, METHOD } from '@/utils/request'
 // import { INDEX_VERSION, INVENTORY_EXPORT, REPORT } from "./api";
+
+const cmdbOrganizationHeaderName = 'X-CMDB-Organization-ID'
+const cmdbGenerationHeaderName = 'X-CMDB-Mapping-Generation'
+
+function configurationWriteConfig(context) {
+	const source = context || {}
+	return {
+		headers: {
+			[cmdbOrganizationHeaderName]: String(Number(source.organization_id) || ''),
+			[cmdbGenerationHeaderName]: String(Number(source.generation) || ''),
+		},
+	}
+}
 export async function hostList(params) {
 	return request(HOST_LIST, METHOD.GET, { ...params })
 }
@@ -63,10 +76,6 @@ export async function hostDetail(id, zid) {
 export async function getHostAssetAttributes(id, zid) {
 	const params = zid ? { zid } : {}
 	return request(HOST_LIST + '/' + id + '/attributes', METHOD.GET, params)
-}
-export async function updateHostAssetAttributes(id, zid, values) {
-	const suffix = zid ? '?zid=' + encodeURIComponent(zid) : ''
-	return request(HOST_LIST + '/' + id + '/attributes' + suffix, METHOD.PUT, { values })
 }
 export async function hostGraph(id, params) {
 	return request(HOST_LIST + '/graph/' + id, METHOD.POST, params)
@@ -194,26 +203,30 @@ export async function baselineRuleEvents(id, zid) {
 export async function configurationResources(zid) {
 	return request(CONFIG_CONSUMPTION + '/resources', METHOD.GET, zid ? {zid} : {})
 }
-export async function configurationScenarioList() {
-	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.GET)
+export async function configurationScenarioList(params) {
+	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.GET, params)
 }
-export async function createConfigurationScenario(params) {
-	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.POST, params)
+export async function createConfigurationScenario(params, context) {
+	return request(CONFIG_CONSUMPTION + '/scenarios', METHOD.POST, params, configurationWriteConfig(context))
 }
-export async function updateConfigurationScenario(id, params) {
-	return request(CONFIG_CONSUMPTION + '/scenarios/' + id, METHOD.PUT, params)
+export async function updateConfigurationScenario(id, params, context) {
+	return request(CONFIG_CONSUMPTION + '/scenarios/' + encodeURIComponent(id), METHOD.PUT, params, configurationWriteConfig(context))
 }
-export async function deleteConfigurationScenario(id) {
-	return request(CONFIG_CONSUMPTION + '/scenarios/' + id, METHOD.DELETE)
+export async function deleteConfigurationScenario(id, expectedVersion, context) {
+	return request(CONFIG_CONSUMPTION + '/scenarios/' + encodeURIComponent(id), METHOD.DELETE, {
+		expected_version: Number(expectedVersion),
+	}, configurationWriteConfig(context))
 }
-export async function configurationTaskList() {
-	return request(CONFIG_CONSUMPTION + '/tasks', METHOD.GET)
+export async function configurationTaskList(params) {
+	return request(CONFIG_CONSUMPTION + '/tasks', METHOD.GET, params)
 }
-export async function applyConfigurationScenario(hostid, params) {
-	return request(CONFIG_CONSUMPTION + '/hosts/' + hostid, METHOD.PUT, params)
+export async function applyConfigurationScenario(assetClass, assetID, params, context) {
+	return request(CONFIG_CONSUMPTION + '/assets/' + encodeURIComponent(assetClass) + '/' + encodeURIComponent(assetID), METHOD.PUT, params, configurationWriteConfig(context))
 }
-export async function retryConfigurationTask(id) {
-	return request(CONFIG_CONSUMPTION + '/tasks/' + id + '/retry', METHOD.POST, {})
+export async function retryConfigurationTask(id, expectedVersion, context) {
+	return request(CONFIG_CONSUMPTION + '/tasks/' + encodeURIComponent(id) + '/retry', METHOD.POST, {
+		expected_version: Number(expectedVersion),
+	}, configurationWriteConfig(context))
 }
 export async function networkDiscoveryResources() {
 	return request(NETWORK_DISCOVERY + '/resources', METHOD.GET)
@@ -235,9 +248,6 @@ export async function resourceDiscoveryOverview() {
 }
 export async function scriptDiscoveryList() {
 	return request(SCRIPT_DISCOVERY, METHOD.GET)
-}
-export async function applyScriptDiscovery(itemid) {
-	return request(SCRIPT_DISCOVERY + '/' + encodeURIComponent(itemid) + '/apply', METHOD.POST, {})
 }
 export async function itemList(params) {
 	return request(ITEM_LIST, METHOD.GET, params)
@@ -273,12 +283,6 @@ export async function systemList() {
 }
 export async function systemInfo(id) {
 	return request(SYSTEM_LIST + '/' + id, METHOD.GET)
-}
-export async function systemUpdate(id, params, instanceId) {
-	return request(SYSTEM_LIST + '/' + id, METHOD.PUT, { ...params, instance: instanceId })
-}
-export async function systemInit(id, instanceId) {
-	return request(SYSTEM_LIST + '/init/' + id, METHOD.POST, { instance: instanceId })
 }
 export async function egressGet() {
 	return request(SYSTEM_LIST + '/egress/', METHOD.GET)
@@ -431,7 +435,13 @@ export async function groupDelete(id) {
 	return request(GROUP + '/' + id, METHOD.DELETE)
 }
 export async function eventLogGet(id) {
-	return request(EVENT_LOG + '/' + id, METHOD.GET)
+	return request(ALARM + '/' + id + '/notifications', METHOD.GET)
+}
+export async function retryNotificationDelivery(alarmId, deliveryId, expectedVersion, idempotencyKey) {
+	return request(ALARM + '/' + alarmId + '/notifications/' + deliveryId + '/retry', METHOD.POST, {
+		expected_version: expectedVersion,
+		idempotency_key: idempotencyKey,
+	})
 }
 export async function alarmDeepseekAnalysis(params) {
 	return request(AI+'/chat', METHOD.POST, params, {
@@ -460,18 +470,6 @@ export async function metricMappingList(params) {
 }
 export async function metricMappingGet(id) {
 	return request(METRIC_MAPPING + '/' + id, METHOD.GET)
-}
-export async function metricMappingCreate(params) {
-	return request(METRIC_MAPPING, METHOD.POST, params)
-}
-export async function metricMappingUpdate(id, params) {
-	return request(METRIC_MAPPING + '/' + id, METHOD.PUT, params)
-}
-export async function metricMappingDelete(id) {
-	return request(METRIC_MAPPING + '/' + id, METHOD.DELETE)
-}
-export async function metricMappingExecute(id) {
-	return request(METRIC_MAPPING + '/' + id + '/execute', METHOD.POST)
 }
 export async function metricMappingHistory(params) {
 	return request(METRIC_MAPPING + '/history', METHOD.GET, params)
@@ -539,17 +537,8 @@ export async function deleteAssetGroup(id) {
 export async function getSystemBindings() {
 	return request(SYSTEM_BINDING, METHOD.GET)
 }
-export async function createSystemBinding(params) {
-	return request(SYSTEM_BINDING, METHOD.POST, params)
-}
-export async function updateSystemBinding(id, params) {
-	return request(SYSTEM_BINDING + '/' + id, METHOD.PUT, params)
-}
-export async function deleteSystemBinding(id) {
-	return request(SYSTEM_BINDING + '/' + id, METHOD.DELETE)
-}
-export async function initSystemBinding(id, zid) {
-	return request(SYSTEM_BINDING + '/init/' + id, METHOD.POST, { zid })
+export async function getSystemBinding(id) {
+	return request(SYSTEM_BINDING + '/' + id, METHOD.GET)
 }
 export async function getSystemBindingHistory(id, params) {
 	return request(SYSTEM_BINDING + '/' + id + '/history', METHOD.GET, params)
@@ -559,7 +548,6 @@ export default {
 	hostList,
 	hostDetail,
 	getHostAssetAttributes,
-	updateHostAssetAttributes,
 	hostGraph,
 	hostMock,
 	hostMockd,
@@ -598,7 +586,6 @@ export default {
 	deleteNetworkDiscoveryRule,
 	resourceDiscoveryOverview,
 	scriptDiscoveryList,
-	applyScriptDiscovery,
 	itemList,
 	triggerList,
 	deployTopology,
@@ -612,8 +599,6 @@ export default {
 	indexOverview,
 	systemList,
 	systemInfo,
-	systemUpdate,
-	systemInit,
 	egressGet,
 	egressUpdate,
 	egressConfigList,
@@ -644,6 +629,7 @@ export default {
 	taskLogList,
 	taskLogDelete,
 	eventLogGet,
+	retryNotificationDelivery,
 	ruleList,
 	ruleAdd,
 	rulePut,
@@ -662,10 +648,6 @@ export default {
 	alarmDeepseekAnalysis,
 	metricMappingList,
 	metricMappingGet,
-	metricMappingCreate,
-	metricMappingUpdate,
-	metricMappingDelete,
-	metricMappingExecute,
 	metricMappingHistory,
 	systemVersion,
 	systemCheckUpdate,
@@ -681,9 +663,6 @@ export default {
 	updateAssetGroup,
 	deleteAssetGroup,
 	getSystemBindings,
-	createSystemBinding,
-	updateSystemBinding,
-	deleteSystemBinding,
-	initSystemBinding,
+	getSystemBinding,
 	getSystemBindingHistory,
 }

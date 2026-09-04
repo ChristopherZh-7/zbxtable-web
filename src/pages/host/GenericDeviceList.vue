@@ -10,11 +10,11 @@
           <a-form-model-item label="IP地址">
             <a-input v-model.trim="interfaces" placeholder="IP地址" allow-clear />
           </a-form-model-item>
-          <a-form-model-item label="采集状态">
+          <a-form-model-item label="接口可用性">
             <a-select style="width: 120px" v-model="available">
               <a-select-option value="">全部</a-select-option>
-              <a-select-option value="1">正常</a-select-option>
-              <a-select-option value="2">异常</a-select-option>
+              <a-select-option value="1">可用</a-select-option>
+              <a-select-option value="2">不可用</a-select-option>
             </a-select>
           </a-form-model-item>
           <a-form-model-item label="租户">
@@ -56,6 +56,13 @@
         @saved="onFieldsSaved"
       />
 
+      <a-alert
+        message="Zabbix Inventory 资产语义字段只读；历史自定义属性仅供查看，不属于 CMDB。资产真值请在 CMDB 配置中心维护，标准监控标签仍可在本页编辑。"
+        type="info"
+        show-icon
+        style="margin-bottom: 12px;"
+      />
+
       <!-- 设备列表 -->
       <a-table
         class="smartops-data-panel"
@@ -67,35 +74,10 @@
         :rowKey="(r, i) => (r.hostid ? r.hostid + '-' + i : 'row-' + i)"
         size="small"
       >
-        <!-- 通用文本字段（资产字段在编辑态下可内联编辑；长文本省略+悬浮显示全文） -->
+        <!-- 通用文本字段（资产字段只读；长文本省略+悬浮显示全文） -->
         <template v-for="col in textColumns" :slot="col.key" slot-scope="record">
           <span :key="col.key">
-            <template v-if="isEditing(record) && isEditableField(col.key)">
-              <a-input-number
-                v-if="col.custom && col.field_type === 'number'"
-                v-model="editForm[col.key]"
-                size="small"
-                style="width: 100%;"
-              />
-              <a-select
-                v-else-if="col.custom && col.field_type === 'select'"
-                v-model="editForm[col.key]"
-                allow-clear
-                size="small"
-                style="width: 100%;"
-              >
-                <a-select-option v-for="option in col.options || []" :key="option" :value="option">{{ option }}</a-select-option>
-              </a-select>
-              <a-date-picker
-                v-else-if="isDateField(col.key)"
-                v-model="editForm[col.key]"
-                value-format="YYYY-MM-DD"
-                size="small"
-                style="width: 100%;"
-              />
-              <a-input v-else v-model.trim="editForm[col.key]" size="small" />
-            </template>
-            <a-tooltip v-else-if="fieldValue(record, col.key) !== '' && fieldValue(record, col.key) !== undefined" :title="fieldValue(record, col.key)" placement="topLeft">
+            <a-tooltip v-if="fieldValue(record, col.key) !== '' && fieldValue(record, col.key) !== undefined" :title="fieldValue(record, col.key)" placement="topLeft">
               <span class="cell-ellipsis">{{ fieldValue(record, col.key) }}</span>
             </a-tooltip>
             <template v-else>--</template>
@@ -104,14 +86,7 @@
 
         <!-- 维保到期：按距当前时间远近显示不同风格的 Tag（已过期 / 紧急 / 临近 / 提醒 / 正常） -->
         <span slot="date_hw_expiry" slot-scope="record">
-          <a-date-picker
-            v-if="isEditing(record)"
-            v-model="editForm.date_hw_expiry"
-            value-format="YYYY-MM-DD"
-            size="small"
-            style="width: 100%;"
-          />
-          <a-tooltip v-else-if="record.date_hw_expiry" :title="expiryStatus(record.date_hw_expiry).tip">
+          <a-tooltip v-if="record.date_hw_expiry" :title="expiryStatus(record.date_hw_expiry).tip">
             <a-tag :color="expiryStatus(record.date_hw_expiry).color">
               {{ record.date_hw_expiry }}
               <span style="margin-left: 4px;">{{ expiryStatus(record.date_hw_expiry).text }}</span>
@@ -141,13 +116,11 @@
           </span>
         </div>
 
-        <span slot="available" slot-scope="record">
-          <a-tooltip v-if="record.available == 2">
-            <template slot="title">{{ record.error }}</template>
-            <a-tag color="#c94b4b">异常</a-tag>
+        <span slot="available" slot-scope="record" class="collection-health-cell" :data-health-state="collectionHealth(record).state">
+          <a-tooltip :title="collectionHealth(record).summary">
+            <a-tag :color="collectionHealthMeta(record).color">{{ collectionHealth(record).label }}</a-tag>
           </a-tooltip>
-          <a-tag v-else-if="record.available == 1" color="#2f6f62">正常</a-tag>
-          <a-tag v-else color="#7d8b9a">未知</a-tag>
+          <small>{{ interfaceAvailabilityLabel(record.available) }}</small>
         </span>
 
         <div slot="standard_tags" slot-scope="record" class="standard-tags">
@@ -163,18 +136,9 @@
         </div>
 
         <span slot="operation" slot-scope="record">
-          <template v-if="isEditing(record)">
-            <a-button type="link" size="small" @click="saveRow(record)">保存</a-button>
-            <a-popconfirm title="放弃修改？" @confirm="cancelRow()">
-              <a-button type="link" size="small">取消</a-button>
-            </a-popconfirm>
-          </template>
-          <template v-else>
-            <a-button v-if="hasEditableColumn && canEditAsset" type="link" size="small" @click="editRow(record)">编辑</a-button>
-            <a-button v-if="$can('tenant.monitoring', 'update')" type="link" size="small" @click="openTagEditor(record)">编辑标签</a-button>
-            <a-button type="link" size="small" @click="seeGraph(record)">查看图形</a-button>
-            <a-button type="link" size="small" @click="seeInfo(record)">详细信息</a-button>
-          </template>
+          <a-button v-if="$can('tenant.monitoring', 'update')" type="link" size="small" @click="openTagEditor(record)">编辑标签</a-button>
+          <a-button type="link" size="small" @click="seeGraph(record)">查看图形</a-button>
+          <a-button type="link" size="small" @click="seeInfo(record)">详细信息</a-button>
         </span>
       </a-table>
 
@@ -260,10 +224,13 @@
             <a-tag :color="$themeColor">{{ detailRecord.instance_name || '未知' }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="IP地址">{{ detailRecord.interfaces || '--' }}</a-descriptions-item>
-          <a-descriptions-item label="采集状态">
-            <a-tag v-if="detailRecord.available == 1" color="#34af67">正常</a-tag>
-            <a-tag v-else-if="detailRecord.available == 2" color="#DC143C">异常</a-tag>
-            <a-tag v-else color="#808080">未知</a-tag>
+          <a-descriptions-item label="采集健康">
+            <a-tooltip :title="collectionHealth(detailRecord).summary">
+              <a-tag :color="collectionHealthMeta(detailRecord).color">{{ collectionHealth(detailRecord).label }}</a-tag>
+            </a-tooltip>
+          </a-descriptions-item>
+          <a-descriptions-item label="接口可用性">
+            {{ interfaceAvailabilityLabel(detailRecord.available) }}
           </a-descriptions-item>
           <a-descriptions-item label="Ping状态">
             <a-tag v-if="detailRecord.ping && detailRecord.ping.includes('Up')" color="#2f6f62">在线</a-tag>
@@ -300,7 +267,7 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import moment from 'moment'
-import { hostList, hostExport, hostUpdate, hostGraph, updateHostAssetAttributes, getAssetTypes, getAssetTypeFields } from '@/services/admin'
+import { hostList, hostExport, hostUpdate, hostGraph, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import AssetTypeFieldDrawer from '@/pages/system/asset-type-fields.vue'
 import {
@@ -313,19 +280,14 @@ import {
   standardTagState,
 } from './asset-tags'
 
+const monitoringHealthPolicy = require('@/utils/monitoring-health')
+const {ALL_DEVICE_TYPE, monitoringHostTypeFilter, allMonitoringDeviceFields} = require('./all-monitoring-devices')
+
 // 专用 slot key（有单独的 template slot，不走通用文本 slot）
 const DEDICATED_SLOTS = new Set([
   'instance_name', 'cpu_utilization', 'memory_utilization', 'ping', 'available', 'operation',
   'date_hw_expiry',
 ])
-
-// 可内联编辑的资产字段（与原 inventory 页面一致）
-const EDITABLE_FIELDS = new Set([
-  'location', 'department', 'resource_id', 'mac', 'date_hw_install', 'date_hw_expiry',
-])
-
-// 日期型可编辑字段
-const DATE_FIELDS = new Set(['date_hw_install', 'date_hw_expiry'])
 
 export default {
   name: 'GenericDeviceList',
@@ -353,9 +315,6 @@ export default {
       pageSize: 10,
       loading: false,
       list: [],
-      // 内联编辑状态：当前编辑行的唯一标识 + 编辑表单
-      editingId: '',
-      editForm: {},
       // 字段配置抽屉
       fieldDrawerVisible: false,
       // 详情/图形弹窗
@@ -403,26 +362,18 @@ export default {
         (f) => f.render === 'text' && !DEDICATED_SLOTS.has(f.key)
       )
     },
-    // 当前可见字段中是否存在可编辑的资产字段（决定是否显示"编辑"按钮）
-    hasEditableColumn() {
-      return this.visibleFields.some((field) => field.custom || EDITABLE_FIELDS.has(field.key))
-    },
-    canEditAsset() {
-      return this.$can('tenant.monitoring', 'update') || this.$can('tenant.assets', 'update')
-    },
     tableColumns() {
       const cols = this.visibleFields.map((f) => {
         // 不设 dataIndex：scopedSlots 的 slot-scope 拿到整行 record（与 linuxList 一致）
         const col = {
-          title: f.label, key: f.key, align: 'left',
+          title: f.key === 'available' ? '采集健康' : f.custom ? `${f.label || f.key}（历史只读 · 非 CMDB）` : f.label, key: f.key, align: 'left',
           scopedSlots: { customRender: f.key },
         }
         if (f.width) col.width = f.width
         return col
       })
       cols.push({ title: '标准标签', key: 'standard_tags', align: 'left', width: 360, scopedSlots: { customRender: 'standard_tags' } })
-      const opWidth = this.hasEditableColumn ? 300 : 250
-      cols.push({ title: '操作', key: 'operation', align: 'left', width: opWidth, fixed: 'right', scopedSlots: { customRender: 'operation' } })
+      cols.push({ title: '操作', key: 'operation', align: 'left', width: 250, fixed: 'right', scopedSlots: { customRender: 'operation' } })
       return cols
     },
   },
@@ -469,6 +420,13 @@ export default {
     },
     async loadTypeConfig() {
       if (!this.effectiveTypeCode) return
+      if (this.effectiveTypeCode === ALL_DEVICE_TYPE) {
+        this.typeId = null
+        this.typeName = '全部监控设备'
+        this.fieldConfigs = allMonitoringDeviceFields()
+        this.fetchList()
+        return
+      }
       try {
         const typesRes = await getAssetTypes()
         const types = (typesRes.data && typesRes.data.data) || []
@@ -485,10 +443,9 @@ export default {
     fetchList() {
       if (!this.effectiveTypeCode) return
       this.loading = true
-      this.cancelRow() // 切换数据时退出编辑态
       hostList({
         page: this.page, limit: this.pageSize,
-        hosttype: this.effectiveTypeCode,
+        hosttype: monitoringHostTypeFilter(this.effectiveTypeCode),
         hosts: this.hosts, ip: this.interfaces, available: this.available,
         tags: buildStandardTagFilters(this.tagFilters),
       }).then((resp) => {
@@ -503,63 +460,21 @@ export default {
     },
     changePage(e) { this.page = e.current; this.pageSize = e.pageSize; this.fetchList() },
 
-    // ── 内联编辑 ──────────────────────────────────────────────
-    rowId(record) {
-      return `${record.zid || 0}_${record.hostid}`
-    },
-    isEditing(record) {
-      return this.editingId === this.rowId(record)
-    },
+    // 资产字段只读；历史自定义值仍从独立响应对象中展示。
     fieldConfig(key) {
       return this.fieldConfigs.find((field) => field.key === key) || {}
     },
     fieldValue(record, key) {
       return this.fieldConfig(key).custom ? ((record.custom_attributes || {})[key]) : record[key]
     },
-    isEditableField(key) {
-      return this.fieldConfig(key).custom || EDITABLE_FIELDS.has(key)
+    collectionHealth(record) {
+      return monitoringHealthPolicy.normalizeMonitoringHealth(record && record.monitoring_health)
     },
-    isDateField(key) {
-      const field = this.fieldConfig(key)
-      return (field.custom && field.field_type === 'date') || DATE_FIELDS.has(key)
+    collectionHealthMeta(record) {
+      return monitoringHealthPolicy.monitoringHealthMeta(this.collectionHealth(record))
     },
-    editRow(record) {
-      this.editingId = this.rowId(record)
-      const form = {}
-      this.visibleFields.filter((field) => this.isEditableField(field.key)).forEach((field) => {
-        form[field.key] = this.fieldValue(record, field.key) || ''
-      })
-      this.editForm = form
-    },
-    cancelRow() {
-      this.editingId = ''
-      this.editForm = {}
-    },
-    saveRow(record) {
-      const builtinValues = {}
-      const customValues = {}
-      Object.keys(this.editForm).forEach((key) => {
-        if (this.fieldConfig(key).custom) customValues[key] = this.editForm[key]
-        else builtinValues[key] = this.editForm[key]
-      })
-      const requests = []
-      if (Object.keys(builtinValues).length) requests.push(hostUpdate(Object.assign({}, record, builtinValues)))
-      if (Object.keys(customValues).length) requests.push(updateHostAssetAttributes(record.hostid, record.zid, customValues))
-      Promise.all(requests).then((responses) => {
-        const failed = responses.find((resp) => {
-          const result = resp && resp.data ? resp.data : resp
-          return !result || result.code !== 200
-        })
-        if (!failed) {
-          Object.keys(builtinValues).forEach((key) => { this.$set(record, key, builtinValues[key]) })
-          this.$set(record, 'custom_attributes', { ...(record.custom_attributes || {}), ...customValues })
-          this.cancelRow()
-          this.$message.success('保存成功')
-        } else {
-          const result = failed && failed.data ? failed.data : failed
-          this.$message.error((result && result.message) || '保存失败')
-        }
-      }).catch(() => this.$message.error('保存失败'))
+    interfaceAvailabilityLabel(value) {
+      return monitoringHealthPolicy.interfaceAvailabilityLabel(value)
     },
     resetSearch() {
       this.hosts = ''; this.interfaces = ''; this.available = ''
@@ -593,7 +508,12 @@ export default {
       }
       this.tagSaving = true
       const tags = buildStandardTagPayload(this.currentTenant.code, this.tagForm)
-      hostUpdate({...this.tagRecord, tags}).then((resp) => {
+      // 只发送标签写入所需的主机标识，禁止将只读 Inventory/历史属性随整行对象回传。
+      hostUpdate({
+        hostid: this.tagRecord.hostid,
+        zid: this.tagRecord.zid,
+        tags,
+      }).then((resp) => {
         const res = resp.data
         if (res && res.code === 200) {
           this.$set(this.tagRecord, 'tags', (res.data && res.data.tags) || tags)
@@ -610,7 +530,7 @@ export default {
     },
     handleExport() {
       hostExport(
-        { hosttype: this.effectiveTypeCode, hosts: this.hosts, ip: this.interfaces, available: this.available },
+        { hosttype: monitoringHostTypeFilter(this.effectiveTypeCode), hosts: this.hosts, ip: this.interfaces, available: this.available },
         { responseType: 'arraybuffer' }
       ).then((resp) => {
         const cd = resp.headers['content-disposition'] || ''
@@ -741,6 +661,14 @@ export default {
 .standard-tags .ant-tag {
   margin-bottom: 4px;
 }
+.collection-health-cell {
+  display: inline-flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+.collection-health-cell .ant-tag { margin: 0; }
+.collection-health-cell small { color: #7d8b9a; font-size: 10px; }
 /* 长文本单元格：单行省略，超出部分悬浮显示全文 */
 .cell-ellipsis {
   display: inline-block;
