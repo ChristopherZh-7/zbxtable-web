@@ -131,7 +131,7 @@
 </template>
 
 <script>
-import echarts from 'echarts'
+import * as echarts from 'echarts'
 import PageLayout from '@/layouts/PageLayout'
 import {
   baselineRuleEvents, baselineRuleList, baselineRulePreview, createBaselineRule,

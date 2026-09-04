@@ -150,7 +150,7 @@
 
 <script>
 import moment from 'moment'
-import echarts from 'echarts'
+import * as echarts from 'echarts'
 import {Addon, Graph} from '@antv/x6'
 import PageLayout from '@/layouts/PageLayout'
 import {

@@ -4,7 +4,7 @@ import { initRouter } from "./router";
 import "./theme/index.less";
 import "./theme/smartops.less";
 import Antd from "ant-design-vue";
-import Viser from "viser-vue";
+import LegacyCharts from "@/plugins/legacy-charts";
 //import echats
 // import echarts from "echarts";
 // Vue.prototype.$echarts = echarts;
@@ -27,7 +27,7 @@ window.$i18n = i18n;
 
 Vue.use(Antd);
 Vue.config.productionTip = false;
-Vue.use(Viser);
+Vue.use(LegacyCharts);
 Vue.use(Plugins);
 
 // 添加全局 mixin 来处理主题颜色

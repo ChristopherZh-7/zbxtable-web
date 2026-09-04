@@ -37,7 +37,6 @@
 
 <script>
 import insertCss from 'insert-css'
-import '@antv/x6-vue-shape'
 import { Graph, DataUri } from '@antv/x6'
 import axios from 'axios'
 

@@ -19,16 +19,6 @@
 </template>
 
 <script>
-import { registerShape } from "viser-vue";
-registerShape("point", "pointer", {
-  draw(cfg, container) {
-    let point = cfg.points[0]; // 获取第一个标记点
-    point = this.parsePoint(point);
-    const center = this.parsePoint({x: 0,y: 0});
-    container.addShape("line", {attrs: {x1: center.x, y1: center.y, x2: point.x, y2: point.y + 1, stroke: cfg.color, lineWidth: 2, lineCap: "round"}});
-    return container.addShape("circle", {attrs: {x: center.x, y: center.y, r: 4, stroke: cfg.color, lineWidth: 2, fill: "#fff"}});
-  },
-});
 export default {
   props: ["rate", 'min', 'max', 'icon'],
   data() {

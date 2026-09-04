@@ -46,7 +46,6 @@
 <script>
 import PageLayout from '@/layouts/PageLayout'
 import insertCss from 'insert-css'
-import '@antv/x6-vue-shape'
 import { Graph, Shape, DataUri } from '@antv/x6'
 import { topologyDetail } from '@/services/admin'
 import { API_WS } from "@/services/api"

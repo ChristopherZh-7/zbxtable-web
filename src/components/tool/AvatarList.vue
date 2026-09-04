@@ -57,12 +57,10 @@ export default {
         margin-left: -8px;
         width: 20px;
         height: 20px;
-        :global {
-          .ant-avatar {
-            border: 1px solid #fff;
-            width: 20px;
-            height: 20px;
-          }
+        ::v-deep .ant-avatar {
+          border: 1px solid #fff;
+          width: 20px;
+          height: 20px;
         }
       }
   }

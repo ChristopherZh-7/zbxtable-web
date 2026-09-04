@@ -262,8 +262,7 @@ import {
 } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import moment from 'moment'
-import echarts from 'echarts'
-require('echarts-liquidfill')
+import * as echarts from 'echarts'
 import themeMixin from '@/mixins/themeMixin'
 import MonitoringHealthCard from '@/components/MonitoringHealthCard'
 
@@ -748,10 +747,18 @@ export default {
         {
           series: [
             {
-              type: 'liquidFill',
+              type: 'gauge',
               radius: '85%',
               center: ['50%', '50%'],
-              data: [cpuValue / 100],
+              min: 0,
+              max: 100,
+              progress: { show: true, width: 16 },
+              pointer: { show: false },
+              axisTick: { show: false },
+              splitLine: { show: false },
+              axisLabel: { show: false },
+              detail: { formatter: '{value}%', color: themeColor, fontSize: 35 },
+              data: [{ value: cpuValue }],
               color: [themeColor],
               backgroundStyle: {
                 color: {
@@ -831,10 +838,18 @@ export default {
         {
           series: [
             {
-              type: 'liquidFill',
+              type: 'gauge',
               radius: '85%',
               center: ['50%', '50%'],
-              data: [memValue / 100],
+              min: 0,
+              max: 100,
+              progress: { show: true, width: 16 },
+              pointer: { show: false },
+              axisTick: { show: false },
+              splitLine: { show: false },
+              axisLabel: { show: false },
+              detail: { formatter: '{value}%', color: themeColor, fontSize: 35 },
+              data: [{ value: memValue }],
               color: [themeColor],
               backgroundStyle: {
                 color: {

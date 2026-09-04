@@ -34,7 +34,7 @@
 
 <script>
 import axios from 'axios'
-import echarts from 'echarts'
+import * as echarts from 'echarts'
 import {Graph} from '@antv/x6'
 import {registerDashboardChartNode} from './dashboard-canvas'
 

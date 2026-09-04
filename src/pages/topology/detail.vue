@@ -277,7 +277,6 @@
 import PageLayout from '@/layouts/PageLayout'
 import RightDrawer from './RightDrawer.vue'
 import insertCss from 'insert-css'
-import '@antv/x6-vue-shape'
 import { Graph, Shape, FunctionExt } from '@antv/x6'
 import { startDragToGraph } from './Graph/methods.js'
 import { createTopology, topologyDetail, updateTopology } from '@/services/admin'

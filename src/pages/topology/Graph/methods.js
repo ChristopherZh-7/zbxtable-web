@@ -1,4 +1,3 @@
-import "@antv/x6-vue-shape";
 import { Graph, Addon } from "@antv/x6";
 import cloud from "@/assets/img/cloud1.png";
 import core from "@/assets/img/core1.png";

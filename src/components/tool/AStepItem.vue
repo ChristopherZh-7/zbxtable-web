@@ -49,11 +49,9 @@ export default {
   .step-item{
     cursor: pointer;
   }
-  :global{
-    .ant-steps-item-process{
-      .linkable{
-        color: @primary-color;
-      }
+  ::v-deep .ant-steps-item-process {
+    .linkable {
+      color: @primary-color;
     }
   }
 </style>
