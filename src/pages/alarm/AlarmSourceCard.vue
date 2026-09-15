@@ -14,7 +14,7 @@
           <span class="source-arrow" aria-hidden="true">→</span>
           <span><small>恢复事件</small><code>{{ link.recovery_event_id ? '#' + link.recovery_event_id : '未确认恢复' }}</code><time>{{ link.recovered_at ? formatTime(link.recovered_at) : '等待来源证据' }}</time></span>
         </div>
-        <small class="source-context">ZID {{ link.zid }} · Host {{ link.host_id }} · Trigger {{ link.trigger_id }}<template v-if="!link.problem_alarm_id"> · 原问题尚未入库</template></small>
+        <small class="source-context">监控源编号 {{ link.zid }} · 监控主机 {{ link.host_id }} · 触发器编号 {{ link.trigger_id }}<template v-if="!link.problem_alarm_id"> · 原问题尚未入库</template></small>
       </li>
     </ol>
     <footer>来源状态是已核验事件的投影；不等于采集健康，也不代替下方人工处置。</footer>

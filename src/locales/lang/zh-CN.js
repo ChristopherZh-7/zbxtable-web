@@ -51,8 +51,8 @@ export default {
     loggingIn: '登录中...',
     pleaseInputUsername: '请输入用户名',
     pleaseInputPassword: '请输入密码',
-    systemSubtitle: 'Zabbix 监控数据可视化平台',
-    copyright: '© 2026 SmartOps. All rights reserved.',
+    systemSubtitle: '统一监控与资产运维管理平台',
+    copyright: '© 2026 智能运维管理系统',
   },
 
   // 系统配置
@@ -67,11 +67,11 @@ export default {
     systemName: '系统名称',
     systemNamePlaceholder: '请输入系统名称',
     systemNameHint: '系统显示的名称，将在页面标题和导航栏中显示',
-    systemLogo: '系统Logo',
-    uploadLogo: '上传Logo',
+    systemLogo: '系统标志',
+    uploadLogo: '上传标志',
     logoUploading: '上传中...',
     logoUploadHint: '支持 PNG、JPG、SVG 格式，建议尺寸 32x32px，大小不超过2MB',
-    logoPreview: 'Logo预览',
+    logoPreview: '标志预览',
     
     // 系统配置
     systemSettings: '系统配置',
@@ -90,7 +90,7 @@ export default {
     // 企业微信配置
     wechatCorpId: '企业ID',
     wechatAgentId: '应用ID',
-    wechatSecret: '应用Secret',
+    wechatSecret: '应用密钥',
     wechatEnable: '启用企业微信',
     
     // 按钮
@@ -104,17 +104,17 @@ export default {
 
   // Zabbix管理
   zabbixManage: {
-    title: 'Zabbix 实例管理',
+    title: '监控源管理',
     addInstance: '新增实例',
     editInstance: '编辑实例',
     instanceName: '实例名称',
-    instanceUrl: 'Zabbix地址',
+    instanceUrl: '监控中心地址',
     username: '用户名',
     password: '密码',
     token: 'API Token',
     authMethod: '认证方式',
     passwordAuth: '密码认证',
-    tokenAuth: 'Token认证',
+    tokenAuth: '访问令牌认证',
     version: '版本',
     enabled: '启用',
     disabled: '禁用',
@@ -229,8 +229,8 @@ export default {
     analysis: '分析',
     totalHosts: '主机总数',
     totalProblems: '告警总数',
-    cpuTop5: 'CPU使用率 TOP5',
-    memoryTop5: '内存使用率 TOP5',
+    cpuTop5: 'CPU使用率前 5 名',
+    memoryTop5: '内存使用率前 5 名',
     recentAlarms: '最近告警',
     hostStatus: '主机状态',
     alarmTrend: '告警趋势',

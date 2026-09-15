@@ -47,7 +47,7 @@ test('CMDB route and services stay inside the SmartOps application API', () => {
 
 test('CMDB page presents authoritative governed lifecycle and tenant isolation', () => {
   const page = source('src/pages/cmdb/index.vue')
-  for (const copy of ['SOURCE OF TRUTH', 'iTop CMDB', '唯一配置真源', '受控写入 · 租户隔离', '新增资产', '编辑资产', '退役', '重新启用', '不会删除历史', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
+  for (const copy of ['配置数据来源', '配置管理中心', '统一维护资产档案', '受控写入 · 租户隔离', '新增资产', '编辑资产', '退役', '重新启用', '不会删除历史', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
     assert.ok(page.includes(copy), `missing confirmed CMDB UI copy: ${copy}`)
   }
   assert.match(page, /v-if="platformAdmin"[\s\S]*配置组织映射/)
@@ -72,7 +72,7 @@ test('CMDB asset editor is grouped, viewport-safe and never compiles a third gri
 
 test('CMDB inspector separates binding reconciliation, configuration and collection health without automatic binding', () => {
   const page = source('src/pages/cmdb/index.vue')
-  for (const copy of ['监控状态', 'iTop ↔ Zabbix', '绑定对账', '配置状态', '采集健康', 'iTop 期望', 'Zabbix 实际', '关联监控主机', '更换绑定', '按 CMDB 状态修复监控', '解除关联', '只建立身份关联，不复制资产数据', '最终仍需人工确认']) {
+  for (const copy of ['监控状态', '资产 ↔ 监控', '绑定对账', '配置状态', '采集健康', '资产期望', '监控实际', '关联监控主机', '更换绑定', '按 CMDB 状态修复监控', '解除关联', '只建立身份关联，不复制资产数据', '最终仍需人工确认']) {
     assert.ok(page.includes(copy), `missing monitoring state copy: ${copy}`)
   }
   assert.match(page, /data-testid="cmdb-binding-reconciliation"/)
@@ -82,14 +82,14 @@ test('CMDB inspector separates binding reconciliation, configuration and collect
   assert.match(page, /v-if="canOperate && writeContextReady" class="monitoring-actions"/)
   assert.match(page, /v-if="monitoringReconciliation\.can_repair"/)
   assert.match(page, /candidate\.selectable/)
-  assert.doesNotMatch(page, /自动绑定|创建 Zabbix|删除 Zabbix/)
+  assert.doesNotMatch(page, /自动绑定|创建 Zabbix|删除 Zabbix|创建监控主机|删除监控主机/)
 })
 
 test('CMDB page distinguishes empty ready, unconfigured and read failure states', () => {
   const page = source('src/pages/cmdb/index.vue')
   assert.match(page, /overview\.state === 'error' \? 'error'/)
   assert.match(page, /overview\.state === 'error'[\s\S]*CMDB 数据读取失败/)
-  assert.match(page, /overview\.state === 'unconfigured'[\s\S]*当前租户尚未关联 iTop Organization/)
+  assert.match(page, /overview\.state === 'unconfigured'[\s\S]*当前租户尚未关联配置组织/)
   assert.match(page, /if \(this\.overview\.state === 'error'\) return '读取失败'/)
   assert.match(page, /if \(this\.overview\.state === 'unconfigured'\) return '未配置'/)
   assert.match(page, /v-else[\s\S]*资产台账/)
@@ -171,7 +171,7 @@ test('CMDB admission queue drives real API pagination and preserves a legal curr
   assert.match(page, /emptyAdmissionPage = \(\) => \(\{items: \[\], total: 0, page: 1, page_size: 100, limit: 200\}\)/)
 
   assert.match(page, /@search="applyAdmissionFilters"/)
-  const admissionSearch = page.match(/<a-input-search[\s\S]*?placeholder="搜索主机、IP、Host ID"[\s\S]*?\/>/)
+  const admissionSearch = page.match(/<a-input-search[\s\S]*?placeholder="搜索主机、IP、主机编号"[\s\S]*?\/>/)
   assert.ok(admissionSearch, 'the admission search input must be rendered')
   assert.doesNotMatch(
     admissionSearch[0],
@@ -249,7 +249,7 @@ test('Organization governance separates initial binding from an explicit preview
     'cmdb-mapping-open', 'cmdb-mapping-current', 'cmdb-mapping-target', 'cmdb-mapping-preview',
     'cmdb-mapping-impact', 'cmdb-mapping-confirmation', 'cmdb-mapping-reason', 'cmdb-mapping-transition-submit',
   ]) assert.ok(page.includes(`data-testid="${testID}"`), `missing governance selector: ${testID}`)
-  for (const copy of ['CURRENT / LOCKED', 'TARGET / PROPOSED', '本地关联影响账本', '外部权威数据保留', '遗留 unresolved（待归档）', 'archived_unresolved', '精确确认短语', '切换原因']) {
+  for (const copy of ['当前组织 · 已关联', '待切换组织', '受影响的关联记录', '原资产与监控数据保留', '遗留未完成关联（待归档）', 'archived_unresolved', '精确确认短语', '切换原因']) {
     assert.ok(page.includes(copy), `missing explicit transition copy: ${copy}`)
   }
   assert.match(page, /v-if="mappingForm\.tenant_id && !selectedMapping"/)
@@ -295,7 +295,7 @@ test('CMDB context and transition preview normalization are fail-closed and gene
     'archived_configuration_scenarios', 'archived_configuration_tasks',
   ]) assert.ok(page.includes(marker), `mapping impact UI lost exact field: ${marker}`)
   assert.doesNotMatch(page, /Number\(impact\.people\)/)
-  assert.match(page, /F24 配置场景与任务/)
+  assert.match(page, /监控场景与配置任务/)
   assert.match(mappingTransitionReasonMessage('mapping_context_stale'), /旧预览或旧表单已失效/)
   assert.match(mappingTransitionReasonMessage('organization_assigned'), /其他租户占用/)
 })

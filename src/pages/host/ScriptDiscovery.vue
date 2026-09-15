@@ -4,7 +4,7 @@
       <div class="content-page-header">
         <div>
           <h2>扩展脚本发现</h2>
-          <p>读取 Zabbix 已执行的受信 Agent UserParameter 或 External check 最新结果，作为 CMDB 入库候选供人工核对。</p>
+          <p>读取监控中心已执行的受信 Agent UserParameter 或 External check 最新结果，作为 CMDB 入库候选供人工核对。</p>
         </div>
         <a-button :loading="loading" @click="loadCandidates"><a-icon type="reload" /> 刷新结果</a-button>
       </div>
@@ -14,7 +14,7 @@
         type="info" show-icon class="section-alert"
       />
       <a-alert
-        message="候选仅供查看：不会写入 SmartOps 自定义属性，也不会自动创建或修改 CMDB。当前 CMDB 配置中心尚未接入此候选的写入动作；如需提升为资产字段，请通过独立、受审计的 iTop 维护流程处理。"
+        message="候选仅供查看：不会写入智能运维管理系统自定义属性，也不会自动创建或修改 CMDB。当前资产配置中心尚未接入此候选的写入动作；如需提升为资产字段，请通过独立、受审计的配置管理中心维护流程处理。"
         type="warning" show-icon class="section-alert"
       />
 
@@ -26,7 +26,7 @@
         <a-table :loading="loading" :columns="columns" :data-source="candidates" :row-key="rowKey" :pagination="{pageSize: 10}" :scroll="{x: 1380}">
           <span slot="asset" slot-scope="record">
             <strong>{{ record.host_name }}</strong><br />
-            <span class="muted">{{ record.instance_name || `ZID ${record.zid}` }} · {{ record.type_code }}</span>
+            <span class="muted">{{ record.instance_name || `监控源编号 ${record.zid}` }} · {{ record.type_code }}</span>
           </span>
           <span slot="item" slot-scope="record">
             <strong>{{ record.item_name }}</strong><br />

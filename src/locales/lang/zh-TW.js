@@ -51,8 +51,8 @@ export default {
     loggingIn: '登錄中...',
     pleaseInputUsername: '請輸入用戶名',
     pleaseInputPassword: '請輸入密碼',
-    systemSubtitle: 'Zabbix 監控數據可視化平台',
-    copyright: '© 2026 SmartOps. All rights reserved.',
+    systemSubtitle: '統一監控與資產運維管理平台',
+    copyright: '© 2026 智能運維管理系統',
   },
 
   // 系統配置
@@ -104,11 +104,11 @@ export default {
 
   // Zabbix管理
   zabbixManage: {
-    title: 'Zabbix 實例管理',
+    title: '監控源管理',
     addInstance: '新增實例',
     editInstance: '編輯實例',
     instanceName: '實例名稱',
-    instanceUrl: 'Zabbix地址',
+    instanceUrl: '監控中心地址',
     username: '用戶名',
     password: '密碼',
     token: 'API Token',

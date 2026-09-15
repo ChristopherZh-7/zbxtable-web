@@ -129,7 +129,11 @@ function detailRows(asset) {
   if (!asset) return []
   return DETAIL_FIELDS
     .filter(([key]) => asset[key] !== undefined && asset[key] !== null && asset[key] !== '')
-    .map(([key, label]) => ({key, label, value: displayValue(asset[key])}))
+    .map(([key, label]) => ({key, label, value: key === 'status'
+      ? statusMeta(asset[key]).label
+      : key === 'business_criticity'
+        ? ({low: '低', medium: '中', high: '高'}[asset[key]] || displayValue(asset[key]))
+        : displayValue(asset[key])}))
 }
 
 function relationBuckets(relations, origin) {
@@ -260,17 +264,17 @@ function normalizeMappingTransitionPreview(data) {
 
 function mappingTransitionReasonMessage(reason, fallback) {
   const messages = {
-    mapping_transition_required: '当前租户已绑定 Organization，请通过显式切换流程操作。',
+    mapping_transition_required: '当前租户已绑定配置组织，请通过显式切换流程操作。',
     mapping_context_stale: '映射上下文已变化，旧预览或旧表单已失效，请刷新后重试。',
     mapping_generation_mismatch: '映射版本已变化，旧预览或旧表单已失效，请刷新后重试。',
-    cmdb_context_mismatch: 'CMDB Organization 上下文已变化，当前写入已拒绝。',
+    cmdb_context_mismatch: 'CMDB 配置组织上下文已变化，当前写入已拒绝。',
     mapping_preview_stale: '预览后影响范围已变化，请重新预览并确认。',
-    mapping_transition_in_progress: '该租户的 Organization 切换正在执行，请等待完成后刷新。',
+    mapping_transition_in_progress: '该租户的配置组织切换正在执行，请等待完成后刷新。',
     preview_digest_mismatch: '预览摘要已失效，请重新预览。',
-    organization_inactive: '目标 Organization 不是可绑定状态，请选择活动组织。',
-    organization_already_assigned: '目标 Organization 已被其他租户占用。',
-    organization_assigned: '目标 Organization 已被其他租户占用。',
-    organization_reserved: '目标 Organization 仍为原租户保留，不能绑定给其他租户。',
+    organization_inactive: '目标配置组织不是可绑定状态，请选择活动组织。',
+    organization_already_assigned: '目标配置组织已被其他租户占用。',
+    organization_assigned: '目标配置组织已被其他租户占用。',
+    organization_reserved: '目标配置组织仍为原租户保留，不能绑定给其他租户。',
     confirmation_mismatch: '确认短语不匹配，请按预览结果精确输入。',
     mapping_confirmation_invalid: '确认短语不匹配，请按预览结果精确输入。',
     idempotency_conflict: '幂等键已用于不同请求，请刷新后重试。',

@@ -2,7 +2,7 @@ module.exports = {
   messages: {
     CN: {
       screen_title: '运维监控指挥中心',
-      screen_subtitle: 'OPERATION COMMAND CENTER',
+      screen_subtitle: '集中监控与运行态势',
       screen_back: '返回工作台',
       screen_manage: '大屏管理',
       screen_create: '新建大屏',
@@ -21,8 +21,8 @@ module.exports = {
       panel_severity: '告警分级统计',
       panel_egress: '出入口流量监测',
       panel_alert_list: '实时告警动态',
-      panel_cpu_top: 'Linux CPU TOP 5',
-      panel_mem_top: 'Windows 内存 TOP 5',
+      panel_cpu_top: 'Linux CPU 排行',
+      panel_mem_top: 'Windows 内存排行',
       host_type_lin: 'Linux 主机',
       host_type_win: 'Windows 主机',
       host_type_srv: '物理服务器',

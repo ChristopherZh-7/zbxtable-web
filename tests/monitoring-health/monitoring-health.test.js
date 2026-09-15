@@ -72,11 +72,11 @@ test('configuration and reasons stay separate from collection health', () => {
   assert.equal(health.configuration.latest_success_task_id, 19)
   assert.equal(monitoringConfigurationMeta(health.configuration).label, '配置存在漂移')
   assert.equal(monitoringReasonLabel(health.reasons[1]), '必需模板缺失：10001')
-  assert.equal(monitoringReasonLabel('f24_managed_host_group_missing'), '最近配置记录缺少可信的受管 Host Group 依据')
-  assert.equal(monitoringReasonLabel('f24_managed_host_group_out_of_scope'), '最近配置的受管 Host Group 已不在租户授权范围')
-  assert.equal(monitoringReasonLabel('zabbix_managed_host_group_missing'), 'Zabbix Host 已离开最近配置的受管 Host Group')
-  assert.equal(monitoringReasonLabel('cmdb_application_inactive'), 'iTop 中当前应用系统已停用')
-  assert.equal(monitoringReasonLabel('cmdb_mapping_context_stale'), '校验期间 iTop Organization 映射已变更，请重试')
+  assert.equal(monitoringReasonLabel('f24_managed_host_group_missing'), '最近配置记录缺少可信的受管主机组依据')
+  assert.equal(monitoringReasonLabel('f24_managed_host_group_out_of_scope'), '最近配置的受管主机组已不在租户授权范围')
+  assert.equal(monitoringReasonLabel('zabbix_managed_host_group_missing'), '监控主机已离开最近配置的受管主机组')
+  assert.equal(monitoringReasonLabel('cmdb_application_inactive'), '配置管理中心中当前应用系统已停用')
+  assert.equal(monitoringReasonLabel('cmdb_mapping_context_stale'), '校验期间配置组织映射已变更，请重试')
 })
 
 test('interface availability remains explicitly weaker than collection health', () => {
@@ -85,9 +85,9 @@ test('interface availability remains explicitly weaker than collection health', 
   assert.equal(interfaceAvailabilityLabel(0), '接口状态未知')
   assert.equal(monitoringReasonLabel('active_agent_availability_unknown'), '主动 Agent 可用性尚无证据')
   assert.equal(monitoringReasonLabel('passive_agent_interface_availability_unknown'), '采集接口可用性尚无证据')
-  assert.equal(monitoringReasonLabel('passive_agent_item_interface_id_missing'), '监控项缺少 Zabbix 接口 ID')
-  assert.equal(monitoringReasonLabel('snmp_item_interface_missing'), '监控项引用的 Zabbix 接口不存在')
-  assert.equal(monitoringReasonLabel('jmx_item_interface_type_mismatch'), '监控项引用的 Zabbix 接口类型不匹配')
+  assert.equal(monitoringReasonLabel('passive_agent_item_interface_id_missing'), '监控项缺少监控中心接口 ID')
+  assert.equal(monitoringReasonLabel('snmp_item_interface_missing'), '监控项引用的监控中心接口不存在')
+  assert.equal(monitoringReasonLabel('jmx_item_interface_type_mismatch'), '监控项引用的监控中心接口类型不匹配')
 })
 
 test('Agent recovery remains degraded until the server confirms a new value', () => {

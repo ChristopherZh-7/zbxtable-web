@@ -21,7 +21,7 @@ function validateTenantDraft(draft) {
   if (!String(draft.name || '').trim()) return '租户名称不能为空'
   const scopes = Array.isArray(draft.scopes) ? draft.scopes : []
   if (scopes.some((scope) => !Number(scope.zid) || !String(scope.host_group_id || '').trim())) {
-    return '每个资源范围都必须选择 Zabbix 实例和 Host Group'
+    return '每个资源范围都必须选择监控源和主机组'
   }
   return ''
 }

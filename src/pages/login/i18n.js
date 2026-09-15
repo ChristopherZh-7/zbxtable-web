@@ -10,8 +10,8 @@ module.exports = {
       pleaseInputPassword: '请输入密码',
       loginSuccess: '登录成功',
       loginFailed: '登录失败',
-      systemSubtitle: 'Zabbix 监控数据可视化平台',
-      copyright: '© 2026 SmartOps 版权所有',
+      systemSubtitle: '统一监控与资产运维管理平台',
+      copyright: '© 2026 智能运维管理系统',
     },
     HK: {
       title: '登錄',
@@ -23,8 +23,8 @@ module.exports = {
       pleaseInputPassword: '請輸入密碼',
       loginSuccess: '登錄成功',
       loginFailed: '登錄失敗',
-      systemSubtitle: 'Zabbix 監控數據可視化平台',
-      copyright: '© 2026 SmartOps 版權所有',
+      systemSubtitle: '統一監控與資產運維管理平台',
+      copyright: '© 2026 智能運維管理系統',
     },
     US: {
       title: 'Login',
@@ -36,8 +36,8 @@ module.exports = {
       pleaseInputPassword: 'Please input password',
       loginSuccess: 'Login Success',
       loginFailed: 'Login Failed',
-      systemSubtitle: 'Zabbix Monitoring Data Visualization Platform',
-      copyright: '© 2026 SmartOps. All rights reserved.',
+      systemSubtitle: 'Unified Monitoring and Asset Operations',
+      copyright: '© 2026 Intelligent Operations Platform',
     }
   }
 }

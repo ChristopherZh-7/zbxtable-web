@@ -103,9 +103,9 @@
 
         <a-form-model-item :label="$t('menu_role')" prop="role">
           <a-select v-model="formData.role" mode="tags" :placeholder="$t('select_role')">
-            <a-select-option value="admin">admin</a-select-option>
-            <a-select-option value="user">user</a-select-option>
-            <a-select-option value="admin,user">admin,user</a-select-option>
+            <a-select-option value="admin">平台管理员</a-select-option>
+            <a-select-option value="user">普通用户</a-select-option>
+            <a-select-option value="admin,user">平台管理员、普通用户</a-select-option>
           </a-select>
           <div class="form-hint">{{ $t('role_hint') }}</div>
         </a-form-model-item>

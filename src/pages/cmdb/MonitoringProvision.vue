@@ -15,12 +15,12 @@
         <code>#{{ latest.id }} · v{{ latest.version }}</code>
       </div>
       <p v-if="latest.error_message">{{ latest.error_message }}</p>
-      <p v-else-if="latest.status === 'bound'">只完成 Host 创建与身份绑定；配置和采集状态以上方实时结果为准。</p>
-      <p v-else>响应丢失时会核验本次创建记录，不盲目重复建 Host。</p>
-      <small v-if="latest.host_id">ZID {{ latest.zid }} · Host {{ latest.host_id }}</small>
+      <p v-else-if="latest.status === 'bound'">只完成监控主机创建与身份绑定；配置和采集状态以上方实时结果为准。</p>
+      <p v-else>响应丢失时会核验本次创建记录，不盲目重复建监控主机。</p>
+      <small v-if="latest.host_id">监控源编号 {{ latest.zid }} · 监控主机 {{ latest.host_id }}</small>
       <a-button v-if="writable && latest.status === 'failed' && latest.retryable" data-testid="cmdb-provision-retry" type="link" size="small" :loading="submitting" @click="retry">核验并重试</a-button>
     </div>
-    <a-button v-if="writable && bound && !configured" data-testid="cmdb-provision-configure" type="link" size="small" @click="$router.push('/assets/configuration')">前往配置消费</a-button>
+    <a-button v-if="writable && bound && !configured" data-testid="cmdb-provision-configure" type="link" size="small" @click="$router.push('/assets/configuration')">前往监控配置</a-button>
     <p v-if="error && !visible" class="provision-error">{{ error }}</p>
 
     <a-modal
@@ -37,13 +37,13 @@
     >
       <div class="provision-authority">
         <strong>{{ asset.name }}</strong>
-        <code>{{ asset.class }}:{{ asset.id }} · ORG {{ context.organization_id }} · GEN {{ context.generation }}</code>
+        <code>{{ asset.class }}:{{ asset.id }} · 组织编号 {{ context.organization_id }} · 组织映射版本 {{ context.generation }}</code>
       </div>
-      <a-alert show-icon type="info" message="创建不是采集就绪" description="本次只创建 Host 并建立 F49 绑定，不下发模板、接口或采集凭据。完成后前往配置消费应用监控策略。" />
+      <a-alert show-icon type="info" message="创建不是采集就绪" description="本次只创建监控主机并建立监控关联，不下发模板、接口或采集凭据。完成后前往监控配置应用监控策略。" />
       <a-alert v-if="error" class="provision-modal-error" show-icon type="error" :message="error" />
       <a-form-model layout="vertical" class="provision-form">
         <a-form-model-item label="目标主机组（当前租户范围）">
-          <a-select v-model="groupKey" data-testid="cmdb-provision-group" :loading="loading" :disabled="submitting || Boolean(requestSnapshot)" placeholder="选择 Zabbix 实例与主机组">
+          <a-select v-model="groupKey" data-testid="cmdb-provision-group" :loading="loading" :disabled="submitting || Boolean(requestSnapshot)" placeholder="选择监控源与主机组">
             <a-select-option v-for="group in groups" :key="keyOf(group)" :value="keyOf(group)">{{ group.host_group_name || group.host_group_id }}（{{ group.instance_name }}）</a-select-option>
           </a-select>
         </a-form-model-item>
@@ -150,7 +150,7 @@ export default {
         if (!this.current(identity, sequence)) return
         if (!this.checkContext(data)) { this.reset(); this.$emit('context-stale'); return }
         this.groups = Array.isArray(data.host_groups) ? data.host_groups : []
-        if (!this.groups.length) this.error = '当前租户没有可用于创建的 Zabbix 主机组，请联系平台管理员。'
+        if (!this.groups.length) this.error = '当前租户没有可用于创建的监控主机组，请联系平台管理员。'
       } catch (error) {
         if (this.current(identity, sequence)) this.error = error.message
       } finally {

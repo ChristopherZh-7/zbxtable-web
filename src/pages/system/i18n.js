@@ -187,7 +187,7 @@ module.exports = {
 			
 			// bandwidth.vue 页面翻译
 			config_description_title: '配置说明',
-			config_description_content: '出口配置用于监控网络出口的流量情况。请先选择 Zabbix 实例，然后选择主机和对应的入流量、出流量监控项。配置完成后，系统会自动采集数据并在首页展示。',
+			config_description_content: '出口配置用于监控网络出口的流量情况。请先选择监控源，然后选择主机和对应的入流量、出流量监控项。配置完成后，系统会自动采集数据并在首页展示。',
 			load_instances_failed: '加载实例列表失败',
 			load_egress_config_failed: '加载出口配置失败',
 			fill_complete_info: '请填写完整信息',
@@ -385,7 +385,7 @@ module.exports = {
 			
 			// bandwidth.vue 頁面翻譯
 			config_description_title: '配置說明',
-			config_description_content: '出口配置用於監控網絡出口的流量情況。請先選擇 Zabbix 實例，然後選擇主機和對應的入流量、出流量監控項。配置完成後，系統會自動採集數據並在首頁展示。',
+			config_description_content: '出口配置用於監控網絡出口的流量情況。請先選擇監控源，然後選擇主機和對應的入流量、出流量監控項。配置完成後，系統會自動採集數據並在首頁展示。',
 			load_instances_failed: '加載實例列表失敗',
 			load_egress_config_failed: '加載出口配置失敗',
 			fill_complete_info: '請填寫完整信息',
@@ -430,13 +430,13 @@ module.exports = {
 
 			bindwidthone: 'bandwidth monitor 1 name',
 			bindwidthtwo: 'bandwidth monitor 2 name',
-			bindwidthone_item: 'Zabbix items',
-			bindwidthtwo_item: 'Zabbix items',
+			bindwidthone_item: 'Monitoring Service items',
+			bindwidthtwo_item: 'Monitoring Service items',
 			item_in: 'incoming network traffic item',
 			item_out: 'outgoing network traffic item',
 			host_select: 'Host',
 			placeholder_enter_bandwidth_name: 'Name',
-			smartops_version: 'SmartOps version',
+			smartops_version: 'Intelligent Operations Platform version',
 			buildinfo: 'Build info',
 
 			number: 'number',
@@ -587,7 +587,7 @@ module.exports = {
 			
 			// bandwidth.vue page translations
 			config_description_title: 'Configuration Description',
-			config_description_content: 'Egress configuration is used to monitor network egress traffic. Please select a Zabbix instance first, then select the host and corresponding inbound/outbound traffic items. After configuration, the system will automatically collect data and display it on the homepage.',
+			config_description_content: 'Egress configuration is used to monitor network egress traffic. Please select a monitoring source first, then select the host and corresponding inbound/outbound traffic items. After configuration, the system will automatically collect data and display it on the homepage.',
 			load_instances_failed: 'Failed to load instance list',
 			load_egress_config_failed: 'Failed to load egress configuration',
 			fill_complete_info: 'Please fill in complete information',

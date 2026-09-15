@@ -44,7 +44,7 @@
       <a-row :gutter="16">
         <a-col :xl="{ span: 12 }" :lg="{ span: 24 }">
           <a-card :title="$t('title_problems')" :headStyle="cardHeadStyle" size="small" :loading="!loading1">
-            <div class="homeMain beauty-scroll">
+            <div :class="['homeMain', 'beauty-scroll', { 'is-empty': !triggerList.length }]">
               <a-timeline>
                 <a-timeline-item v-for="(v, i) in triggerList" :key="i">
                   <a-tag v-if="v.severity == 1" color="#7499FF">{{ $t('severity_informational') }}</a-tag>
@@ -59,6 +59,7 @@
                   {{v.lastchange | parsetime}} <b>{{v.name}}</b> {{v.lasteventname}}
                 </a-timeline-item>
               </a-timeline>
+              <a-empty v-if="!triggerList.length" :description="$t('empty_unresolved_alerts')" />
             </div>
           </a-card>
         </a-col>
@@ -132,7 +133,7 @@
                   <span class="col-metric">{{ $t('top_header_cpu') }}</span>
                 </template>
               </div>
-              <div class="beauty-scroll listBody">
+              <div :class="['beauty-scroll', 'listBody', { 'is-empty': !linTop.length }]">
                 <div class="topListItem" v-for="(v, i) in linTop" :key="'linTop-'+i">
                   <div class="col-name" :title="hostTitle(v)">
                     <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
@@ -162,7 +163,8 @@
                     </div>
                   </template>
                 </div>
-                <div class="topListItem empty" v-for="i in linTopNum-linTop.length" :key="'linTop-empty-'+i"></div>
+                <div v-if="!linTop.length" class="top-list-empty">{{ $t('empty_linux_top') }}</div>
+                <div v-else class="topListItem empty" v-for="i in linTopNum-linTop.length" :key="'linTop-empty-'+i"></div>
               </div>
             </div>
           </a-card>
@@ -197,7 +199,7 @@
                   <span class="col-metric">{{ $t('top_header_cpu') }}</span>
                 </template>
               </div>
-              <div class="beauty-scroll listBody">
+              <div :class="['beauty-scroll', 'listBody', { 'is-empty': !winTop.length }]">
                 <div class="topListItem" v-for="(v, i) in winTop" :key="'winTop-'+i">
                   <div class="col-name" :title="hostTitle(v)">
                     <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
@@ -227,7 +229,8 @@
                     </div>
                   </template>
                 </div>
-                <div class="topListItem empty" v-for="i in winTopNum-winTop.length" :key="'winTop-empty-'+i"></div>
+                <div v-if="!winTop.length" class="top-list-empty">{{ $t('empty_windows_top') }}</div>
+                <div v-else class="topListItem empty" v-for="i in winTopNum-winTop.length" :key="'winTop-empty-'+i"></div>
               </div>
             </div>
           </a-card>
@@ -422,7 +425,7 @@ export default {
         this.initTop()
         message.success(this.$t('top_settings_msg_update_success'))
       } catch (e) {
-        console.error('更新 Top 数量失败:', e)
+        console.error('更新排行数量失败:', e)
         message.error(this.$t('top_settings_msg_update_failed'))
       } finally {
         this.topNumSaving = false
@@ -457,7 +460,7 @@ export default {
           }))
         })
         .catch((err) => {
-          console.error('获取 Windows Top 失败:', err)
+          console.error('获取 Windows 排行失败:', err)
           this.winTop = []
         })
     },
@@ -472,7 +475,7 @@ export default {
           }))
         })
         .catch((err) => {
-          console.error('获取 Linux Top 失败:', err)
+          console.error('获取 Linux 排行失败:', err)
           this.linTop = []
         })
     },
@@ -698,6 +701,18 @@ export default {
     max-height: calc(var(--top-row-height) * 10);
     overflow-y: auto;
   }
+  .listBody.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 116px;
+    min-height: 116px;
+    max-height: 116px;
+  }
+  .top-list-empty {
+    color: #8290a0;
+    font-size: 12px;
+  }
   .topListItem {
     display: flex;
     align-items: center;
@@ -774,10 +789,18 @@ export default {
   }
 }
 .homeMain {
-  height: 430px;
+  min-height: 140px;
+  max-height: 430px;
+  height: auto;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px;
+}
+.homeMain.is-empty {
+  min-height: 132px;
+}
+.homeMain /deep/ .ant-empty {
+  margin: 34px 0;
 }
 .homeLegent1 {
   width: 100%;

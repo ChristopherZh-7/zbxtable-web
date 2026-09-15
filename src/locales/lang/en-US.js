@@ -51,8 +51,8 @@ export default {
     loggingIn: 'Logging in...',
     pleaseInputUsername: 'Please input username',
     pleaseInputPassword: 'Please input password',
-    systemSubtitle: 'Zabbix Monitoring Data Visualization Platform',
-    copyright: '© 2026 SmartOps. All rights reserved.',
+    systemSubtitle: 'Unified Monitoring and Asset Operations',
+    copyright: '© 2026 Intelligent Operations Platform',
   },
 
   // System Configuration
@@ -104,11 +104,11 @@ export default {
 
   // Zabbix Management
   zabbixManage: {
-    title: 'Zabbix Instance Management',
+    title: 'Monitoring Source Management',
     addInstance: 'Add Instance',
     editInstance: 'Edit Instance',
     instanceName: 'Instance Name',
-    instanceUrl: 'Zabbix URL',
+    instanceUrl: 'Monitoring Service URL',
     username: 'Username',
     password: 'Password',
     token: 'API Token',

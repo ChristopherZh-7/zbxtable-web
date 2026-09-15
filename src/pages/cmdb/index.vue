@@ -3,9 +3,9 @@
     <div class="cmdb-center">
       <header class="smartops-page-heading cmdb-heading">
         <div>
-          <p class="cmdb-kicker">CONFIGURATION RECORDS</p>
-          <h1>CMDB 配置中心</h1>
-          <p>iTop 保存唯一配置真源，SmartOps 提供按租户受控的资产维护入口与关系视图。</p>
+          <p class="cmdb-kicker">资产配置管理</p>
+          <h1>资产配置中心</h1>
+          <p>配置管理中心统一维护资产档案，统一门户提供按租户受控的资产维护入口与关系视图。</p>
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
@@ -17,17 +17,17 @@
 
       <section class="source-strip" aria-label="CMDB 数据源状态">
         <div class="source-identity">
-          <span class="source-strip__eyebrow">SOURCE OF TRUTH</span>
-          <strong>iTop CMDB</strong>
+          <span class="source-strip__eyebrow">配置数据来源</span>
+          <strong>配置管理中心</strong>
         </div>
         <div class="source-field">
           <span>连接状态</span>
           <a-badge :status="sourceReady ? 'success' : overview.state === 'unconfigured' ? 'warning' : overview.state === 'error' ? 'error' : 'processing'" :text="sourceStateLabel" />
         </div>
         <div class="source-field">
-          <span>当前 Organization</span>
+          <span>当前配置组织</span>
           <strong>{{ organizationName }}</strong>
-          <small v-if="organizationIdentity">{{ organizationIdentity }}</small>
+          <details v-if="organizationIdentity" class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details>
         </div>
         <div class="source-field">
           <span>数据边界</span>
@@ -41,8 +41,8 @@
 
       <section v-if="!loading && overview.state === 'unconfigured'" class="cmdb-empty smartops-data-panel">
         <div class="empty-symbol"><a-icon type="disconnect" /></div>
-        <h2>当前租户尚未关联 iTop Organization</h2>
-        <p>建立映射后，本页只会维护该 Organization 下的配置项，不会展示或修改其他客户数据。</p>
+        <h2>当前租户尚未关联配置组织</h2>
+        <p>建立映射后，本页只会维护该配置组织下的配置项，不会展示或修改其他客户数据。</p>
         <a-button v-if="platformAdmin" type="primary" icon="link" @click="openMapping">立即配置映射</a-button>
         <a-alert v-else type="info" show-icon message="请联系平台管理员完成 CMDB 组织映射。" />
       </section>
@@ -50,7 +50,7 @@
       <section v-else-if="!loading && overview.state === 'error'" class="cmdb-empty cmdb-error smartops-data-panel">
         <div class="empty-symbol"><a-icon type="warning" /></div>
         <h2>CMDB 数据读取失败</h2>
-        <p>{{ overview.message || '暂时无法读取 iTop CMDB，请稍后重试。' }}</p>
+        <p>{{ overview.message || '暂时无法读取配置管理中心，请稍后重试。' }}</p>
         <a-button type="primary" icon="reload" @click="refreshAll">重新读取</a-button>
       </section>
 
@@ -103,7 +103,7 @@
               <template slot="asset" slot-scope="record">
                 <div class="asset-name-cell">
                   <span class="asset-icon"><a-icon :type="classMeta(record.class).icon" /></span>
-                  <span><strong>{{ record.name }}</strong><code>{{ assetKey(record) }}</code></span>
+                  <span><strong>{{ record.name }}</strong><code>{{ classMeta(record.class).label }} #{{ record.id }}</code></span>
                 </div>
               </template>
               <template slot="class" slot-scope="record">
@@ -140,7 +140,7 @@
                 <div class="inspector-identity">
                   <a-tag :color="classMeta(selectedAsset.class).color">{{ classMeta(selectedAsset.class).label }}</a-tag>
                   <h2>{{ selectedAsset.name }}</h2>
-                  <code>{{ assetKey(selectedAsset) }}</code>
+                  <code>{{ classMeta(selectedAsset.class).label }} #{{ selectedAsset.id }}</code>
                 </div>
               </div>
 
@@ -156,7 +156,7 @@
               </div>
 
               <div class="inspector-section">
-                <div class="inspector-title"><span>配置属性</span><small>DETAIL</small></div>
+                <div class="inspector-title"><span>配置属性</span><small>详细信息</small></div>
                 <dl class="detail-grid">
                   <div v-for="row in selectedDetailRows" :key="row.key" :class="{'detail-wide': row.key === 'description'}">
                     <dt>{{ row.label }}</dt>
@@ -167,7 +167,7 @@
               </div>
 
               <div class="inspector-section monitoring-section">
-                <div class="inspector-title"><span>监控状态</span><small>iTop ↔ Zabbix</small></div>
+                <div class="inspector-title"><span>监控状态</span><small>资产 ↔ 监控</small></div>
                 <a-spin :spinning="monitoringLoading">
                   <div v-if="monitoringError" class="monitoring-error">
                     <a-alert type="error" show-icon :message="monitoringError" />
@@ -194,13 +194,13 @@
 
                     <div v-if="monitoringBound" class="monitoring-bridge" :data-tone="monitoringMeta.tone">
                       <div class="bridge-node bridge-node--cmdb">
-                        <span>iTop 期望</span>
+                        <span>资产期望</span>
                         <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.expected_host_status) }}</strong>
                         <small>{{ selectedLifecycle.retired ? '资产已退役' : '资产在用' }}</small>
                       </div>
                       <div class="bridge-link" aria-hidden="true"><span></span></div>
                       <div class="bridge-node bridge-node--zabbix">
-                        <span>Zabbix 实际</span>
+                        <span>监控实际</span>
                         <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.actual_host_status) }}</strong>
                         <small>{{ monitoring.host ? monitoring.host.address || (monitoring.binding && monitoring.binding.origin === 'smartops_created' && monitoring.host.interface_count === 0 ? '无独立接口，采集目标由策略确定' : '未采集地址') : '无法读取主机' }}</small>
                       </div>
@@ -210,19 +210,19 @@
                       <span class="monitoring-host__icon"><a-icon type="monitor" /></span>
                       <span>
                         <strong>{{ monitoring.host.host_name }}</strong>
-                        <small>{{ monitoring.host.instance_name }} · Host {{ monitoring.host.host_id }}</small>
+                        <small>{{ monitoring.host.instance_name }} · 监控主机 {{ monitoring.host.host_id }}</small>
                       </span>
                     </div>
                     <div v-else-if="monitoringBound" class="monitoring-host monitoring-host--stale">
                       <span class="monitoring-host__icon"><a-icon type="disconnect" /></span>
                       <span>
                         <strong>已保存的监控身份不可用</strong>
-                        <small>ZID {{ monitoring.binding.zid }} · Host {{ monitoring.binding.host_id }}</small>
+                        <small>监控源编号 {{ monitoring.binding.zid }} · 监控主机 {{ monitoring.binding.host_id }}</small>
                       </span>
                     </div>
                     <div v-else class="monitoring-unbound">
                       <a-icon type="link" />
-                      <span><strong>尚未关联监控主机</strong><small>从当前租户 Host Group 中人工确认对应主机。</small></span>
+                      <span><strong>尚未关联监控主机</strong><small>从当前租户主机组中人工确认对应主机。</small></span>
                     </div>
 
                     <div v-if="monitoringIssueLabels.length" class="monitoring-issues">
@@ -268,7 +268,7 @@
               </div>
 
               <div class="inspector-section relation-section">
-                <div class="inspector-title"><span>配置关系</span><small>DEPTH 1</small></div>
+                <div class="inspector-title"><span>配置关系</span><small>直接关联</small></div>
                 <div class="configuration-spine">
                   <div class="relation-lane">
                     <span class="lane-label">上游依赖</span>
@@ -316,7 +316,7 @@
         <span class="asset-form-context__mark"><a-icon type="database" /></span>
         <div>
           <strong>直接写入 {{ organizationName }}</strong>
-          <p>资产类型和所属 Organization 创建后不可变；退役会保留记录，不会删除历史。</p>
+          <p>资产类型和所属配置组织创建后不可变；退役会保留记录，不会删除历史。</p>
         </div>
       </div>
       <a-alert v-if="assetFormError" type="error" show-icon :message="assetFormError" class="asset-form-error" />
@@ -354,10 +354,10 @@
               <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
                 <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
               </a-select>
-              <a-select v-else-if="field.kind === 'team'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前 Organization 的运维团队">
+              <a-select v-else-if="field.kind === 'team'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前配置组织的运维团队">
                 <a-select-option v-for="option in cmdbReferences.teams" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
               </a-select>
-              <a-select v-else-if="field.kind === 'person'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="选择当前 Organization 的人员">
+              <a-select v-else-if="field.kind === 'person'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="选择当前配置组织的人员">
                 <a-select-option v-for="option in cmdbReferences.people" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
               </a-select>
               <a-input v-else v-model="assetForm[field.key]" :placeholder="field.kind === 'ip' ? '例如 10.0.0.10' : `填写${field.label}`" :max-length="255" />
@@ -378,15 +378,15 @@
       <div class="admission-workspace">
         <aside class="admission-queue">
           <div class="admission-queue__heading">
-            <span class="smartops-section-label">ZABBIX CLASSIFIED HOSTS</span>
+            <span class="smartops-section-label">已分类监控主机</span>
             <strong>当前租户发现候选</strong>
-            <small>仅展示 F26 已有模板分类证据的 Host</small>
+            <small>仅展示资源分类已有模板分类证据的监控主机</small>
           </div>
           <div class="admission-filters">
             <a-input-search
               v-model.trim="admissionSearch"
               allow-clear
-              placeholder="搜索主机、IP、Host ID"
+              placeholder="搜索主机、IP、主机编号"
               @search="applyAdmissionFilters"
             />
             <a-select v-model="admissionStateFilter" allow-clear placeholder="全部阶段" @change="applyAdmissionFilters">
@@ -416,7 +416,7 @@
                   <strong>{{ candidate.host_name }}</strong>
                   <a-badge :status="admissionStateMeta(candidate).status" :text="admissionStateMeta(candidate).label" />
                 </span>
-                <code>{{ candidate.instance_name }} / Host {{ candidate.host_id }}</code>
+                <code>{{ candidate.instance_name }} / 监控主机 {{ candidate.host_id }}</code>
                 <span class="admission-card__facts">
                   <span>{{ candidate.address || '未采集 IP' }}</span>
                   <a-tag :color="classMeta(candidate.suggested_class).color">建议 {{ classMeta(candidate.suggested_class).label }}</a-tag>
@@ -447,9 +447,9 @@
           <template v-else>
             <header class="admission-review__header">
               <div>
-                <span class="smartops-section-label">GOVERNED ADMISSION</span>
+                <span class="smartops-section-label">资产入库确认</span>
                 <h2>{{ selectedAdmission.host_name }}</h2>
-                <p>{{ selectedAdmission.instance_name }} · Host {{ selectedAdmission.host_id }} · {{ selectedAdmission.address || '未采集 IP' }}</p>
+                <p>{{ selectedAdmission.instance_name }} · 监控主机 {{ selectedAdmission.host_id }} · {{ selectedAdmission.address || '未采集 IP' }}</p>
               </div>
               <a-badge :status="selectedAdmissionMeta.status" :text="selectedAdmissionMeta.label" />
             </header>
@@ -465,7 +465,7 @@
               <div class="admission-evidence__facts">
                 <span><small>主接口</small><strong>{{ selectedAdmission.interface_type || '未知' }} / {{ selectedAdmission.interface_port || '—' }}</strong></span>
                 <span><small>可用性</small><strong>{{ selectedAdmission.availability || '未知' }}</strong></span>
-                <span><small>Inventory</small><strong>{{ admissionInventorySummary }}</strong></span>
+                <span><small>监控侧资产信息</small><strong>{{ admissionInventorySummary }}</strong></span>
               </div>
               <div class="admission-classifications">
                 <div v-for="item in selectedAdmission.classifications" :key="item.code">
@@ -485,7 +485,7 @@
 
             <div v-if="selectedAdmission.state === 'ready' && canCreate && writeContextReady" class="admission-form-panel">
               <div class="admission-section-title">
-                <span><strong>人工确认资产与责任</strong><small>引用只来自当前 iTop Organization</small></span>
+                <span><strong>人工确认资产与责任</strong><small>引用只来自当前配置组织</small></span>
                 <a-tag color="blue">类型建议可修改</a-tag>
               </div>
               <a-alert v-if="admissionFormError" type="error" show-icon :message="admissionFormError" class="admission-form-error" />
@@ -526,14 +526,14 @@
                     <a-input v-else v-model="admissionForm[field.key]" :max-length="255" />
                   </a-form-model-item>
                   <a-form-model-item label="所属应用（可选）" class="asset-form-wide">
-                    <a-select v-model="admissionApplicationID" data-testid="cmdb-admission-application" allow-clear show-search option-filter-prop="children" placeholder="可选：写入 iTop 标准应用关系">
+                    <a-select v-model="admissionApplicationID" data-testid="cmdb-admission-application" allow-clear show-search option-filter-prop="children" placeholder="可选：写入配置管理中心标准应用关系">
                       <a-select-option v-for="option in cmdbReferences.applications" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
                     </a-select>
                   </a-form-model-item>
                 </div>
               </a-form-model>
               <div class="admission-submit-row">
-                <span><a-icon type="safety-certificate" /> 先写 iTop，再建立 F49 监控关联；部分失败会保留 CI 并显示可重试阶段。</span>
+                <span><a-icon type="safety-certificate" /> 先完成资产建档，再建立监控关联；部分失败会保留配置项并显示可重试阶段。</span>
                 <a-button data-testid="cmdb-admission-submit" type="primary" icon="check" :loading="admissionSaving" @click="saveAdmission">确认入库并关联</a-button>
               </div>
             </div>
@@ -541,11 +541,11 @@
             <div v-else-if="selectedAdmission.state === 'binding_pending'" class="admission-result admission-result--pending">
               <span class="admission-result__icon"><a-icon type="clock-circle" /></span>
               <div>
-                <strong>iTop 已建档，监控待关联</strong>
+                <strong>配置管理中心已建档，监控待关联</strong>
                 <p>{{ selectedAdmission.state_message }}</p>
                 <small>{{ selectedAdmission.asset_key }} · {{ selectedAdmission.asset && selectedAdmission.asset.smartops_operations_team_name || '责任已保存' }}</small>
               </div>
-              <a-button v-if="canOperate" data-testid="cmdb-admission-retry" type="primary" icon="sync" :loading="admissionRetrying" @click="retryAdmission">重试 Zabbix 关联</a-button>
+              <a-button v-if="canOperate" data-testid="cmdb-admission-retry" type="primary" icon="sync" :loading="admissionRetrying" @click="retryAdmission">重试监控中心关联</a-button>
             </div>
 
             <div v-else-if="selectedAdmission.state === 'completed'" class="admission-result admission-result--completed">
@@ -556,7 +556,7 @@
 
             <div v-else-if="selectedAdmission.state === 'conflict'" class="admission-result admission-result--conflict">
               <span class="admission-result__icon"><a-icon type="warning" /></span>
-              <div><strong>需要人工处理身份冲突</strong><p>{{ selectedAdmission.state_message }}</p><small>不会覆盖现有 CI 或 Zabbix 绑定。</small></div>
+              <div><strong>需要人工处理身份冲突</strong><p>{{ selectedAdmission.state_message }}</p><small>不会覆盖现有配置项或监控中心绑定。</small></div>
             </div>
           </template>
         </section>
@@ -565,7 +565,7 @@
 
     <a-modal
       :visible="monitoringBindingVisible"
-      :title="monitoringBound ? '更换 Zabbix 监控主机' : '关联 Zabbix 监控主机'"
+      :title="monitoringBound ? '更换监控主机' : '关联监控主机'"
       :confirm-loading="monitoringBindingSaving"
       :mask-closable="false"
       :destroy-on-close="true"
@@ -578,13 +578,13 @@
         <span><a-icon type="safety-certificate" /></span>
         <div>
           <strong>只建立身份关联，不复制资产数据</strong>
-          <p>候选仅来自当前租户的 Host Group；名称与 IP 匹配用于排序，最终仍需人工确认。</p>
+          <p>候选仅来自当前租户的主机组；名称与 IP 匹配用于排序，最终仍需人工确认。</p>
         </div>
       </div>
       <a-input-search
         v-model.trim="monitoringCandidateSearch"
         allow-clear
-        placeholder="搜索主机名称、IP、Host ID 或 Zabbix 实例"
+        placeholder="搜索主机名称、IP、主机编号或监控源"
         :loading="monitoringCandidatesLoading"
         @search="loadMonitoringCandidates"
       />
@@ -628,7 +628,7 @@
 
     <a-modal
       :visible="mappingVisible"
-      title="Organization 来源边界治理"
+      title="配置组织关联管理"
       :mask-closable="false"
       :destroy-on-close="true"
       :footer="null"
@@ -639,7 +639,7 @@
       <a-alert
         type="info"
         show-icon
-        message="Organization 数字 ID 是 CMDB 数据边界；名称和编码只用于识别。"
+        message="配置组织数字 ID 是 CMDB 数据边界；名称和编码只用于识别。"
         description="已建立的来源不能直接改写。切换必须先预览影响，再精确确认并留下原因。"
         class="mapping-alert"
       />
@@ -654,53 +654,53 @@
           class="mapping-inline-error"
         />
         <a-form-model layout="vertical" class="mapping-governance-form">
-          <a-form-model-item label="SmartOps 租户" required>
+          <a-form-model-item label="智能运维管理系统租户" required>
             <a-select v-model="mappingForm.tenant_id" :disabled="mappingSaving || mappingPreviewLoading" show-search option-filter-prop="children" placeholder="选择租户" @change="syncMappingSelection">
               <a-select-option v-for="tenant in mappingTenants" :key="tenant.id" :value="tenant.id">{{ tenant.name }}（{{ tenant.code }}）</a-select-option>
             </a-select>
           </a-form-model-item>
 
           <section v-if="mappingForm.tenant_id && !selectedMapping" class="mapping-initial-state">
-            <header><span>INITIAL BINDING</span><strong>建立首次数据边界</strong><small>首次绑定后 generation 从 1 开始；之后只能通过显式切换变更。</small></header>
-            <a-form-model-item label="iTop Organization" required>
-              <a-select v-model="mappingForm.itop_organization_id" show-search option-filter-prop="children" placeholder="选择活动 Organization">
+            <header><span>首次关联</span><strong>建立首次数据边界</strong><small>首次绑定后组织映射版本从 1 开始；之后只能通过显式切换变更。</small></header>
+            <a-form-model-item label="配置组织" required>
+              <a-select v-model="mappingForm.itop_organization_id" show-search option-filter-prop="children" placeholder="选择活动配置组织">
                 <a-select-option v-for="organization in mappingOrganizations" :key="organization.id" :value="organization.id" :disabled="organizationAssignedElsewhere(organization.id) || !organizationSelectable(organization)">
-                  {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · ID {{ organization.id }}
+                  {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · 组织编号 {{ organization.id }}
                 </a-select-option>
               </a-select>
             </a-form-model-item>
           </section>
 
           <template v-else-if="mappingForm.tenant_id && selectedMapping">
-            <section class="organization-boundary" aria-label="Organization 来源边界轨" data-testid="cmdb-mapping-boundary">
+            <section class="organization-boundary" aria-label="组织关联关系" data-testid="cmdb-mapping-boundary">
               <article class="boundary-node boundary-node--current" data-testid="cmdb-mapping-current">
-                <span class="boundary-node__index">CURRENT / LOCKED</span>
+                <span class="boundary-node__index">当前组织 · 已关联</span>
                 <strong>{{ mappingCurrentOrganization.name || '未知组织' }}</strong>
-                <code>{{ mappingCurrentOrganization.code || 'NO-CODE' }} · ID {{ mappingCurrentOrganization.id || selectedMapping.itop_organization_id }}</code>
+                <code>{{ mappingCurrentOrganization.code || '未设编码' }} · 组织编号 {{ mappingCurrentOrganization.id || selectedMapping.itop_organization_id }}</code>
                 <small>已锁定来源，不可在普通保存中改写</small>
               </article>
               <div class="boundary-transfer" aria-hidden="true">
                 <span></span>
-                <b>GEN {{ mappingCurrentGeneration }}</b>
-                <small>PREVIEW FIRST</small>
+                <b>组织映射版本 {{ mappingCurrentGeneration }}</b>
+                <small>先预览再确认</small>
               </div>
               <article class="boundary-node boundary-node--target">
-                <span class="boundary-node__index">TARGET / PROPOSED</span>
+                <span class="boundary-node__index">待切换组织</span>
                 <a-select
                   v-model="mappingTransitionForm.target_organization_id"
                   data-testid="cmdb-mapping-target"
                   :disabled="mappingSaving || mappingPreviewLoading"
                   show-search
                   option-filter-prop="children"
-                  placeholder="选择目标 Organization"
+                  placeholder="选择目标配置组织"
                   @change="resetMappingPreview"
                 >
                   <a-select-option v-for="organization in mappingTargetOptions" :key="organization.id" :value="organization.id" :disabled="organizationAssignedElsewhere(organization.id) || !organizationSelectable(organization)">
-                    {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · ID {{ organization.id }}
+                    {{ organization.name }}<template v-if="organization.code"> · {{ organization.code }}</template> · 组织编号 {{ organization.id }}
                   </a-select-option>
                 </a-select>
-                <small v-if="mappingTargetOrganization.id">{{ mappingTargetOrganization.code || 'NO-CODE' }} · ID {{ mappingTargetOrganization.id }}</small>
-                <small v-else>目标只能是未占用的活动 Organization</small>
+                <small v-if="mappingTargetOrganization.id">{{ mappingTargetOrganization.code || '未设编码' }} · 组织编号 {{ mappingTargetOrganization.id }}</small>
+                <small v-else>目标只能是未占用的活动配置组织</small>
               </article>
             </section>
 
@@ -711,7 +711,7 @@
 
             <template v-if="mappingPreview">
               <section class="mapping-impact" data-testid="cmdb-mapping-impact">
-                <header><span>IMPACT LEDGER</span><strong>本地关联影响账本</strong><small>以本次预览 digest 为准</small></header>
+                <header><span>变更影响清单</span><strong>受影响的关联记录</strong><small>以本次预览校验摘要为准</small></header>
                 <div class="mapping-impact__grid">
                   <article v-for="item in mappingImpactRows" :key="item.key" :data-testid="`cmdb-mapping-impact-${item.key}`" :class="{'mapping-impact--warning': item.key === 'unresolved' && item.count}">
                     <span>{{ item.code }}</span><strong>{{ item.count }}</strong><small>{{ item.label }}</small>
@@ -719,26 +719,26 @@
                 </div>
                 <div class="mapping-impact__configuration-samples">
                   <article v-for="item in mappingConfigurationSampleRows" :key="item.key" :data-testid="`cmdb-mapping-impact-${item.key}-samples`">
-                    <span>{{ item.code }} SAMPLES</span>
+                    <span>{{ item.code }} 示例记录</span>
                     <div v-if="item.samples.length">
                       <code v-for="sample in item.samples" :key="sample">{{ sample }}</code>
                     </div>
                     <small v-else>本次切换没有{{ item.label }}</small>
                   </article>
                 </div>
-                <footer><span>DIGEST</span><code>{{ mappingPreview.preview_digest }}</code></footer>
+                <footer><span>预览校验摘要</span><code>{{ mappingPreview.preview_digest }}</code></footer>
               </section>
 
               <a-alert
                 type="warning"
                 show-icon
-                message="外部权威数据保留"
-                description="切换只归档 SmartOps 本地监控关联、Person 账号关联、F24 配置场景与任务，以及遗留 unresolved 活动行。iTop CI、Team、Person、关系，以及 Zabbix Host、模板、指标历史都不会删除、迁移或自动恢复。"
+                message="原资产与监控数据保留"
+                description="切换只归档智能运维管理系统本地监控关联、负责人账号关联、监控场景与配置任务，以及遗留未完成关联活动行。配置项、运维团队、负责人、关系，以及监控主机、模板、指标历史都不会删除、迁移或自动恢复。"
                 class="mapping-retention-alert"
               />
 
               <section class="mapping-execution">
-                <header><span>EXPLICIT CONFIRMATION</span><strong>执行不可静默的 Organization 切换</strong></header>
+                <header><span>确认变更</span><strong>执行已确认的组织切换</strong></header>
                 <a-form-model-item label="精确确认短语" required>
                   <a-input v-model="mappingTransitionForm.confirmation" data-testid="cmdb-mapping-confirmation" :disabled="mappingSaving" :placeholder="mappingPreview.confirmation_phrase" autocomplete="off" />
                   <small class="mapping-field-help">请完整输入：<code>{{ mappingPreview.confirmation_phrase }}</code></small>
@@ -770,7 +770,7 @@
           :loading="mappingSaving"
           :disabled="!mappingCanExecute"
           @click="executeMappingTransition"
-        >确认切换 Organization</a-button>
+        >确认切换配置组织</a-button>
       </footer>
     </a-modal>
   </page-layout>
@@ -836,6 +836,7 @@ import MonitoringProvision from './MonitoringProvision.vue'
 
 const {canPerform} = require('@/utils/permission-policy')
 const monitoringHealthPolicy = require('@/utils/monitoring-health')
+const {displaySystemText} = require('@/utils/presentation-copy')
 
 const emptyAssetPage = () => ({items: [], total: 0, page: 1, page_size: 30, counts: {}})
 const emptyAdmissionPage = () => ({items: [], total: 0, page: 1, page_size: 100, limit: 200})
@@ -843,7 +844,7 @@ const emptyMonitoring = () => ({
   binding: null,
   host: null,
   reconciliation: {
-    state: 'unbound', label: '未关联', severity: 'default', summary: '尚未选择对应的 Zabbix 监控主机。',
+    state: 'unbound', label: '未关联', severity: 'default', summary: '尚未选择对应的监控主机。',
     issues: [], can_repair: false, expected_host_status: 'enabled', actual_host_status: '',
   },
   configuration: {
@@ -908,10 +909,10 @@ export default {
       admissionForm: createAssetForm('Server'),
       admissionApplicationID: undefined,
       admissionStages: [
-        {label: '发现主机', caption: 'Zabbix 模板证据'},
+        {label: '发现主机', caption: '监控中心模板证据'},
         {label: '责任确认', caption: '团队与主备负责人'},
-        {label: 'iTop 建档', caption: 'CI 与应用关系'},
-        {label: 'Zabbix 关联', caption: '唯一 Host 身份'},
+        {label: '配置管理中心建档', caption: '配置项与应用关系'},
+        {label: '监控中心关联', caption: '唯一监控主机身份'},
       ],
       overview: {state: 'loading', message: '', total: 0, counts: {}},
       overviewSequence: 0,
@@ -985,8 +986,8 @@ export default {
     organizationIdentity() {
       if (!this.cmdbContext.organization_id) return ''
       const organization = this.overview.organization || {}
-      const code = organization.code || organization.organization_code || 'NO-CODE'
-      return `${code} · ID ${this.cmdbContext.organization_id} · GEN ${this.cmdbContext.generation || '—'}`
+      const code = organization.code || organization.organization_code || '未设编码'
+      return `${code} · 组织编号 ${this.cmdbContext.organization_id} · 组织映射版本 ${this.cmdbContext.generation || '—'}`
     },
     classOptions() {
       return Object.keys(CLASS_META).map((value) => ({value, label: CLASS_META[value].label}))
@@ -999,7 +1000,10 @@ export default {
     selectedDetailRows() { return detailRows(this.selectedDetail || this.selectedAsset) },
     relationView() { return relationBuckets(this.relations, this.selectedDetail || this.selectedAsset) },
     selectedLifecycle() { return lifecycleMeta(this.selectedDetail || this.selectedAsset) },
-    monitoringReconciliation() { return this.monitoring && this.monitoring.reconciliation || emptyMonitoring().reconciliation },
+    monitoringReconciliation() {
+      const value = this.monitoring && this.monitoring.reconciliation || emptyMonitoring().reconciliation
+      return {...value, summary: displaySystemText(value.summary)}
+    },
     monitoringMeta() { return monitoringStateMeta(this.monitoringReconciliation) },
     collectionHealth() {
       return monitoringHealthPolicy.normalizeMonitoringHealth(this.monitoring && this.monitoring.collection_health)
@@ -1109,11 +1113,11 @@ export default {
         {key: 'assets', code: 'CI', label: '资产与配置项', count: Number(impact.assets) || 0},
         {key: 'admissions', code: 'ADM', label: '发现 / 入库记录', count: Number(impact.admissions) || 0},
         {key: 'monitoring', code: 'MON', label: '本地监控关联', count: Number(impact.monitoring) || 0},
-        {key: 'person', code: 'PER', label: 'Person 账号关联', count: Number(impact.person) || 0},
-        {key: 'configuration_scenarios', code: 'SCN', label: 'F24 配置场景', count: Number(impact.configuration_scenarios) || 0},
-        {key: 'configuration_tasks', code: 'TSK', label: 'F24 配置任务', count: Number(impact.configuration_tasks) || 0},
+        {key: 'person', code: 'PER', label: '负责人账号关联', count: Number(impact.person) || 0},
+        {key: 'configuration_scenarios', code: 'SCN', label: '配置策略配置场景', count: Number(impact.configuration_scenarios) || 0},
+        {key: 'configuration_tasks', code: 'TSK', label: '配置策略配置任务', count: Number(impact.configuration_tasks) || 0},
         {key: 'monitoring_provisions', code: 'NEW', label: '监控对象创建任务', count: Number(impact.monitoring_provisions) || 0},
-        {key: 'unresolved', code: 'ERR', label: '遗留 unresolved（待归档）', count: Number(impact.unresolved) || 0},
+        {key: 'unresolved', code: 'ERR', label: '遗留未完成关联（待归档）', count: Number(impact.unresolved) || 0},
       ]
     },
     mappingConfigurationSampleRows() {
@@ -1186,7 +1190,7 @@ export default {
     writeContext() {
       const context = this.cmdbContext
       if (!this.writeContextReady) {
-        const error = new Error('CMDB Organization 上下文未就绪，请刷新后重试。')
+        const error = new Error('配置组织 上下文未就绪，请刷新后重试。')
         error.businessReason = 'cmdb_context_mismatch'
         throw error
       }
@@ -1427,7 +1431,7 @@ export default {
     },
     async saveMonitoringBinding() {
       if (!this.canOperate || !this.selectedAsset || !this.selectedMonitoringCandidate) {
-        this.monitoringCandidateError = '请选择一台可关联的 Zabbix 主机'
+        this.monitoringCandidateError = '请选择一台可关联的监控主机'
         return
       }
       this.monitoringBindingSaving = true
@@ -1445,7 +1449,7 @@ export default {
         this.monitoring = monitoring
         this.monitoringError = ''
         this.monitoringBindingVisible = false
-        this.$message.success('Zabbix 监控主机已关联')
+        this.$message.success('监控主机已关联')
       } catch (error) {
         const failure = this.handleCMDBContextFailure(error, '监控主机关联失败')
         this.monitoringCandidateError = error.businessCode === 1013
@@ -1459,7 +1463,7 @@ export default {
       if (!this.canOperate || !this.selectedAsset || !this.monitoringBound) return
       this.$confirm({
         title: '解除这项监控关联？',
-        content: '只删除 SmartOps 中的身份关联，不会删除 iTop 资产或 Zabbix 主机。',
+        content: '只删除智能运维管理系统中的身份关联，不会删除配置管理中心资产或监控主机。',
         okText: '解除关联',
         okType: 'danger',
         cancelText: '取消',
@@ -1473,7 +1477,7 @@ export default {
         if (!this.contextIsCurrent(context)) return
         this.monitoring = monitoring
         this.monitoringError = ''
-        this.$message.success('Zabbix 监控关联已解除')
+        this.$message.success('监控中心监控关联已解除')
       } catch (error) {
         this.$message.error(this.handleCMDBContextFailure(error, '解除监控关联失败').message)
       }
@@ -1482,8 +1486,8 @@ export default {
       if (!this.canOperate || !this.selectedAsset || !this.monitoringReconciliation.can_repair) return
       const expected = monitoringHostStatusLabel(this.monitoringReconciliation.expected_host_status)
       this.$confirm({
-        title: `将 Zabbix 监控调整为“${expected}”？`,
-        content: '本操作只修改 Zabbix Host 的启停状态，不会覆盖双方名称、IP、接口、模板或资产属性。',
+        title: `将监控中心监控调整为“${expected}”？`,
+        content: '本操作只修改监控主机的启停状态，不会覆盖双方名称、IP、接口、模板或资产属性。',
         okText: '按 CMDB 状态修复监控',
         cancelText: '取消',
         onOk: () => this.runMonitoringRepair(),
@@ -1497,7 +1501,7 @@ export default {
         if (!this.contextIsCurrent(context)) return
         this.monitoring = monitoring
         this.monitoringError = ''
-        this.$message.success('Zabbix 监控状态已按 CMDB 修复')
+        this.$message.success('监控中心监控状态已按 CMDB 修复')
       } catch (error) {
         this.$message.error(this.handleCMDBContextFailure(error, '监控状态修复失败').message)
         if (this.selectedAsset) await this.loadMonitoring(this.selectedAsset, this.detailSequence)
@@ -1521,7 +1525,7 @@ export default {
         try {
           await this.ensureCMDBReferences()
         } catch (error) {
-          this.admissionError = error.message || 'iTop 责任引用加载失败'
+          this.admissionError = error.message || '配置管理中心责任引用加载失败'
         }
       }
       await initialAdmissionLoad
@@ -1646,15 +1650,15 @@ export default {
           application_id: Number(this.admissionApplicationID) || 0,
         }, context)) || {}
         if (!this.contextIsCurrent(context)) return
-        if (result.state === 'completed') this.$message.success(result.message || '发现候选已完成 iTop 建档与 F49 绑定')
-        else if (result.state === 'binding_pending') this.$message.warning(result.message || 'iTop 已建档，Zabbix 关联待重试')
+        if (result.state === 'completed') this.$message.success(result.message || '发现候选已完成资产建档与监控绑定')
+        else if (result.state === 'binding_pending') this.$message.warning(result.message || '配置管理中心已建档，监控中心关联待重试')
         else this.$message.warning(result.message || '入库结果需要人工处理')
         await this.loadOverviewAndAssets()
         await this.loadAdmissions()
         const retained = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
         if (retained) this.selectAdmission(retained)
       } catch (error) {
-        if (error.businessCode === 1013) this.admissionFormError = '同类型同名 CI 或监控身份已存在，请核对现有资产。'
+        if (error.businessCode === 1013) this.admissionFormError = '同类型同名配置项或监控身份已存在，请核对现有资产。'
         else this.admissionFormError = this.handleCMDBContextFailure(error, '发现候选入库失败').message
       } finally {
         this.admissionSaving = false
@@ -1668,8 +1672,8 @@ export default {
         const context = this.writeContext()
         const result = this.unwrap(await retryCMDBAdmission(this.selectedAdmission.zid, this.selectedAdmission.host_id, context)) || {}
         if (!this.contextIsCurrent(context)) return
-        if (result.state === 'completed') this.$message.success(result.message || 'Zabbix 关联已补齐')
-        else this.$message.warning(result.message || 'Zabbix 关联仍待重试')
+        if (result.state === 'completed') this.$message.success(result.message || '监控中心关联已补齐')
+        else this.$message.warning(result.message || '监控中心关联仍待重试')
         await this.loadAdmissions()
         const retained = this.admissionCandidates.find((candidate) => this.admissionCandidateKey(candidate) === retainedKey)
         if (retained) this.selectAdmission(retained)
@@ -1689,11 +1693,11 @@ export default {
     },
     async ensureCMDBReferences() {
       const contextKey = this.activeCMDBContextKey
-      if (!contextKey) throw new Error('CMDB Organization 上下文未就绪')
+      if (!contextKey) throw new Error('配置组织 上下文未就绪')
       if (this.referencesContextKey === contextKey) return
       const sequence = ++this.referenceSequence
       const data = this.unwrap(await getCMDBReferences()) || {}
-      if (sequence !== this.referenceSequence || contextKey !== this.activeCMDBContextKey) throw new Error('CMDB Organization 上下文已变化，请重新打开表单。')
+      if (sequence !== this.referenceSequence || contextKey !== this.activeCMDBContextKey) throw new Error('配置组织 上下文已变化，请重新打开表单。')
       this.cmdbReferences = {
         locations: Array.isArray(data.locations) ? data.locations : [],
         network_device_types: Array.isArray(data.network_device_types) ? data.network_device_types : [],
@@ -1772,7 +1776,7 @@ export default {
           this.assetFormError = '资产已被其他操作更新，当前详情已刷新；请关闭表单后重新编辑。'
           if (this.selectedAsset) await this.selectAsset(this.selectedAsset)
         } else if (error.businessCode === 1013) {
-          this.assetFormError = '同一 Organization 下已存在同类型同名资产。'
+          this.assetFormError = '同一配置组织下已存在同类型同名资产。'
         } else {
           this.assetFormError = this.handleCMDBContextFailure(error, 'CMDB 资产保存失败').message
         }
@@ -1789,7 +1793,7 @@ export default {
       this.$confirm({
         title: transition.retired ? '重新启用这项资产？' : '退役这项资产？',
         content: transition.retired
-          ? '资产会恢复为在用状态，并继续作为 iTop 配置真源中的有效记录。'
+          ? '资产会恢复为在用状态，并继续作为配置管理中心配置真源中的有效记录。'
           : '资产会保留在台账和审计记录中，不会被删除。',
         okText: transition.label,
         okType: transition.retired ? 'primary' : 'danger',
@@ -1847,7 +1851,7 @@ export default {
         if (sequence !== this.mappingSequence) return false
         const failure = this.cmdbFailure(error, '映射选项加载失败')
         this.mappingError = failure.message
-        this.mappingErrorDetail = '未修改任何 Organization 映射；请刷新后重试。'
+        this.mappingErrorDetail = '未修改任何配置组织映射；请刷新后重试。'
         return false
       } finally {
         if (sequence === this.mappingSequence) this.mappingLoading = false
@@ -1861,7 +1865,7 @@ export default {
       const targetTenantID = Number(tenantID) || 0
       const affectsCurrentTenant = governanceTenantIsCurrent(targetTenantID, this.currentTenantID)
       if (affectsCurrentTenant) {
-        this.invalidateCMDBContext('检测到当前租户的 CMDB Organization 上下文已变化，旧表单已关闭。')
+        this.invalidateCMDBContext('检测到当前租户的 配置组织 上下文已变化，旧表单已关闭。')
       }
       const overviewReload = affectsCurrentTenant ? this.loadOverviewAndAssets() : Promise.resolve()
       const [mappingLoaded] = await Promise.all([
@@ -1912,7 +1916,7 @@ export default {
       const governanceTenantID = Number(this.mappingForm.tenant_id) || 0
       const targetID = Number(this.mappingTransitionForm.target_organization_id) || 0
       if (!mapping || !targetID || targetID === Number(this.mappingCurrentOrganization.id)) {
-        this.mappingError = '请选择与当前来源不同的目标 Organization。'
+        this.mappingError = '请选择与当前来源不同的目标配置组织。'
         this.mappingErrorDetail = '预览未发起，当前映射保持不变。'
         return
       }
@@ -1928,13 +1932,13 @@ export default {
         }))
         if (sequence !== this.mappingSequence || targetID !== Number(this.mappingTransitionForm.target_organization_id)) return
         const preview = normalizeMappingTransitionPreview(data)
-        if (!preview.preview_digest || !preview.confirmation_phrase || !preview.generation) throw new Error('预览结果缺少 digest、generation 或确认短语')
+        if (!preview.preview_digest || !preview.confirmation_phrase || !preview.generation) throw new Error('预览结果缺少校验摘要、组织映射版本或确认短语')
         if (preview.state !== 'active' || preview.external_data_preserved !== true) throw new Error('预览未证明活动映射与外部数据保留边界')
         if (mappingPreviewContextChanged(mapping, preview)) {
           await this.recoverMappingGovernanceContext(governanceTenantID, '映射已在其他会话中变化，旧预览已失效。')
           return
         }
-        if (Number(preview.target_organization.id) !== targetID) throw new Error('预览返回的目标 Organization 与当前选择不一致')
+        if (Number(preview.target_organization.id) !== targetID) throw new Error('预览返回的目标配置组织与当前选择不一致')
         this.mappingPreview = preview
         this.mappingIdempotencyKey = newIdempotencyKey()
         if (!this.mappingIdempotencyKey) throw new Error('当前浏览器无法生成安全幂等键，请升级浏览器后重试')
@@ -1949,7 +1953,7 @@ export default {
     },
     async saveMapping() {
       if (!this.mappingForm.tenant_id || !this.mappingForm.itop_organization_id || this.selectedMapping) {
-        this.mappingError = this.selectedMapping ? '已绑定租户必须使用显式 Organization 切换。' : '请完整选择租户和 iTop Organization。'
+        this.mappingError = this.selectedMapping ? '已绑定租户必须使用显式配置组织切换。' : '请完整选择租户和配置组织。'
         this.mappingErrorDetail = '普通映射保存只用于首次绑定，不会静默覆盖既有来源。'
         return
       }
@@ -1958,7 +1962,7 @@ export default {
       this.mappingErrorDetail = ''
       try {
         this.unwrap(await upsertCMDBMapping(this.mappingForm.tenant_id, this.mappingForm.itop_organization_id))
-        this.$message.success('CMDB Organization 首次映射已建立')
+        this.$message.success('配置组织 首次映射已建立')
         this.cmdbReferences = emptyReferences()
         this.referencesContextKey = ''
         this.mappingSaving = false
@@ -1969,7 +1973,7 @@ export default {
         this.mappingError = failure.message
         this.mappingErrorDetail = failure.reason === 'mapping_transition_required'
           ? '服务端检测到该租户已有来源。当前值未改写，请关闭后重新打开治理页。'
-          : '映射和外部数据保持不变；请核对 Organization 占用与状态。'
+          : '映射和外部数据保持不变；请核对配置组织占用与状态。'
       } finally {
         this.mappingSaving = false
       }
@@ -1997,14 +2001,14 @@ export default {
           idempotency_key: this.mappingIdempotencyKey,
         })) || {}
         if (result.external_data_preserved !== true || !result.mapping) throw new Error('切换结果未证明新映射与外部数据保留边界')
-        this.$message.success(`Organization 切换已完成，归档监控关联 ${Number(result.archived_monitoring) || 0} 项、监控创建任务 ${Number(result.archived_monitoring_provisions) || 0} 项、Person 关联 ${Number(result.archived_person) || 0} 项、配置场景 ${Number(result.archived_configuration_scenarios) || 0} 项、配置任务 ${Number(result.archived_configuration_tasks) || 0} 项、遗留 unresolved ${Number(result.archived_unresolved) || 0} 项；外部数据保留。`)
+        this.$message.success(`配置组织切换已完成，归档监控关联 ${Number(result.archived_monitoring) || 0} 项、监控创建任务 ${Number(result.archived_monitoring_provisions) || 0} 项、负责人关联 ${Number(result.archived_person) || 0} 项、配置场景 ${Number(result.archived_configuration_scenarios) || 0} 项、配置任务 ${Number(result.archived_configuration_tasks) || 0} 项、遗留未完成关联 ${Number(result.archived_unresolved) || 0} 项；外部数据保留。`)
         this.cmdbReferences = emptyReferences()
         this.referencesContextKey = ''
         this.mappingSaving = false
         this.closeMapping()
         await this.loadOverviewAndAssets()
       } catch (error) {
-        const failure = this.cmdbFailure(error, 'Organization 切换失败')
+        const failure = this.cmdbFailure(error, '配置组织切换失败')
         if (mappingFailureInvalidatesContext(failure.reason)) {
           await this.recoverMappingGovernanceContext(governanceTenantID, failure.message)
           return
@@ -2371,4 +2375,9 @@ export default {
   .mapping-impact__grid article:last-child { border-bottom: 0; }
   .mapping-impact__configuration-samples article + article { border-top: 1px solid #e0e7ec; border-left: 0; }
 }
+
+.technical-details { margin-top: 4px; font-size: 12px; line-height: 1.65; min-width: 0; }
+.technical-details summary { cursor: pointer; color: inherit; font-family: inherit; font-weight: 400; }
+.technical-details[open] { padding-bottom: 4px; }
+.technical-details code, .technical-details small { display: block; overflow-wrap: anywhere; white-space: normal; }
 </style>

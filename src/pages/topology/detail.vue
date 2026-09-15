@@ -17,7 +17,7 @@
             :disabled="isReading"
             @change="handleCanvasSizeChange"
           >
-            <a-select-option value="1920x1080">1920x1080 (Full HD)</a-select-option>
+            <a-select-option value="1920x1080">1920x1080 (全高清)</a-select-option>
             <a-select-option value="2560x1440">2560x1440 (2K)</a-select-option>
             <a-select-option value="3000x2000">{{ $t('canvas_size_default') }}</a-select-option>
             <a-select-option value="3840x2160">3840x2160 (4K)</a-select-option>

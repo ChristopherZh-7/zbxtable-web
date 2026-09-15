@@ -48,7 +48,7 @@
     </a-row>
     <a-row style="margin: 20px -12px 0">
       <a-col style="padding: 0 12px" :xl="24" :lg="24" :md="24" :sm="24" :xs="24">
-        <a-card title="Windows TOP5" :headStyle="$cardHeadStyle" size="small">
+        <a-card title="Windows 前 5 名" :headStyle="$cardHeadStyle" size="small">
           <div class="home_line">
             <div style="flex: 0 0 50%" v-if="winC && winC.length">
               <h3>CPU使用率</h3>
@@ -64,7 +64,7 @@
     </a-row>
     <a-row style="margin: 20px -12px">
       <a-col style="padding: 0 12px" :xl="24" :lg="24" :md="24" :sm="24" :xs="24">
-        <a-card title="Linux TOP5" :headStyle="$cardHeadStyle" size="small">
+        <a-card title="Linux 前 5 名" :headStyle="$cardHeadStyle" size="small">
           <div class="home_line">
             <div style="flex: 0 0 50%" v-if="linC && linC.length">
               <h3>CPU使用率</h3>

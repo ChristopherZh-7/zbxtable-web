@@ -4,11 +4,11 @@
       <a-descriptions bordered>
         <a-descriptions-item :label="$t('smartops_version')" :span="3">{{ UIVersion }}</a-descriptions-item>
         <a-descriptions-item :label="$t('buildinfo')">
-          Version:{{ BackVersion }}
+          软件版本:{{ BackVersion }}
           <br />
-          GitHash:{{ GitHash }}
+          代码版本:{{ GitHash }}
           <br />
-          BuildTime:{{ BuildTime }}
+          构建时间:{{ BuildTime }}
         </a-descriptions-item>
       </a-descriptions>
 

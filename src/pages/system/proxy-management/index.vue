@@ -69,7 +69,7 @@
         :pagination="{pageSize: 10, showSizeChanger: true}"
       >
         <template slot="instance" slot-scope="record">
-          <div>{{ record.instance_name || record.instance }}</div><div class="secondary">ZID {{ record.zid }}</div>
+          <div>{{ record.instance_name || record.instance }}</div><div class="secondary">监控源编号 {{ record.zid }}</div>
         </template>
         <template slot="groupState" slot-scope="record"><a-badge :status="badgeStatus(record.state_name)" :text="$t(record.state_name || 'unknown')" /></template>
         <template slot="onlineMinimum" slot-scope="record">{{ record.online_proxies }} / {{ record.minimum_online || '-' }}</template>
@@ -88,7 +88,7 @@
         :scroll="{x: 1350}"
       >
         <template slot="instance" slot-scope="record">
-          <div>{{ record.instance_name || record.instance }}</div><div class="secondary">ZID {{ record.zid }}</div>
+          <div>{{ record.instance_name || record.instance }}</div><div class="secondary">监控源编号 {{ record.zid }}</div>
         </template>
         <template slot="group" slot-scope="record">{{ record.proxy_group_name || $t('standalone') }}</template>
         <template slot="proxyState" slot-scope="record"><a-badge :status="badgeStatus(record.state_name)" :text="$t(record.state_name || 'unknown')" /></template>

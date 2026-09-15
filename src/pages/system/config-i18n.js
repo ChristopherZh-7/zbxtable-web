@@ -4,7 +4,7 @@ module.exports = {
     CN: {
       encryption_key: {
         name: '加密密钥',
-        comment: '用于加密存储敏感信息（如Zabbix密码和Token）的密钥，系统自动生成，不可修改'
+        comment: '用于加密存储敏感信息（如监控中心密码和访问令牌）的密钥，系统自动生成，不可修改'
       },
       system_name: {
         name: '系统名称',
@@ -15,39 +15,39 @@ module.exports = {
         comment: '登录页显示的系统副标题'
       },
       system_logo: {
-        name: '系统Logo',
-        comment: '系统Logo的base64编码数据'
+        name: '系统标志',
+        comment: '系统标志的base64编码数据'
       },
       zbx_dash: {
         name: '数据面板',
-        comment: '是否开启Zabbix看板：1 开启,0 关闭'
+        comment: '是否开启监控中心看板：1 开启,0 关闭'
       },
       dash_id: {
         name: '面板配置',
-        comment: '需要引入的Zabbix面板的ID，默认为1'
+        comment: '需要引入的监控中心面板的ID，默认为1'
       },
       sync_inventory: {
         name: '主机分类同步',
         comment: '主机分类同步计划任务是否启用：1 启用,0 不启用'
       },
       sync_inventory_cron: {
-        name: '主机分类同步 Cron',
+        name: '主机分类同步执行周期',
         comment: '主机分类同步执行周期，格式：秒 分 时 日 月 周'
       },
       top_sync_enabled: {
-        name: '首页 Top 数据同步开关',
-        comment: '首页 Top 数据同步计划任务是否启用：1 启用,0 停用'
+        name: '首页排行数据同步开关',
+        comment: '首页排行数据同步计划任务是否启用：1 启用,0 停用'
       },
       top_sync_cron: {
-        name: '首页 Top 数据同步 Cron',
-        comment: '首页 Top 数据同步执行周期，格式：秒 分 时 日 月 周'
+        name: '首页排行数据同步执行周期',
+        comment: '首页排行数据同步执行周期，格式：秒分时日月周'
       },
       day_report_enabled: {
         name: '日报生成开关',
         comment: '日报生成计划任务是否启用：1 启用,0 停用'
       },
       day_report_cron: {
-        name: '日报生成 Cron',
+        name: '日报生成执行周期',
         comment: '日报生成执行周期，格式：秒 分 时 日 月 周'
       },
       week_report_enabled: {
@@ -55,7 +55,7 @@ module.exports = {
         comment: '周报生成计划任务是否启用：1 启用,0 停用'
       },
       week_report_cron: {
-        name: '周报生成 Cron',
+        name: '周报生成执行周期',
         comment: '周报生成执行周期，格式：秒 分 时 日 月 周'
       },
       auto_metric_mapping_enabled: {
@@ -63,7 +63,7 @@ module.exports = {
         comment: '自动指标映射计划任务是否启用：1 启用,0 停用'
       },
       auto_metric_mapping_cron: {
-        name: '自动指标映射 Cron',
+        name: '自动指标映射执行周期',
         comment: '自动指标映射执行周期，格式：秒 分 时 日 月 周'
       },
       retry_failed_mapping_enabled: {
@@ -71,7 +71,7 @@ module.exports = {
         comment: '失败指标映射重试计划任务是否启用：1 启用,0 停用'
       },
       retry_failed_mapping_cron: {
-        name: '失败指标映射重试 Cron',
+        name: '失败指标映射重试执行周期',
         comment: '失败指标映射重试执行周期，格式：秒 分 时 日 月 周'
       },
       egress_collect_enabled: {
@@ -79,7 +79,7 @@ module.exports = {
         comment: '出口数据采集计划任务是否启用：1 启用,0 停用'
       },
       egress_collect_cron: {
-        name: '出口数据采集 Cron',
+        name: '出口数据采集执行周期',
         comment: '出口数据采集执行周期，格式：秒 分 时 日 月 周'
       },
       overview_sync_enabled: {
@@ -87,7 +87,7 @@ module.exports = {
         comment: '状态总览同步计划任务是否启用：1 启用,0 停用'
       },
       overview_sync_cron: {
-        name: '状态总览同步 Cron',
+        name: '状态总览同步执行周期',
         comment: '状态总览同步执行周期，格式：秒 分 时 日 月 周'
       },
       webhook_url: {
@@ -116,30 +116,30 @@ module.exports = {
       },
       email_isSSl: {
         name: 'SMTP 使用 SSL',
-        comment: '是否启用 SSL：true/false'
+        comment: '是否启用加密连接：开启或关闭'
       },
       wechat_enabled: {
         name: '企业微信开关',
         comment: '是否启用企业微信：1 启用,0 禁用'
       },
       wechat_agentid: {
-        name: '企业微信 AgentID',
-        comment: '企业微信应用的 AgentID'
+        name: '企业微信应用编号',
+        comment: '企业微信应用的应用编号'
       },
       wechat_corpid: {
-        name: '企业微信 CorpID',
+        name: '企业微信企业编号',
         comment: '企业微信企业ID'
       },
       wechat_secret: {
-        name: '企业微信 Secret',
-        comment: '企业微信应用的 Secret'
+        name: '企业微信密钥',
+        comment: '企业微信应用的密钥'
       },
       dingtalk_enabled: { name: '钉钉机器人开关', comment: '是否启用钉钉群机器人：1 启用,0 禁用' },
-      dingtalk_access_token: { name: '钉钉 Access Token', comment: '钉钉群机器人的 Access Token，仅服务端加密保存' },
-      dingtalk_secret: { name: '钉钉加签 Secret', comment: '钉钉群机器人的加签 Secret，仅服务端加密保存' },
+      dingtalk_access_token: { name: '钉钉访问令牌', comment: '钉钉群机器人的访问令牌，仅服务端加密保存' },
+      dingtalk_secret: { name: '钉钉加签密钥', comment: '钉钉群机器人的加签密钥，仅服务端加密保存' },
       ai_type: {
         name: 'AI 类型',
-        comment: '选择使用的 AI 服务类型：ollama、deepseek 或 custom'
+        comment: '选择已部署的模型服务，或使用自定义兼容接口'
       },
       alarm_analysis_prompt: {
         name: '告警分析提示词',
@@ -167,7 +167,7 @@ module.exports = {
       },
       custom_api_key: {
         name: 'Custom API Key',
-        comment: 'OpenAI 兼容接口的 API Key'
+        comment: 'OpenAI 兼容接口的接口密钥'
       },
       custom_model: {
         name: 'Custom Model',
@@ -178,18 +178,18 @@ module.exports = {
         comment: 'OpenAI 兼容接口地址，如 https://api.example.com/v1'
       },
       dash_top_lin_num: {
-        name: 'Linux Top 数量',
+        name: 'Linux 排行数量',
         comment: '首页 Linux CPU、内存排行显示的数量'
       },
       dash_top_win_num: {
-        name: 'Windows Top 数量',
+        name: 'Windows 排行数量',
         comment: '首页 Windows CPU、内存排行显示的数量'
       }
     },
     HK: {
       encryption_key: {
         name: '加密密鑰',
-        comment: '用於加密存儲敏感信息（如Zabbix密碼和Token）的密鑰，系統自動生成，不可修改'
+        comment: '用於加密存儲敏感信息（如監控中心密碼和Token）的密鑰，系統自動生成，不可修改'
       },
       system_name: {
         name: '系統名稱',
@@ -205,11 +205,11 @@ module.exports = {
       },
       zbx_dash: {
         name: '數據面板',
-        comment: '是否開啟Zabbix看板：1 開啟,0 關閉'
+        comment: '是否開啟監控中心看板：1 開啟,0 關閉'
       },
       dash_id: {
         name: '面板配置',
-        comment: '需要引入的Zabbix面板的ID，默認為1'
+        comment: '需要引入的監控中心面板的ID，默認為1'
       },
       sync_inventory: {
         name: '主機分類同步',
@@ -374,7 +374,7 @@ module.exports = {
     US: {
       encryption_key: {
         name: 'Encryption Key',
-        comment: 'Key for encrypting sensitive information (such as Zabbix passwords and tokens), automatically generated by the system, cannot be modified'
+        comment: 'Key for encrypting sensitive information (such as Monitoring Service passwords and tokens), automatically generated by the system, cannot be modified'
       },
       system_name: {
         name: 'System Name',
@@ -390,11 +390,11 @@ module.exports = {
       },
       zbx_dash: {
         name: 'Dashboard',
-        comment: 'Enable Zabbix dashboard: 1 enable, 0 disable'
+        comment: 'Enable Monitoring Service dashboard: 1 enable, 0 disable'
       },
       dash_id: {
         name: 'Dashboard Config',
-        comment: 'ID of the Zabbix dashboard to import, default is 1'
+        comment: 'ID of the Monitoring Service dashboard to import, default is 1'
       },
       sync_inventory: {
         name: 'Host Inventory Sync',
@@ -576,12 +576,12 @@ module.exports = {
       systemSubtitle: '系统副标题',
       systemSubtitlePlaceholder: '请输入系统副标题',
       systemSubtitleHint: '登录页标题下方显示的说明文案',
-      systemSubtitleDefault: 'Zabbix 监控数据可视化平台',
-      systemLogo: '系统Logo',
-      uploadLogo: '上传Logo',
+      systemSubtitleDefault: '统一监控与资产运维管理平台',
+      systemLogo: '系统标志',
+      uploadLogo: '上传标志',
       logoUploading: '上传中...',
       logoUploadHint: '支持 PNG、JPG、SVG 格式，建议尺寸 32x32px，大小不超过2MB',
-      logoPreview: 'Logo预览',
+      logoPreview: '标志预览',
       
       // 系统配置
       systemSettings: '系统配置',
@@ -610,7 +610,7 @@ module.exports = {
       showKey: '显示完整密钥',
       hideKey: '隐藏密钥',
       securityWarning: '安全提示',
-      keyDesc1: '此密钥用于加密存储 Zabbix 密码和 Token 等敏感信息',
+      keyDesc1: '此密钥用于加密存储监控中心密码和访问令牌等敏感信息',
       keyDesc2: '系统初始化时自动生成，不可通过界面修改',
       keyDesc3: '请妥善保管此密钥，丢失将导致已加密数据无法解密',
       keyDesc4: '建议定期备份数据库，包含此密钥配置',
@@ -623,8 +623,8 @@ module.exports = {
       // Logo上传
       logoFormatError: '只支持 PNG、JPG、JPEG 或 SVG 格式的图片',
       logoSizeError: '图片大小不能超过 2MB',
-      logoUploadSuccess: 'Logo上传成功',
-      logoUploadFailed: 'Logo上传失败',
+      logoUploadSuccess: '标志上传成功',
+      logoUploadFailed: '标志上传失败',
       unknownError: '未知错误',
       
       // 其他
@@ -682,7 +682,7 @@ module.exports = {
       systemSubtitle: '系統副標題',
       systemSubtitlePlaceholder: '請輸入系統副標題',
       systemSubtitleHint: '登入頁標題下方顯示的說明文案',
-      systemSubtitleDefault: 'Zabbix 監控數據可視化平台',
+      systemSubtitleDefault: '統一監控與資產運維管理平台',
       systemLogo: '系統Logo',
       uploadLogo: '上傳Logo',
       logoUploading: '上傳中...',
@@ -716,7 +716,7 @@ module.exports = {
       showKey: '顯示完整密鑰',
       hideKey: '隱藏密鑰',
       securityWarning: '安全提示',
-      keyDesc1: '此密鑰用於加密存儲 Zabbix 密碼和 Token 等敏感信息',
+      keyDesc1: '此密鑰用於加密存儲監控中心密碼和 Token 等敏感信息',
       keyDesc2: '系統初始化時自動生成，不可通過界面修改',
       keyDesc3: '請妥善保管此密鑰，丟失將導致已加密數據無法解密',
       keyDesc4: '建議定期備份數據庫，包含此密鑰配置',
@@ -788,7 +788,7 @@ module.exports = {
       systemSubtitle: 'Subtitle',
       systemSubtitlePlaceholder: 'Please input system subtitle',
       systemSubtitleHint: 'Description displayed below the title on the login page',
-      systemSubtitleDefault: 'Zabbix Monitoring Data Visualization Platform',
+      systemSubtitleDefault: 'Unified Monitoring and Asset Operations',
       systemLogo: 'Logo',
       uploadLogo: 'Upload Logo',
       logoUploading: 'Uploading...',
@@ -822,7 +822,7 @@ module.exports = {
       showKey: 'Show Full Key',
       hideKey: 'Hide Key',
       securityWarning: 'Security Warning',
-      keyDesc1: 'This key is used to encrypt sensitive data such as Zabbix passwords and tokens',
+      keyDesc1: 'This key is used to encrypt sensitive data such as Monitoring Service passwords and tokens',
       keyDesc2: 'Automatically generated during system initialization, cannot be modified through the interface',
       keyDesc3: 'Please keep this key safe. Loss of the key will result in encrypted data being unrecoverable',
       keyDesc4: 'It is recommended to regularly backup the database, including this key configuration',

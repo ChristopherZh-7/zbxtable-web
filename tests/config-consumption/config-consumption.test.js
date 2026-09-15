@@ -57,9 +57,9 @@ test('configuration consumption is registered under the asset router', () => {
 test('page makes iTop CI, F49 binding and Zabbix policy the visible authority chain', () => {
   const page = source('src/pages/host/ConfigConsumption.vue')
   for (const copy of [
-    'SOURCE OF TRUTH', 'iTop CMDB', 'Organization', 'CODE', 'GEN',
-    'iTop CI', 'F49 唯一绑定', 'Zabbix 策略', 'ApplicationSolution ID + CI class',
-    'CI 身份、Host 快照和失败原因', '当前', '归档', '遗留冻结',
+    '配置数据来源', '配置管理中心', '配置组织', '编码', '组织映射版本',
+    '配置项', '已确认的监控主机', '监控中心策略', '所属应用与配置项类型在创建后保持不变',
+    '保留本次任务的资产、监控主机和执行结果', '当前', '归档', '遗留冻结',
   ]) assert.ok(page.includes(copy), `missing PRODUCT-003D authority copy: ${copy}`)
   assert.doesNotMatch(page, /hostList|business_system|asset_type_code/)
   assert.doesNotMatch(page, /\bzid:\s*this\.applyForm|\bhostid:\s*this\.applyForm/)
@@ -101,7 +101,7 @@ test('writes are absent for viewers and frozen scopes', () => {
   assert.match(page, /scenarioScope === 'current' && writeContextReady/)
   assert.match(page, /taskScope === 'current' && canOperate && writeContextReady && retryableConfigurationTask\(record\)/)
   assert.match(page, /v-if="scenarioScope === 'current' && canCreate && writeContextReady"[\s\S]*<a-modal/)
-  assert.match(page, /v-if="scenarioScope === 'current' && canOperate && writeContextReady"[\s\S]*title="从 iTop CI 应用场景"/)
+  assert.match(page, /v-if="scenarioScope === 'current' && canOperate && writeContextReady"[\s\S]*title="从配置项应用场景"/)
 })
 
 test('context key invalidates forms and stale responses cannot replace current state', () => {
@@ -184,9 +184,9 @@ test('legacy and blocked tasks stay frozen while an exhausted transient task kee
   assert.equal(retryableConfigurationTask({status: 'failed', context_state: 'legacy_frozen', retry_count: 0, max_retry: 3}), false)
   assert.equal(retryableConfigurationTask({status: 'failed', context_state: 'current', blocked: true}), false)
   assert.equal(retryableConfigurationTask({status: 'failed', context_state: 'current', retry_count: 3, max_retry: 3}), true)
-  assert.match(configurationFailureMessage('configuration_binding_missing'), /F49/)
+  assert.match(configurationFailureMessage('configuration_binding_missing'), /监控关联/)
   assert.match(configurationFailureMessage('mapping_generation_mismatch'), /GEN|generation|GEN|\u4e16代/)
-  assert.match(configurationFailureMessage('configuration_target_invalid'), /iTop CI.*Zabbix Host.*Host Group.*Template/)
+  assert.match(configurationFailureMessage('configuration_target_invalid'), /配置项.*监控主机.*主机组.*监控模板/)
 })
 
 test('list response context composes the same tenant, Organization and generation key', () => {

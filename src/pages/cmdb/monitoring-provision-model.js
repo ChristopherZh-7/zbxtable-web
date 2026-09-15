@@ -41,7 +41,7 @@ function provisionRequest(group, asset, key) {
   if (!group || !(Number(group.zid) > 0) || !/^[1-9][0-9]*$/.test(String(group.host_group_id)) ||
       !asset || !/^[a-f0-9]{64}$/.test(String(asset.revision || '')) ||
       !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(key || '')) {
-    throw new Error('请刷新 CI 并选择当前租户的目标主机组。')
+    throw new Error('请刷新配置项并选择当前租户的目标主机组。')
   }
   return {zid: Number(group.zid), target_host_group_id: String(group.host_group_id), expected_revision: asset.revision, idempotency_key: key}
 }

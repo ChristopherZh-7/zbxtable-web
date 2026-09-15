@@ -18,7 +18,7 @@
             </div>
             <div class="author">
               <a-avatar size="small" src="https://gw.alipayobjects.com/zos/rmsportal/WdGqmHpayyMjiEhcKoVE.png" />
-              <a>SmartOps 示例</a>发布于
+              <a>智能运维管理系统示例</a>发布于
               <span>内部知识库</span>
               <em>2018-08-05 22:23</em>
             </div>

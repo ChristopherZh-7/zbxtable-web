@@ -51,7 +51,7 @@ export default {
         },
         title: {
           text: String(total),
-          subtext: 'TOTAL',
+          subtext: '合计',
           left: 'center',
           top: '38%',
           textStyle: { color: '#00e6ff', fontSize: 26, fontWeight: 700 },

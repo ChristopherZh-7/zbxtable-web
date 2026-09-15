@@ -17,7 +17,7 @@ const messages = {
           fluid: '流式',
           fixed: '定宽'
         },
-        fixedHeader: '固定Header',
+        fixedHeader: '固定页头',
         fixedSideBar: '固定侧边栏',
       },
       other: {

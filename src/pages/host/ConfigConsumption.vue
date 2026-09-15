@@ -3,9 +3,9 @@
     <div class="config-consumption">
       <header class="config-consumption__header">
         <div>
-          <p class="page-kicker">CONFIGURATION AUTHORITY</p>
-          <h1>配置消费</h1>
-          <p>在 SmartOps 中为 iTop CI 应用 Zabbix 策略；CI 身份来自 iTop，目标 Host 只来自 F49 绑定。</p>
+          <p class="page-kicker">监控配置管理</p>
+          <h1>监控配置</h1>
+          <p>为正式配置项显式应用监控策略，配置项身份来自配置管理中心，目标主机仅取自已确认的监控绑定。</p>
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
@@ -22,25 +22,25 @@
             class="apply-action"
             icon="deployment-unit"
             @click="openApply"
-          >应用到 CI</a-button>
+          >应用到配置项</a-button>
         </div>
       </header>
 
-      <section class="source-strip" aria-label="配置消费数据边界">
+      <section class="source-strip" aria-label="监控配置数据边界">
         <div class="source-identity">
-          <span>SOURCE OF TRUTH</span>
-          <strong>iTop CMDB</strong>
-          <small>SmartOps 受控入口</small>
+          <span>配置数据来源</span>
+          <strong>配置管理中心</strong>
+          <small>智能运维管理系统受控入口</small>
         </div>
         <div class="source-field">
-          <span>Organization</span>
+          <span>配置组织</span>
           <strong>{{ organizationName }}</strong>
-          <small>CODE {{ organizationCode }}</small>
+          <details class="technical-details"><summary>查看组织编码</summary><small>{{ organizationCode }}</small></details>
         </div>
         <div class="source-field source-field--mono">
-          <span>身份边界</span>
-          <strong>ID {{ cmdbContext.organization_id || '—' }}</strong>
-          <small>GEN {{ cmdbContext.generation || '—' }}</small>
+          <span>组织信息</span>
+          <strong>组织编号 {{ cmdbContext.organization_id || '—' }}</strong>
+          <small>组织映射版本 {{ cmdbContext.generation || '—' }}</small>
         </div>
         <div class="source-field">
           <span>映射状态</span>
@@ -49,33 +49,33 @@
         </div>
       </section>
 
-      <section class="authority-rail" aria-label="配置消费身份轨">
+      <section class="authority-rail" aria-label="监控配置身份轨">
         <div class="authority-node authority-node--cmdb">
-          <span>01 · CI IDENTITY</span>
-          <strong>iTop CI</strong>
-          <small>class · id · revision · ApplicationSolution</small>
+          <span>01 · 配置项身份</span>
+          <strong>配置项</strong>
+          <small>类型 · 编号 · 版本 · 所属应用</small>
         </div>
         <div class="authority-link"><a-icon type="arrow-right" /></div>
         <div class="authority-node authority-node--binding">
-          <span>02 · HOST RESOLUTION</span>
-          <strong>F49 唯一绑定</strong>
-          <small>binding version · ZID · Host ID</small>
+          <span>02 · 监控主机关联</span>
+          <strong>已确认的监控主机</strong>
+          <small>关联版本 · 监控源编号 · 主机编号</small>
         </div>
         <div class="authority-link"><a-icon type="arrow-right" /></div>
         <div class="authority-node authority-node--policy">
-          <span>03 · MANAGED POLICY</span>
-          <strong>Zabbix 策略</strong>
-          <small>Host Group · Template · smartops.*</small>
+          <span>03 · 监控策略</span>
+          <strong>监控中心策略</strong>
+          <small>主机组 · 监控模板 · 受管标签</small>
         </div>
       </section>
 
       <section v-if="!loading && overview.state === 'unconfigured'" class="state-panel state-panel--warning">
         <a-icon type="disconnect" />
-        <div><strong>当前租户尚未关联 iTop Organization</strong><span>请先由平台管理员完成 CMDB 映射；未建立 ID + GEN 边界前不提供写入操作。</span></div>
+        <div><strong>当前租户尚未关联配置组织</strong><span>请先由平台管理员完成 CMDB 映射；未建立 ID + 组织映射版本边界前不提供写入操作。</span></div>
       </section>
       <section v-else-if="!loading && overview.state === 'error'" class="state-panel state-panel--error">
         <a-icon type="warning" />
-        <div><strong>CMDB 上下文读取失败</strong><span>{{ overview.message || '暂时无法读取 iTop 映射，所有写入已关闭。' }}</span></div>
+        <div><strong>CMDB 上下文读取失败</strong><span>{{ overview.message || '暂时无法读取配置管理中心映射，所有写入已关闭。' }}</span></div>
         <a-button icon="reload" @click="refreshAll">重试</a-button>
       </section>
 
@@ -83,7 +83,7 @@
         <a-alert
           class="boundary-alert"
           message="工作边界"
-          description="任务执行时会重新验证 Organization、GEN、CI revision、应用关系、场景版本与 F49 绑定；任一身份变化都会零 Zabbix 写入地失败关闭。"
+          description="任务执行时会重新验证配置组织、组织映射版本、资产版本、应用关系、场景版本与监控绑定；任一身份发生变化，任务均会终止且不修改监控配置。"
           show-icon
           type="info"
         />
@@ -91,9 +91,9 @@
         <section class="section-card">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">POLICY SCENARIOS</p>
+              <p class="section-kicker">场景策略</p>
               <h2>场景策略</h2>
-              <span>ApplicationSolution ID + CI class 是不可变的权威键</span>
+              <span>所属应用与配置项类型在创建后保持不变</span>
             </div>
             <a-radio-group v-model="scenarioScope" button-style="solid" size="small" @change="changeScenarioScope">
               <a-radio-button v-for="scope in scopes" :key="scope.value" :value="scope.value">{{ scope.label }}</a-radio-button>
@@ -119,7 +119,7 @@
             <template slot="scenarioApplication" slot-scope="record">
               <div class="identity-cell">
                 <strong>{{ scenarioApplicationName(record) }}</strong>
-                <code>ApplicationSolution:{{ scenarioApplicationID(record) || '—' }}</code>
+                <code>应用系统:{{ scenarioApplicationID(record) || '—' }}</code>
               </div>
             </template>
             <template slot="scenarioClass" slot-scope="record">
@@ -128,12 +128,12 @@
             </template>
             <template slot="scenarioPolicy" slot-scope="record">
               <strong>{{ record.target_host_group || record.target_host_group_name || '—' }}</strong><br />
-              <span class="muted">{{ record.template_name || `Template ${record.template_id || '—'}` }} · ZID {{ record.zid || '—' }}</span>
-              <small v-if="record.agentless_profile_id" class="inline-code" data-testid="configuration-agentless-snapshot">Agentless · {{ record.agentless_profile_id }}</small>
+              <span class="muted">{{ record.template_name || `监控模板 ${record.template_id || '—'}` }} · 监控源编号 {{ record.zid || '—' }}</span>
+              <small v-if="record.agentless_profile_id" class="inline-code" data-testid="configuration-agentless-snapshot">免代理采集 · {{ record.agentless_profile_id }}</small>
             </template>
             <template slot="scenarioContext" slot-scope="record">
-              <code>ORG {{ record.organization_id || record.itop_organization_id || '—' }}</code><br />
-              <code>GEN {{ record.mapping_generation || record.generation || '—' }}</code>
+              <code>组织编号 {{ record.organization_id || record.itop_organization_id || '—' }}</code><br />
+              <code>组织映射版本 {{ record.mapping_generation || record.generation || '—' }}</code>
             </template>
             <template slot="scenarioState" slot-scope="record">
               <a-badge :status="record.enabled ? 'success' : 'default'" :text="record.enabled ? '已启用' : '已停用'" />
@@ -165,9 +165,9 @@
         <section class="section-card">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">EXECUTION LEDGER</p>
-              <h2>任务账本</h2>
-              <span>CI 身份、Host 快照和失败原因均保留于入队上下文</span>
+              <p class="section-kicker">配置执行记录</p>
+              <h2>执行记录</h2>
+              <span>保留本次任务的资产、监控主机和执行结果，便于核对与追溯</span>
             </div>
             <div class="task-heading-tools">
               <a-tag :color="activeTasks ? 'orange' : 'green'">{{ activeTasks ? `${activeTasks} 个处理中` : '当前无待处理' }}</a-tag>
@@ -177,7 +177,7 @@
             </div>
           </div>
           <p v-if="taskScope !== 'current'" class="frozen-note">
-            <a-icon type="lock" /> {{ scopeCaption(taskScope) }}，任务仅用于审计追溯，不会重新进入 worker。
+            <a-icon type="lock" /> {{ scopeCaption(taskScope) }}，任务仅用于审计追溯，不会重新进入后台执行器。
           </p>
           <a-table
             :columns="taskColumns"
@@ -190,8 +190,8 @@
             <template slot="taskCI" slot-scope="record">
               <div class="identity-cell">
                 <strong>{{ taskCIIdentity(record).name }}</strong>
-                <code>{{ taskCIIdentity(record).class || '—' }}:{{ taskCIIdentity(record).id || '—' }}</code>
-                <small>revision {{ taskCIIdentity(record).revision }}</small>
+                <code>{{ classMeta(taskCIIdentity(record).class).label }} #{{ taskCIIdentity(record).id || '—' }}</code>
+                <details class="technical-details"><summary>查看资产版本</summary><small>{{ taskCIIdentity(record).revision }}</small></details>
               </div>
             </template>
             <template slot="taskScenario" slot-scope="record">
@@ -203,7 +203,7 @@
             <template slot="taskHost" slot-scope="record">
               <div class="identity-cell">
                 <strong>{{ taskHostSnapshot(record).host_name }}</strong>
-                <code>ZID {{ taskHostSnapshot(record).zid || '—' }} · Host {{ taskHostSnapshot(record).host_id }}</code>
+                <code>监控源编号 {{ taskHostSnapshot(record).zid || '—' }} · 监控主机 {{ taskHostSnapshot(record).host_id }}</code>
                 <small>{{ taskHostSnapshot(record).instance_name }}</small>
               </div>
             </template>
@@ -213,15 +213,15 @@
             </template>
             <template slot="taskReason" slot-scope="record">
               <div v-if="record.error_reason || record.error_code || record.reason || record.error_message" class="reason-cell">
-                <code>{{ record.error_reason || record.error_code || record.reason || 'execution_failed' }}</code>
+                <details class="technical-details"><summary>诊断代码</summary><code>{{ record.error_reason || record.error_code || record.reason || 'execution_failed' }}</code></details>
                 <span>{{ taskFailureMessage(record) }}</span>
               </div>
               <span v-else class="muted">—</span>
             </template>
             <template slot="taskContext" slot-scope="record">
-              <code>ORG {{ record.organization_id || record.itop_organization_id || '—' }}</code><br />
-              <code>GEN {{ record.mapping_generation || record.generation || '—' }}</code><br />
-              <small>task v{{ record.version || '—' }}</small>
+              <code>组织编号 {{ record.organization_id || record.itop_organization_id || '—' }}</code><br />
+              <code>组织映射版本 {{ record.mapping_generation || record.generation || '—' }}</code><br />
+              <small>任务版本 {{ record.version || '—' }}</small>
             </template>
             <template slot="taskTime" slot-scope="record">{{ formatTime(record.applied_at || record.updated_at || record.requested_at) }}</template>
             <template slot="taskOperation" slot-scope="record">
@@ -259,7 +259,7 @@
       @ok="saveScenario"
       @cancel="closeScenario"
     >
-      <a-alert class="modal-alert" type="info" show-icon message="ApplicationSolution 和 CI class 来自当前 iTop Organization；创建后不可变更。" />
+      <a-alert class="modal-alert" type="info" show-icon message="应用系统和配置项类型来自当前配置组织；创建后不可变更。" />
       <a-alert v-if="scenarioError" class="modal-alert" type="error" show-icon :message="scenarioError" />
       <a-form-model layout="vertical">
         <a-row :gutter="16">
@@ -269,30 +269,30 @@
             </a-form-model-item>
           </a-col>
           <a-col :span="12">
-            <a-form-model-item label="iTop ApplicationSolution">
+            <a-form-model-item label="应用系统">
               <a-select
                 v-model="scenarioForm.application_id"
                 :disabled="Boolean(editingScenario)"
                 show-search
                 option-filter-prop="children"
-                placeholder="选择当前 Organization 的活动应用"
+                placeholder="选择当前配置组织的活动应用"
               >
-                <a-select-option v-for="item in applications" :key="Number(item.id)" :value="Number(item.id)">{{ item.name }}（ApplicationSolution:{{ item.id }}）</a-select-option>
+                <a-select-option v-for="item in applications" :key="Number(item.id)" :value="Number(item.id)">{{ item.name }}（应用系统:{{ item.id }}）</a-select-option>
               </a-select>
             </a-form-model-item>
           </a-col>
         </a-row>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-model-item label="iTop CI class">
-              <a-select v-model="scenarioForm.asset_class" :disabled="Boolean(editingScenario)" placeholder="选择后端允许的 CI class" @change="clearAgentlessSelection">
+            <a-form-model-item label="配置项类型">
+              <a-select v-model="scenarioForm.asset_class" :disabled="Boolean(editingScenario)" placeholder="选择后端允许的配置项类型" @change="clearAgentlessSelection">
                 <a-select-option v-for="item in assetClasses" :key="item.value" :value="item.value">{{ item.label }}（{{ item.value }}）</a-select-option>
               </a-select>
             </a-form-model-item>
           </a-col>
           <a-col :span="12">
-            <a-form-model-item label="目标 Host Group（当前租户范围）">
-              <a-select v-model="selectedGroupKey" show-search option-filter-prop="children" placeholder="选择 Host Group" @change="selectGroup">
+            <a-form-model-item label="目标主机组（当前租户范围）">
+              <a-select v-model="selectedGroupKey" show-search option-filter-prop="children" placeholder="选择主机组" @change="selectGroup">
                 <a-select-option v-for="group in resources.host_groups" :key="groupKey(group)" :value="groupKey(group)">{{ group.host_group_name }}（{{ group.instance_name }}）</a-select-option>
               </a-select>
             </a-form-model-item>
@@ -311,13 +311,13 @@
             </a-select-option>
             <a-select-option v-if="scenarioForm.agentless_profile_id && !selectedAgentlessProfile" :value="scenarioForm.agentless_profile_id" disabled>原档案已不可用，请重新选择</a-select-option>
           </a-select>
-          <p class="muted">Agentless 档案由平台运维配置；目标来自 CI 管理 IP，密钥不进入浏览器。</p>
+          <p class="muted">免代理采集档案由平台运维配置；目标来自配置项管理 IP，密钥不进入浏览器。</p>
           <p v-if="resources.agentless_state === 'unavailable'" class="muted">服务端接入档案读取失败；已有 Agent 场景不受影响。</p>
-          <p v-else-if="!filteredAgentlessProfiles.length" class="muted">当前实例与 CI 类型没有可用 Agentless 档案。</p>
+          <p v-else-if="!filteredAgentlessProfiles.length" class="muted">当前实例与配置项类型没有可用免代理采集档案。</p>
           <a-alert v-if="agentlessSelectionWarning" type="warning" show-icon :message="agentlessSelectionWarning" />
         </a-form-model-item>
-        <a-form-model-item label="Zabbix Template">
-          <a-select v-model="scenarioForm.template_id" :disabled="!scenarioForm.zid || Boolean(scenarioForm.agentless_profile_id)" show-search option-filter-prop="children" placeholder="选择同一 Zabbix 实例的 Template">
+        <a-form-model-item label="监控模板">
+          <a-select v-model="scenarioForm.template_id" :disabled="!scenarioForm.zid || Boolean(scenarioForm.agentless_profile_id)" show-search option-filter-prop="children" placeholder="选择同一监控源的监控模板">
             <a-select-option v-for="item in filteredTemplates" :key="String(item.template_id)" :value="String(item.template_id)">{{ item.template_name }}</a-select-option>
           </a-select>
         </a-form-model-item>
@@ -332,7 +332,7 @@
       :visible="applyVisible"
       :confirm-loading="applying"
       :ok-button-props="{props: {disabled: !applyReady}}"
-      title="从 iTop CI 应用场景"
+      title="从配置项应用场景"
       width="1040px"
       ok-text="建立任务快照"
       @ok="applyScenario"
@@ -343,7 +343,7 @@
         <section class="apply-picker">
           <a-form-model layout="vertical">
             <a-form-model-item label="场景策略">
-              <a-select v-model="applyForm.scenario_id" placeholder="先选择当前 Organization 的启用场景" @change="selectApplyScenario">
+              <a-select v-model="applyForm.scenario_id" placeholder="先选择当前配置组织的启用场景" @change="selectApplyScenario">
                 <a-select-option v-for="item in applicableScenarios" :key="item.id" :value="item.id">{{ item.name }} · {{ scenarioApplicationName(item) }} · {{ scenarioAssetClass(item) }}</a-select-option>
               </a-select>
             </a-form-model-item>
@@ -352,7 +352,7 @@
             v-model.trim="assetSearch"
             :disabled="!selectedApplyScenario"
             allow-clear
-            placeholder="搜索 iTop CI 名称、IP 或资产编号"
+            placeholder="搜索配置项名称、IP 或资产编号"
             @search="searchApplyAssets"
           />
           <a-table
@@ -369,13 +369,13 @@
             <template slot="assetName" slot-scope="record">
               <div class="identity-cell">
                 <strong>{{ record.name }}</strong>
-                <code>{{ assetKey(record) }}</code>
+                <code>{{ classMeta(record.class).label }} #{{ record.id }}</code>
               </div>
             </template>
-            <template slot="assetRevision" slot-scope="record"><code>{{ record.revision || '详情加载后确认' }}</code></template>
+            <template slot="assetRevision" slot-scope="record"><details class="technical-details"><summary>查看资产版本</summary><code>{{ record.revision || '详情加载后确认' }}</code></details></template>
           </a-table>
           <footer class="table-footer table-footer--compact">
-            <span>{{ applyAssetPage.total }} 个 iTop CI</span>
+            <span>{{ applyAssetPage.total }} 个配置项</span>
             <a-pagination
               data-testid="configuration-asset-pagination"
               :current="applyAssetPage.page"
@@ -391,33 +391,33 @@
         <aside class="apply-inspector">
           <div v-if="!selectedApplyAsset" class="inspector-empty">
             <a-icon type="select" />
-            <strong>选择一个 iTop CI</strong>
-            <span>将实时读取 revision、ApplicationSolution 关系和 F49 Host。</span>
+            <strong>选择一个配置项</strong>
+            <span>将实时读取资产版本、应用系统关系和绑定主机。</span>
           </div>
           <a-spin v-else :spinning="assetDetailLoading">
             <div class="selected-identity">
               <a-tag :color="classMeta(selectedApplyAsset.class).color">{{ classMeta(selectedApplyAsset.class).label }}</a-tag>
               <h3>{{ selectedApplyAsset.name }}</h3>
-              <code>{{ assetKey(selectedApplyAsset) }} · revision {{ selectedApplyAsset.revision || '—' }}</code>
+              <details class="technical-details"><summary>查看资产版本</summary><code>{{ assetKey(selectedApplyAsset) }} · {{ selectedApplyAsset.revision || '—' }}</code></details>
             </div>
             <div class="selection-rail">
               <div>
-                <span>iTop CI</span>
-                <strong>{{ assetKey(selectedApplyAsset) }}</strong>
-                <small>revision {{ selectedApplyAsset.revision || '—' }}</small>
+                <span>配置项</span>
+                <strong>{{ classMeta(selectedApplyAsset.class).label }} #{{ selectedApplyAsset.id }}</strong>
+                <details class="technical-details"><summary>查看资产版本</summary><small>{{ selectedApplyAsset.revision || '—' }}</small></details>
               </div>
               <a-icon type="arrow-down" />
               <div>
-                <span>ApplicationSolution</span>
+                <span>应用系统</span>
                 <strong>{{ selectedApplicationNames }}</strong>
                 <small>{{ selectedApplicationIDs }}</small>
               </div>
               <a-icon type="arrow-down" />
               <div :class="{'selection-node--missing': !selectedMonitoring.bound}">
-                <span>F49 Host</span>
+                <span>绑定主机</span>
                 <strong>{{ selectedMonitoring.host_name || '未绑定' }}</strong>
-                <small v-if="selectedMonitoring.bound">{{ selectedMonitoring.instance_name || `ZID ${selectedMonitoring.zid}` }} · Host {{ selectedMonitoring.host_id }} · binding #{{ selectedMonitoring.binding_id || '—' }} · {{ formatTime(selectedMonitoring.binding_updated_at) }}</small>
-                <small v-else>请先在 CMDB 配置中心完成 F49 关联</small>
+                <small v-if="selectedMonitoring.bound">{{ selectedMonitoring.instance_name || `监控源编号 ${selectedMonitoring.zid}` }} · 监控主机 {{ selectedMonitoring.host_id }} · 关联编号 {{ selectedMonitoring.binding_id || '—' }} · {{ formatTime(selectedMonitoring.binding_updated_at) }}</small>
+                <small v-else>请先在资产配置中心完成监控关联</small>
               </div>
             </div>
             <a-alert :type="applyEligibilityState.ready ? 'success' : 'warning'" show-icon :message="applyEligibilityState.message" />
@@ -516,26 +516,26 @@ export default {
       timer: null,
       scenarioColumns: [
         {title: '场景', key: 'scenarioIdentity', scopedSlots: {customRender: 'scenarioIdentity'}, width: 180},
-        {title: 'iTop ApplicationSolution', key: 'scenarioApplication', scopedSlots: {customRender: 'scenarioApplication'}, width: 235},
-        {title: 'CI class', key: 'scenarioClass', scopedSlots: {customRender: 'scenarioClass'}, width: 170},
-        {title: 'Zabbix 策略', key: 'scenarioPolicy', scopedSlots: {customRender: 'scenarioPolicy'}, width: 250},
-        {title: 'Organization 上下文', key: 'scenarioContext', scopedSlots: {customRender: 'scenarioContext'}, width: 150},
+        {title: '应用系统', key: 'scenarioApplication', scopedSlots: {customRender: 'scenarioApplication'}, width: 235},
+        {title: '配置项类型', key: 'scenarioClass', scopedSlots: {customRender: 'scenarioClass'}, width: 170},
+        {title: '监控中心策略', key: 'scenarioPolicy', scopedSlots: {customRender: 'scenarioPolicy'}, width: 250},
+        {title: '配置组织上下文', key: 'scenarioContext', scopedSlots: {customRender: 'scenarioContext'}, width: 150},
         {title: '状态', key: 'scenarioState', scopedSlots: {customRender: 'scenarioState'}, width: 95},
         {title: '操作', key: 'scenarioOperation', scopedSlots: {customRender: 'scenarioOperation'}, width: 125},
       ],
       taskColumns: [
-        {title: 'iTop CI 快照', key: 'taskCI', scopedSlots: {customRender: 'taskCI'}, width: 225},
+        {title: '配置项快照', key: 'taskCI', scopedSlots: {customRender: 'taskCI'}, width: 225},
         {title: '场景版本', key: 'taskScenario', scopedSlots: {customRender: 'taskScenario'}, width: 180},
-        {title: 'F49 Host 快照', key: 'taskHost', scopedSlots: {customRender: 'taskHost'}, width: 235},
+        {title: '绑定主机快照', key: 'taskHost', scopedSlots: {customRender: 'taskHost'}, width: 235},
         {title: '状态', key: 'taskStatus', scopedSlots: {customRender: 'taskStatus'}, width: 125},
         {title: '原因 / 下一步', key: 'taskReason', scopedSlots: {customRender: 'taskReason'}, width: 310},
-        {title: 'Organization 上下文', key: 'taskContext', scopedSlots: {customRender: 'taskContext'}, width: 145},
+        {title: '配置组织上下文', key: 'taskContext', scopedSlots: {customRender: 'taskContext'}, width: 145},
         {title: '最近处理', key: 'taskTime', scopedSlots: {customRender: 'taskTime'}, width: 170},
         {title: '操作', key: 'taskOperation', scopedSlots: {customRender: 'taskOperation'}, width: 110},
       ],
       assetColumns: [
-        {title: 'iTop CI', key: 'assetName', scopedSlots: {customRender: 'assetName'}},
-        {title: 'revision', key: 'assetRevision', scopedSlots: {customRender: 'assetRevision'}, width: 120},
+        {title: '配置项', key: 'assetName', scopedSlots: {customRender: 'assetName'}},
+        {title: '资产版本', key: 'assetRevision', scopedSlots: {customRender: 'assetRevision'}, width: 120},
       ],
     }
   },
@@ -568,7 +568,7 @@ export default {
       return {status: 'error', label: '不可写'}
     },
     sourceBoundaryCopy() {
-      return this.writeContextReady ? '租户 + Organization + generation' : '未建立可写上下文'
+      return this.writeContextReady ? '租户 + 配置组织 + 组织映射版本' : '未建立可写上下文'
     },
     applications() {
       const source = this.resources || {}
@@ -625,7 +625,7 @@ export default {
   watch: {
     currentTenantID(next, previous) {
       if (previous && next !== previous) {
-        this.invalidateContext('租户上下文已切换，旧的配置消费表单已关闭。')
+        this.invalidateContext('租户上下文已切换，旧的监控配置表单已关闭。')
         this.refreshAll()
       }
     },
@@ -680,7 +680,7 @@ export default {
     configurationResponseIsCurrent(data) {
       const responseKey = configurationContextKey(data && data.context, this.currentTenantID)
       if (responseKey && responseKey === this.activeCMDBContextKey) return true
-      this.invalidateContext('配置消费响应属于旧 Organization 或 GEN，已丢弃并重新读取。')
+      this.invalidateContext('监控配置响应属于旧配置组织或组织映射版本，已丢弃并重新读取。')
       this.refreshAll()
       return false
     },
@@ -688,7 +688,7 @@ export default {
       const overview = this.unwrap(response) || {}
       const context = normalizeCMDBContext(overview, this.currentTenantID)
       if (context.ready && context.key === this.activeCMDBContextKey) return true
-      this.invalidateContext('Organization 或 GEN 已在其他会话中变化，旧表单已关闭。')
+      this.invalidateContext('配置组织或组织映射版本已在其他会话中变化，旧表单已关闭。')
       this.refreshAll()
       return false
     },
@@ -701,7 +701,7 @@ export default {
         if (contextKey !== this.activeCMDBContextKey || tenantID !== this.currentTenantID) return
         const context = normalizeCMDBContext(overview, tenantID)
         if (!context.ready || context.key !== contextKey) {
-          this.invalidateContext('Organization 或 GEN 已在其他会话中变化，旧表单已关闭。')
+          this.invalidateContext('配置组织或组织映射版本已在其他会话中变化，旧表单已关闭。')
           this.refreshAll()
         }
       } catch {
@@ -709,7 +709,7 @@ export default {
       }
     },
     writeContext() {
-      if (!this.writeContextReady) throw new Error('CMDB Organization 上下文未就绪，请刷新后重试。')
+      if (!this.writeContextReady) throw new Error('配置组织 上下文未就绪，请刷新后重试。')
       return {organization_id: this.cmdbContext.organization_id, generation: this.cmdbContext.generation, key: this.cmdbContext.key}
     },
     contextIsCurrent(context) {
@@ -745,7 +745,7 @@ export default {
     handleTenantContextChanging(event) {
       const targetID = Number(event && event.detail && event.detail.tenant && event.detail.tenant.id) || 0
       if (!targetID || targetID !== this.currentTenantID) {
-        this.invalidateContext('租户正在切换，已关闭旧 Organization 下的写入表单。')
+        this.invalidateContext('租户正在切换，已关闭旧配置组织下的写入表单。')
         return
       }
       if (!this.activeCMDBContextKey) this.$nextTick(() => {
@@ -777,7 +777,7 @@ export default {
         this.overview = {state: 'error', message: error.message, organization: null, mapping: null}
         this.activeCMDBContextKey = ''
         this.resetWorkspaces()
-        this.$message.error(error.message || '配置消费上下文加载失败')
+        this.$message.error(error.message || '监控配置上下文加载失败')
       } finally {
         if (sequence === this.overviewSequence) this.loading = false
       }
@@ -824,7 +824,7 @@ export default {
         this.taskPage = normalizeConfigurationPage(data, scope, 20)
       } catch (error) {
         if (sequence !== this.taskSequence || contextKey !== this.activeCMDBContextKey) return
-        if (!silent) this.$message.error(error.message || '任务账本加载失败')
+        if (!silent) this.$message.error(error.message || '执行记录加载失败')
       } finally {
         if (sequence === this.taskSequence) this.tasksLoading = false
       }
@@ -903,9 +903,9 @@ export default {
     },
     validateScenario() {
       if (!String(this.scenarioForm.name || '').trim() || String(this.scenarioForm.name).trim().length < 2) return '场景名称至少 2 个字'
-      if (!(Number(this.scenarioForm.application_id) > 0)) return '请选择 iTop ApplicationSolution'
-      if (!this.scenarioForm.asset_class) return '请选择 iTop CI class'
-      if (!this.scenarioForm.zid || !this.scenarioForm.target_host_group_id || !this.scenarioForm.template_id) return '请完整选择 Host Group 和 Template'
+      if (!(Number(this.scenarioForm.application_id) > 0)) return '请选择应用系统'
+      if (!this.scenarioForm.asset_class) return '请选择配置项类型'
+      if (!this.scenarioForm.zid || !this.scenarioForm.target_host_group_id || !this.scenarioForm.template_id) return '请完整选择主机组和监控模板'
       if (this.agentlessSelectionWarning) return this.agentlessSelectionWarning
       return ''
     },
@@ -1016,7 +1016,7 @@ export default {
         this.clearApplySelection()
       } catch (error) {
         if (sequence !== this.assetSequence || contextKey !== this.activeCMDBContextKey) return
-        this.applyError = this.failure(error, 'iTop CI 列表加载失败').message
+        this.applyError = this.failure(error, '配置项列表加载失败').message
       } finally {
         if (sequence === this.assetSequence) this.assetsLoading = false
       }
@@ -1056,7 +1056,7 @@ export default {
         if (sequence !== this.assetDetailSequence || contextKey !== this.activeCMDBContextKey) return
         this.selectedApplications = []
         this.selectedMonitoring = monitoringIdentity()
-        this.applyError = this.failure(error, 'CI 身份、关系或 F49 绑定读取失败').message
+        this.applyError = this.failure(error, '配置项身份、关系或监控关联读取失败').message
       } finally {
         if (sequence === this.assetDetailSequence) this.assetDetailLoading = false
       }
@@ -1075,7 +1075,7 @@ export default {
           expected_revision: String(asset.revision),
         }, context))
         if (!this.contextIsCurrent(context)) return
-        this.$message.success('已建立 CI → F49 Host 不可变快照，任务已入队')
+        this.$message.success('已建立配置项 → 绑定主机不可变快照，任务已入队')
         this.closeApply()
         this.taskScope = 'current'
         await this.loadTasks(1, true)
@@ -1207,4 +1207,9 @@ export default {
   .authority-node:first-child, .authority-node:last-child { border-radius: 7px; }
   .apply-layout { grid-template-columns: 1fr; }
 }
+
+.technical-details { margin-top: 4px; font-size: 12px; line-height: 1.65; min-width: 0; }
+.technical-details summary { cursor: pointer; color: inherit; font-family: inherit; font-weight: 400; }
+.technical-details[open] { padding-bottom: 4px; }
+.technical-details code, .technical-details small { display: block; overflow-wrap: anywhere; white-space: normal; }
 </style>

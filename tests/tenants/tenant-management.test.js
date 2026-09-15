@@ -46,5 +46,5 @@ test('builds stable zid and host-group scopes without sending immutable code on 
 
 test('rejects invalid codes and incomplete resource scopes', () => {
   assert.match(validateTenantDraft({code: '1x', name: 'A', scopes: []}), /租户编码/)
-  assert.match(validateTenantDraft({code: 'tenant-a', name: 'A', scopes: [{zid: 1}]}), /Host Group/)
+  assert.match(validateTenantDraft({code: 'tenant-a', name: 'A', scopes: [{zid: 1}]}), /主机组/)
 })

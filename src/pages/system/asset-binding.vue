@@ -3,7 +3,7 @@
     <div class="asset-binding-page">
       <a-alert
         message="历史只读 · 已废弃"
-        description="这些设备绑定曾把资产类型和监控项写入 Zabbix Inventory。iTop 现为唯一 CMDB 字段权威，旧配置不会再创建、修改、初始化、重试或自动执行；仅保留列表和历史记录用于核对。"
+        description="这些设备绑定曾向监控中心写入资产类型和监控项。配置管理中心现为唯一 CMDB 字段权威，旧配置不会再创建、修改、初始化、重试或自动执行；仅保留列表和历史记录用于核对。"
         type="warning"
         show-icon
         class="legacy-alert"
@@ -87,7 +87,7 @@
         <template #title>
           <div class="table-card__title-wrap">
             <div class="table-card__title">旧指标映射配置</div>
-            <div class="table-card__subtitle">历史 Inventory 指标关联只读保留，不会再执行或写入 Zabbix</div>
+            <div class="table-card__subtitle">历史监控侧资产信息指标关联只读保留，不会再执行或写入监控中心</div>
           </div>
         </template>
         <template #extra>
@@ -162,7 +162,7 @@
           <a-descriptions v-if="systemDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
             <a-descriptions-item label="名称">{{ systemDetailRecord.name || '-' }}</a-descriptions-item>
             <a-descriptions-item label="历史资产类型">{{ systemDetailRecord.type_code || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="Zabbix 实例">{{ getInstanceName(systemDetailRecord.zid) }}</a-descriptions-item>
+            <a-descriptions-item label="监控源">{{ getInstanceName(systemDetailRecord.zid) }}</a-descriptions-item>
             <a-descriptions-item label="历史主机组">{{ formatGroupNames(systemDetailRecord) }}</a-descriptions-item>
             <a-descriptions-item label="原自动化">{{ legacyAutomationLabel(systemDetailRecord) }}</a-descriptions-item>
             <a-descriptions-item label="历史状态">{{ systemDetailRecord.status }}</a-descriptions-item>
@@ -183,10 +183,10 @@
         @cancel="metricMappingDetailVisible = false"
       >
         <a-spin :spinning="metricMappingDetailLoading">
-          <a-alert message="完整指标配置仅用于核对，不会保存、执行或写入 Inventory。" type="info" show-icon />
+          <a-alert message="完整指标配置仅用于核对，不会保存、执行或写入监控侧资产信息。" type="info" show-icon />
           <a-descriptions v-if="metricMappingDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
             <a-descriptions-item label="历史系统类型">{{ metricMappingDetailRecord.system_type || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="Zabbix 实例">{{ getInstanceName(metricMappingDetailRecord.zid) }}</a-descriptions-item>
+            <a-descriptions-item label="监控源">{{ getInstanceName(metricMappingDetailRecord.zid) }}</a-descriptions-item>
             <a-descriptions-item label="历史主机组">{{ formatMetricMappingGroups(metricMappingDetailRecord) }}</a-descriptions-item>
             <a-descriptions-item label="历史指标关联">{{ metricCount(metricMappingDetailRecord) }} 项</a-descriptions-item>
             <a-descriptions-item label="原自动化">{{ legacyAutomationLabel(metricMappingDetailRecord) }}</a-descriptions-item>
@@ -242,7 +242,7 @@
         @cancel="metricMappingHistoryVisible = false"
       >
         <a-alert
-          message="历史记录仅用于审计和迁移核对，不会再次执行或建立 Inventory 关联。"
+          message="历史记录仅用于审计和迁移核对，不会再次执行或建立监控侧资产信息关联。"
           type="info"
           show-icon
           style="margin-bottom: 12px;"
@@ -303,7 +303,7 @@ export default {
       columns: [
         { title: '名称', dataIndex: 'name', key: 'name', scopedSlots: { customRender: 'name' }, width: 220 },
         { title: '历史资产类型', key: 'asset_type', scopedSlots: { customRender: 'asset_type' }, width: 300 },
-        { title: 'Zabbix 实例', key: 'zabbix_instance', scopedSlots: { customRender: 'zabbix_instance' }, width: 180 },
+        { title: '监控源', key: 'zabbix_instance', scopedSlots: { customRender: 'zabbix_instance' }, width: 180 },
         { title: '历史主机组', dataIndex: 'group_id', key: 'group_id', scopedSlots: { customRender: 'group_id' }, ellipsis: true, width: 260 },
         { title: '旧自动化', key: 'legacy_automation', scopedSlots: { customRender: 'legacy_automation' }, width: 220 },
         { title: '历史状态', key: 'status', scopedSlots: { customRender: 'status' }, width: 130 },
@@ -328,7 +328,7 @@ export default {
       systemDetailRecord: null,
       metricMappingColumns: [
         { title: '历史系统类型', dataIndex: 'system_type', key: 'system_type', scopedSlots: { customRender: 'mapping_system_type' }, width: 220 },
-        { title: 'Zabbix 实例', key: 'mapping_instance', scopedSlots: { customRender: 'mapping_instance' }, width: 180 },
+        { title: '监控源', key: 'mapping_instance', scopedSlots: { customRender: 'mapping_instance' }, width: 180 },
         { title: '历史主机组', dataIndex: 'host_group_ids', key: 'host_group_ids', scopedSlots: { customRender: 'mapping_groups' }, width: 260 },
         { title: '历史指标关联', key: 'metric_count', scopedSlots: { customRender: 'metric_count' }, width: 150 },
         { title: '旧自动化', key: 'mapping_automation', scopedSlots: { customRender: 'mapping_automation' }, width: 220 },

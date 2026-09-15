@@ -129,7 +129,7 @@ function deactivateImpactText(contact) {
   const impact = normalizeImpact(contact && contact.impact)
   if (!impact.total) return '当前没有资产引用，可以安全停用。'
   const samples = impact.sample_assets.map(item => item.name).filter(Boolean).slice(0, 5)
-  return `仍被 ${impact.total} 项资产引用${samples.length ? `：${samples.join('、')}` : ''}。请先到 CMDB 配置中心重新分配。`
+  return `仍被 ${impact.total} 项资产引用${samples.length ? `：${samples.join('、')}` : ''}。请先到资产配置中心重新分配。`
 }
 
 module.exports = {

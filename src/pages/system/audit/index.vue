@@ -4,7 +4,7 @@
       class="audit-notice"
       type="info"
       show-icon
-      message="操作审计仅保存操作元数据，不保存请求正文、密码、Token、通知收件人或第三方原始错误。"
+      message="操作审计仅保存操作元数据，不保存请求正文、密码、访问令牌、通知收件人或第三方原始错误。"
     />
 
     <a-form-model layout="inline" class="audit-filters">

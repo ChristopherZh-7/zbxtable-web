@@ -4,7 +4,7 @@
       <div class="content-page-header">
         <div>
           <h2>五类资源发现</h2>
-          <p>实时识别当前租户已由 Zabbix 纳管的主机，所有分类均有可核对的链接模板证据。</p>
+          <p>实时识别当前租户已由监控中心纳管的主机，所有分类均有可核对的链接模板证据。</p>
         </div>
         <a-button :loading="loading" @click="loadOverview"><a-icon type="reload" /> 刷新发现结果</a-button>
       </div>
@@ -39,7 +39,7 @@
         <a-table :loading="loading" :columns="columns" :data-source="filteredResources" :row-key="rowKey" :pagination="{pageSize: 10}" :scroll="{x: 1550}">
           <span slot="resource" slot-scope="record">
             <strong>{{ record.host_name }}</strong><br />
-            <span class="muted">{{ record.instance_name || `ZID ${record.zid}` }} · Host {{ record.host_id }}</span>
+            <span class="muted">{{ record.instance_name || `监控源编号 ${record.zid}` }} · 监控主机 {{ record.host_id }}</span>
           </span>
           <span slot="category" slot-scope="record">
             <a-tag :color="categoryColor(record.category_code)">{{ record.category }}</a-tag>
@@ -60,7 +60,7 @@
         </a-table>
       </section>
 
-      <div class="summary-line">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配首期代表模板。未采集的 Inventory 属性保持空值，不伪造。</div>
+      <div class="summary-line">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配首期代表模板。未采集的监控侧资产信息属性保持空值，不伪造。</div>
     </div>
   </page-layout>
 </template>

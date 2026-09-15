@@ -255,7 +255,7 @@ const options = {
             },
             {
               path: "zabbix",
-              name: "Zabbix管理",
+              name: "监控源管理",
               component: () => import("@/pages/system/zabbix"),
             },
             {

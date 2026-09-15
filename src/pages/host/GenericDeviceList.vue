@@ -26,7 +26,7 @@
             </a-select>
           </a-form-model-item>
           <a-form-model-item label="业务系统">
-            <a-input v-model.trim="tagFilters.app" allow-clear placeholder="小写 slug" style="width: 140px" />
+            <a-input v-model.trim="tagFilters.app" allow-clear placeholder="小写业务标识，例如 billing-api" style="width: 140px" />
           </a-form-model-item>
           <a-form-model-item label="重要级别">
             <a-select v-model="tagFilters.level" allow-clear placeholder="全部级别" style="width: 120px">
@@ -57,7 +57,7 @@
       />
 
       <a-alert
-        message="Zabbix Inventory 资产语义字段只读；历史自定义属性仅供查看，不属于 CMDB。资产真值请在 CMDB 配置中心维护，标准监控标签仍可在本页编辑。"
+        message="监控侧资产字段只读；历史自定义属性仅供查看，不属于 CMDB。请在资产配置中心维护正式资产信息，本页仍可编辑标准监控标签。"
         type="info"
         show-icon
         style="margin-bottom: 12px;"
@@ -151,7 +151,7 @@
         @ok="saveTags"
         @cancel="closeTagEditor"
       >
-        <a-alert message="tenant 由平台强制为当前租户，非标准 Zabbix 标签会保留。" type="info" show-icon style="margin-bottom: 16px" />
+        <a-alert message="tenant 由平台强制为当前租户，非标准监控中心标签会保留。" type="info" show-icon style="margin-bottom: 16px" />
         <a-form-model layout="vertical">
           <a-form-model-item label="租户">
             <a-input :value="currentTenant.code || ''" disabled />

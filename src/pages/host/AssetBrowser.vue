@@ -4,7 +4,7 @@
       <div>
         <p class="asset-kicker">统一台账</p>
         <h1>资产管理</h1>
-        <p>查看全部监控设备，或按已有分类浏览；资产档案在 CMDB 配置中心维护。</p>
+        <p>查看全部监控设备，或按已有分类浏览；资产档案在资产配置中心维护。</p>
       </div>
       <div class="smartops-heading-metric">监控设备总数<strong>{{ totalAssets }}</strong></div>
     </div>

@@ -1,7 +1,7 @@
 export default {
   'zh-CN': {
-    title: 'SmartOps 安装向导',
-    subtitle: '欢迎使用 SmartOps，请按照以下步骤完成安装配置',
+    title: '智能运维管理系统安装向导',
+    subtitle: '欢迎使用智能运维管理系统，请按照以下步骤完成安装配置',
     
     // 步骤
     steps: {
@@ -118,8 +118,8 @@ export default {
   },
   
   'en-US': {
-    title: 'SmartOps Installation Wizard',
-    subtitle: 'Welcome to SmartOps, please follow the steps below to complete the installation',
+    title: 'Intelligent Operations Platform Installation Wizard',
+    subtitle: 'Welcome to Intelligent Operations Platform, please follow the steps below to complete the installation',
     
     // Steps
     steps: {
@@ -236,8 +236,8 @@ export default {
   },
   
   'zh-TW': {
-    title: 'SmartOps 安裝嚮導',
-    subtitle: '歡迎使用 SmartOps，請按照以下步驟完成安裝配置',
+    title: '智能運維管理系統安裝嚮導',
+    subtitle: '歡迎使用智能運維管理系統，請按照以下步驟完成安裝配置',
     
     // 步驟
     steps: {

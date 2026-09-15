@@ -4,7 +4,7 @@
       <div class="baseline-page__header">
         <div>
           <h2>动态基线</h2>
-          <p>使用 Zabbix 历史同期趋势识别偏离；每条规则对应一个可审计的真实触发器。</p>
+          <p>使用监控中心历史同期趋势识别偏离；每条规则对应一个可审计的真实触发器。</p>
         </div>
         <div>
           <a-button :loading="loading" @click="load"><a-icon type="reload" /> 刷新</a-button>
@@ -38,7 +38,7 @@
         <span slot="operation" slot-scope="record">
           <a-button type="link" size="small" @click="openDetail(record)">查看曲线</a-button>
           <a-button v-auth="'update'" type="link" size="small" @click="openEdit(record)">编辑</a-button>
-          <a-popconfirm title="确认删除该基线规则和 Zabbix 触发器？" @confirm="remove(record)">
+            <a-popconfirm title="确认删除该基线规则和监控触发器？" @confirm="remove(record)">
             <a-button v-auth="'delete'" type="link" size="small">删除</a-button>
           </a-popconfirm>
         </span>

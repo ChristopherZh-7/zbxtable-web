@@ -19,10 +19,10 @@ test('page exposes trusted CMDB candidates as a manual-confirmation read-only vi
     '[SmartOps Discovery]',
     '扁平 JSON',
     '64 KiB',
-    'CMDB 配置中心',
+    '资产配置中心',
     '人工确认',
-    'iTop',
-    '不会写入 SmartOps 自定义属性',
+    '配置管理中心',
+    '不会写入智能运维管理系统自定义属性',
   ]) {
     assert.ok(page.includes(text), `missing confirmed copy: ${text}`)
   }

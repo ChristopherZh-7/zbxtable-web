@@ -4,7 +4,7 @@
       <div class="content-page-header">
         <div>
           <h2>网络发现</h2>
-          <p>由 Zabbix 扫描已授权的私有 IPv4 范围，展示真实发现的设备和服务端口。</p>
+          <p>由监控中心扫描已授权的私有 IPv4 范围，展示真实发现的设备和服务端口。</p>
         </div>
         <div>
           <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新结果</a-button>
@@ -19,11 +19,11 @@
 
       <section class="section-card">
         <div class="section-title">
-          <div><strong>扫描规则</strong><span>Zabbix 每 1 分钟周期执行</span></div>
+          <div><strong>扫描规则</strong><span>监控中心每 1 分钟周期执行</span></div>
           <a-tag color="blue">{{ rules.length }} 条</a-tag>
         </div>
         <a-table :loading="loading" :columns="ruleColumns" :data-source="rules" :row-key="record => record.id" :pagination="false" :scroll="{x: 1050}">
-          <span slot="ruleName" slot-scope="record"><strong>{{ record.name }}</strong><br /><span class="muted">{{ record.instance_name || `ZID ${record.zid}` }}</span></span>
+          <span slot="ruleName" slot-scope="record"><strong>{{ record.name }}</strong><br /><span class="muted">{{ record.instance_name || `监控源编号 ${record.zid}` }}</span></span>
           <span slot="range" slot-scope="record"><code>{{ record.ip_range }}</code></span>
           <span slot="ports" slot-scope="record"><a-tag v-for="port in splitPorts(record.ports)" :key="port">{{ port }}</a-tag></span>
           <span slot="state" slot-scope="record">
@@ -32,7 +32,7 @@
           </span>
           <span slot="created" slot-scope="record">{{ formatTime(record.created_at) }}<br /><span class="muted">{{ record.created_by }}</span></span>
           <span slot="operation" slot-scope="record">
-            <a-popconfirm v-if="canManage" title="将同步删除 Zabbix 发现规则，确认继续？" @confirm="removeRule(record)">
+            <a-popconfirm v-if="canManage" title="将同步删除监控中心的发现规则，确认继续？" @confirm="removeRule(record)">
               <a-button type="link" size="small">删除</a-button>
             </a-popconfirm>
             <span v-else class="muted">只读</span>
@@ -42,7 +42,7 @@
 
       <section class="section-card">
         <div class="section-title">
-          <div><strong>发现结果</strong><span>只展示当前租户规则中状态为 Up 的服务</span></div>
+          <div><strong>发现结果</strong><span>只展示当前租户规则中状态为在线 的服务</span></div>
           <a-tag :color="results.length ? 'green' : 'default'">{{ results.length }} 台存活设备</a-tag>
         </div>
         <a-table :loading="loading" :columns="resultColumns" :data-source="results" :row-key="record => `${record.rule_id}:${record.ip}`" :pagination="{pageSize: 10}" :scroll="{x: 900}">
@@ -55,10 +55,10 @@
     </div>
 
     <a-modal :visible="createVisible" title="新建网络发现规则" :confirm-loading="saving" width="620px" ok-text="创建并启用" @ok="saveRule" @cancel="closeCreate">
-      <a-alert message="规则创建后由 Zabbix 执行，不会自动创建主机或关联模板。" type="info" show-icon class="section-alert" />
+      <a-alert message="规则创建后由监控中心执行，不会自动创建主机或关联模板。" type="info" show-icon class="section-alert" />
       <a-form-model layout="vertical">
         <a-form-model-item label="规则名称"><a-input v-model.trim="form.name" maxlength="100" placeholder="例如：办公网 C 段基础发现" /></a-form-model-item>
-        <a-form-model-item label="Zabbix 实例">
+        <a-form-model-item label="监控源">
           <a-select v-model="form.zid" placeholder="选择执行扫描的实例">
             <a-select-option v-for="item in resources" :key="item.zid" :value="item.zid">{{ item.name }}（{{ item.instance }}）</a-select-option>
           </a-select>

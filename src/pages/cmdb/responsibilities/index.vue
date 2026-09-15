@@ -3,9 +3,9 @@
     <div class="responsibility-directory" data-testid="cmdb-responsibility-page">
       <header class="smartops-page-heading responsibility-heading">
         <div>
-          <p class="responsibility-kicker">RESPONSIBILITY DIRECTORY</p>
-          <h1>CMDB 基础资料</h1>
-          <p>维护当前 iTop Organization 的运维团队与负责人，再供资产建档和发现入库统一选用。</p>
+          <p class="responsibility-kicker">运维责任资料</p>
+          <h1>运维基础资料</h1>
+          <p>维护当前配置组织的运维团队与负责人，再供资产建档和发现入库统一选用。</p>
         </div>
         <div class="heading-actions">
           <span class="context-chip"><i />{{ currentTenant.name || '当前租户' }}</span>
@@ -19,42 +19,42 @@
       <section class="identity-spine" data-testid="identity-boundary">
         <div class="identity-node">
           <span class="identity-index">01</span>
-          <div><small>SMARTOPS USER</small><strong>平台账号</strong><p>只管登录与账号启停</p></div>
+          <div><small>登录身份</small><strong>平台账号</strong><p>只管登录与账号启停</p></div>
         </div>
         <span class="identity-arrow">→</span>
         <div class="identity-node">
           <span class="identity-index">02</span>
-          <div><small>TENANT MEMBER</small><strong>租户成员</strong><p>只管角色与数据范围</p></div>
+          <div><small>授权范围</small><strong>租户成员</strong><p>只管角色与数据范围</p></div>
         </div>
         <span class="identity-arrow">→</span>
         <div class="identity-node identity-node--truth">
           <span class="identity-index">03</span>
-          <div><small>ITOP CONTACT</small><strong>Team / Person</strong><p>保存真实运维责任</p></div>
+          <div><small>责任信息</small><strong>团队与负责人</strong><p>保存真实运维责任</p></div>
         </div>
         <div class="identity-rule"><a-icon type="safety-certificate" /><span>关联只表示身份对应，<strong>不会授予或改变任何平台权限</strong></span></div>
       </section>
 
       <a-spin :spinning="loading">
         <section v-if="directory.state === 'error'" class="directory-empty directory-empty--error smartops-data-panel" data-testid="responsibility-load-error">
-          <div class="empty-symbol">ERR</div>
-          <h2>CMDB 基础资料读取失败</h2>
-          <p>{{ directory.message || 'iTop 或 SmartOps 接口暂时不可用，请稍后重试。' }}</p>
+          <div class="empty-symbol">异常</div>
+          <h2>运维基础资料读取失败</h2>
+          <p>{{ directory.message || '配置管理中心或智能运维管理系统接口暂时不可用，请稍后重试。' }}</p>
           <a-button type="primary" icon="reload" @click="reload">重新读取</a-button>
         </section>
 
         <section v-else-if="directory.state === 'unconfigured'" class="directory-empty smartops-data-panel">
-          <div class="empty-symbol">ORG</div>
-          <h2>当前租户尚未关联 iTop Organization</h2>
-          <p>先由平台管理员在 CMDB 配置中心建立组织映射，再在这里维护责任基础资料。</p>
-          <a-button type="primary" @click="goToAssets">前往 CMDB 配置中心</a-button>
+          <div class="empty-symbol">组织</div>
+          <h2>当前租户尚未关联配置组织</h2>
+          <p>先由平台管理员在资产配置中心建立组织映射，再在这里维护责任基础资料。</p>
+          <a-button type="primary" @click="goToAssets">前往资产配置中心</a-button>
         </section>
 
         <template v-else>
           <section class="directory-summary">
-            <article><span>ORGANIZATION</span><strong>{{ organizationName }}</strong><small>{{ organizationIdentity }} · iTop 责任真源</small></article>
-            <article><span>ACTIVE TEAMS</span><strong>{{ summary.activeTeams }}</strong><small>共 {{ directory.teams.length }} 个团队</small></article>
-            <article><span>ACTIVE PEOPLE</span><strong>{{ summary.activePeople }}</strong><small>共 {{ directory.people.length }} 位负责人</small></article>
-            <article :class="{'summary-warning': summary.accountWarnings}"><span>ACCOUNT LINKS</span><strong>{{ summary.linkedAccounts }}</strong><small>{{ summary.accountWarnings ? `${summary.accountWarnings} 项需重新关联` : '身份关联正常' }}</small></article>
+            <article><span>所属组织</span><strong>{{ organizationName }}</strong><details class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details></article>
+            <article><span>启用团队</span><strong>{{ summary.activeTeams }}</strong><small>共 {{ directory.teams.length }} 个团队</small></article>
+            <article><span>启用负责人</span><strong>{{ summary.activePeople }}</strong><small>共 {{ directory.people.length }} 位负责人</small></article>
+            <article :class="{'summary-warning': summary.accountWarnings}"><span>账号关联</span><strong>{{ summary.linkedAccounts }}</strong><small>{{ summary.accountWarnings ? `${summary.accountWarnings} 项需重新关联` : '身份关联正常' }}</small></article>
           </section>
 
           <section class="directory-ledger smartops-data-panel">
@@ -82,7 +82,7 @@
               :locale="{emptyText: '暂无匹配的运维团队'}"
             >
               <template slot="identity" slot-scope="record">
-                <div class="contact-identity"><span class="contact-mark contact-mark--team">T</span><div><strong>{{ record.display_name }}</strong><small>Team #{{ record.id }} · {{ record.function || '未设置职能' }}</small></div></div>
+                <div class="contact-identity"><span class="contact-mark contact-mark--team">团</span><div><strong>{{ record.display_name }}</strong><small>运维团队 #{{ record.id }} · {{ record.function || '未设置职能' }}</small></div></div>
               </template>
               <template slot="status" slot-scope="record"><a-tag :color="statusMeta(record.status).color">{{ statusMeta(record.status).label }}</a-tag></template>
               <template slot="members" slot-scope="record">
@@ -110,7 +110,7 @@
               :locale="{emptyText: '暂无匹配的负责人'}"
             >
               <template slot="identity" slot-scope="record">
-                <div class="contact-identity"><span class="contact-mark">{{ initials(record) }}</span><div><strong>{{ record.display_name }}</strong><small>Person #{{ record.id }} · {{ record.employee_number || '无工号' }}</small></div></div>
+                <div class="contact-identity"><span class="contact-mark">{{ initials(record) }}</span><div><strong>{{ record.display_name }}</strong><small>负责人 #{{ record.id }} · {{ record.employee_number || '无工号' }}</small></div></div>
               </template>
               <template slot="status" slot-scope="record"><a-tag :color="statusMeta(record.status).color">{{ statusMeta(record.status).label }}</a-tag></template>
               <template slot="teams" slot-scope="record">
@@ -142,17 +142,17 @@
         cancel-text="取消"
         @ok="saveRecord"
       >
-        <div class="editor-boundary"><a-icon type="info-circle" /><span><strong>写入 {{ organizationName }}</strong>（{{ organizationIdentity }}）。<template v-if="editorType === 'person'">Person 账号关联只用于身份对应，不会改变租户角色。</template><template v-else>Team 保存在 iTop，成员归属由负责人资料维护。</template></span></div>
+        <div class="editor-boundary"><a-icon type="info-circle" /><span><strong>写入 {{ organizationName }}</strong>（{{ organizationIdentity }}）。<template v-if="editorType === 'person'">负责人账号关联只用于身份对应，不会改变租户角色。</template><template v-else>运维团队保存在配置管理中心，成员归属由负责人资料维护。</template></span></div>
         <a-form-model :model="editorForm" layout="vertical" class="editor-form">
           <div class="form-grid">
             <a-form-model-item :label="editorType === 'team' ? '团队名称' : '姓 / 姓名主体'" required><a-input v-model.trim="editorForm.name" :max-length="255" /></a-form-model-item>
-            <a-form-model-item v-if="editorType === 'person'" label="名 / 英文名" required><a-input v-model.trim="editorForm.first_name" :max-length="255" placeholder="iTop 必填，将与前一字段组合展示" /></a-form-model-item>
+            <a-form-model-item v-if="editorType === 'person'" label="名 / 英文名" required><a-input v-model.trim="editorForm.first_name" :max-length="255" placeholder="配置管理中心必填，将与前一字段组合展示" /></a-form-model-item>
             <a-form-model-item label="职能 / 岗位"><a-input v-model.trim="editorForm.function" :max-length="255" placeholder="例：数据库运维" /></a-form-model-item>
             <a-form-model-item v-if="editorType === 'person'" label="工号 / 外部编号"><a-input v-model.trim="editorForm.employee_number" :max-length="255" /></a-form-model-item>
             <a-form-model-item label="邮箱"><a-input v-model.trim="editorForm.email" :max-length="255" /></a-form-model-item>
             <a-form-model-item label="电话"><a-input v-model.trim="editorForm.phone" :max-length="32" /></a-form-model-item>
             <a-form-model-item v-if="editorType === 'person'" label="手机"><a-input v-model.trim="editorForm.mobile_phone" :max-length="32" /></a-form-model-item>
-            <a-form-model-item label="iTop 通知标记"><a-radio-group v-model="editorForm.notify"><a-radio value="yes">允许通知</a-radio><a-radio value="no">不通知</a-radio></a-radio-group></a-form-model-item>
+            <a-form-model-item label="配置管理中心通知标记"><a-radio-group v-model="editorForm.notify"><a-radio value="yes">允许通知</a-radio><a-radio value="no">不通知</a-radio></a-radio-group></a-form-model-item>
           </div>
           <template v-if="editorType === 'person'">
             <a-divider orientation="left">责任关系</a-divider>
@@ -181,7 +181,7 @@
         <div v-if="impactTarget && impactTarget.impact.sample_assets.length" class="impact-assets">
           <div v-for="asset in impactTarget.impact.sample_assets" :key="`${asset.key}-${asset.role}`"><span>{{ asset.name }}</span><small>{{ asset.class }} · {{ impactRoleLabel(asset.role) }}</small></div>
         </div>
-        <div class="impact-footer"><a-button @click="impactVisible = false">稍后处理</a-button><a-button type="primary" @click="goToAssets">去 CMDB 配置中心重新分配</a-button></div>
+        <div class="impact-footer"><a-button @click="impactVisible = false">稍后处理</a-button><a-button type="primary" @click="goToAssets">去资产配置中心重新分配</a-button></div>
       </a-modal>
     </div>
   </page-layout>
@@ -244,7 +244,7 @@ export default {
       {title: '团队', scopedSlots: {customRender: 'identity'}, width: 250},
       {title: '状态', scopedSlots: {customRender: 'status'}, width: 86},
       {title: '成员', scopedSlots: {customRender: 'members'}, width: 230},
-      {title: 'CI 引用', scopedSlots: {customRender: 'impact'}, width: 175},
+      {title: '配置项引用', scopedSlots: {customRender: 'impact'}, width: 175},
       {title: '联系方式', scopedSlots: {customRender: 'contact'}},
       {title: '操作', scopedSlots: {customRender: 'operation'}, width: 150},
     ],
@@ -253,7 +253,7 @@ export default {
       {title: '状态', scopedSlots: {customRender: 'status'}, width: 86},
       {title: '团队归属', scopedSlots: {customRender: 'teams'}, width: 200},
       {title: '平台账号关联', scopedSlots: {customRender: 'account'}, width: 210},
-      {title: 'CI 责任', scopedSlots: {customRender: 'impact'}, width: 175},
+      {title: '配置项责任', scopedSlots: {customRender: 'impact'}, width: 175},
       {title: '操作', scopedSlots: {customRender: 'operation'}, width: 165},
     ],
   }),
@@ -268,9 +268,9 @@ export default {
     writeContextReady() { return this.cmdbContext.ready && this.activeCMDBContextKey === this.cmdbContext.key },
     organizationName() { return this.directory.organization && this.directory.organization.name || '未配置' },
     organizationIdentity() {
-      if (!this.cmdbContext.organization_id) return 'Organization 未就绪'
-      const code = this.directory.organization && this.directory.organization.code || 'NO-CODE'
-      return `${code} · ID ${this.cmdbContext.organization_id} · GEN ${this.cmdbContext.generation || '—'}`
+      if (!this.cmdbContext.organization_id) return '配置组织未就绪'
+      const code = this.directory.organization && this.directory.organization.code || '未设编码'
+      return `${code} · 组织编号 ${this.cmdbContext.organization_id} · 组织映射版本 ${this.cmdbContext.generation || '—'}`
     },
     filteredTeams() { return filterContacts(this.directory.teams, this.search, this.statusFilter) },
     filteredPeople() { return filterContacts(this.directory.people, this.search, this.statusFilter) },
@@ -301,7 +301,7 @@ export default {
   watch: {
     currentTenantID(next, previous) {
       if (previous && next !== previous) {
-        this.invalidateCMDBContext('租户上下文已切换，旧 CMDB 基础资料表单已关闭。')
+        this.invalidateCMDBContext('租户上下文已切换，旧运维基础资料表单已关闭。')
         this.reload()
       }
     },
@@ -336,7 +336,7 @@ export default {
     },
     writeContext() {
       if (!this.writeContextReady) {
-        const error = new Error('CMDB Organization 上下文未就绪，请刷新后重试。')
+        const error = new Error('配置组织 上下文未就绪，请刷新后重试。')
         error.businessReason = 'cmdb_context_mismatch'
         throw error
       }
@@ -363,7 +363,7 @@ export default {
     handleTenantContextChanging(event) {
       const targetID = Number(event && event.detail && event.detail.tenant && event.detail.tenant.id) || 0
       if (!targetID || targetID !== this.currentTenantID) {
-        this.invalidateCMDBContext('租户正在切换，已关闭旧 CMDB 基础资料表单。')
+        this.invalidateCMDBContext('租户正在切换，已关闭旧运维基础资料表单。')
         return
       }
       if (!this.activeCMDBContextKey) this.$nextTick(() => {
@@ -390,7 +390,7 @@ export default {
         const overview = this.unwrap(overviewResponse) || {}
         const context = normalizeCMDBContext(overview, tenantID)
         if (rawDirectory.state === 'ready' && (!context.ready || Number(rawDirectory.organization && rawDirectory.organization.id) !== context.organization_id)) {
-          throw new Error('CMDB 基础资料与 Overview 的 Organization 上下文不一致')
+          throw new Error('运维基础资料与资产总览的配置组织上下文不一致')
         }
         if (this.activeCMDBContextKey && context.key && this.activeCMDBContextKey !== context.key) this.resetContextWorkspaces()
         this.directory = normalizeDirectory({...rawDirectory, mapping: overview.mapping || null})
@@ -404,10 +404,10 @@ export default {
         }
       } catch (error) {
         if (sequence !== this.loadSequence || tenantID !== this.currentTenantID) return
-        this.directory = emptyDirectory('error', error.message || 'iTop 或 SmartOps 接口暂时不可用')
+        this.directory = emptyDirectory('error', error.message || '配置管理中心或智能运维管理系统接口暂时不可用')
         this.activeCMDBContextKey = ''
         this.accountOptions = []
-        this.$message.error(error.message || '加载 CMDB 基础资料失败')
+        this.$message.error(error.message || '加载运维基础资料失败')
       } finally {
         if (sequence === this.loadSequence) this.loading = false
       }
@@ -471,7 +471,7 @@ export default {
         this.editorVisible = false
         await this.reload()
       } catch (error) {
-        this.$message.error(this.handleWriteFailure(error, '保存 CMDB 基础资料失败').message)
+        this.$message.error(this.handleWriteFailure(error, '保存运维基础资料失败').message)
         if (this.activeCMDBContextKey) await this.reload()
       } finally {
         this.saving = false
@@ -481,14 +481,14 @@ export default {
       let person
       if (this.editingRecord) person = this.unwrap(await updateCMDBPerson(this.editingRecord.id, this.editingRecord.revision, fields, context))
       else person = this.unwrap(await createCMDBPerson(fields, context))
-      if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
+      if (!this.contextIsCurrent(context)) throw Object.assign(new Error('配置组织 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
 
       const oldTeams = this.editingRecord ? this.editingRecord.team_ids : []
       const teamChanged = !sameIDs(oldTeams, this.editorForm.team_ids)
       if (teamChanged) {
         try {
           person = this.unwrap(await updateCMDBPersonTeams(person.id, person.revision, this.editorForm.team_ids, context))
-          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
+          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('配置组织 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
         } catch (error) {
           const failure = this.cmdbFailure(error, '团队归属未完成')
           throw Object.assign(new Error(`负责人资料已保存，但团队归属未完成：${failure.message}`), {businessReason: failure.reason, businessData: failure.data})
@@ -499,7 +499,7 @@ export default {
       if (oldUserID !== nextUserID) {
         try {
           this.unwrap(await setCMDBPersonAccount(person.id, nextUserID, context))
-          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('CMDB Organization 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
+          if (!this.contextIsCurrent(context)) throw Object.assign(new Error('配置组织 上下文已变化'), {businessReason: 'cmdb_context_mismatch'})
         } catch (error) {
           const failure = this.cmdbFailure(error, '账号关联未完成')
           throw Object.assign(new Error(`负责人与团队资料已保存，但账号关联未完成：${failure.message}`), {businessReason: failure.reason, businessData: failure.data})
@@ -646,4 +646,9 @@ export default {
   .ledger-toolbar .ant-input-search { width: 100%; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+.technical-details { margin-top: 4px; font-size: 12px; line-height: 1.65; min-width: 0; }
+.technical-details summary { cursor: pointer; color: inherit; font-family: inherit; font-weight: 400; }
+.technical-details[open] { padding-bottom: 4px; }
+.technical-details code, .technical-details small { display: block; overflow-wrap: anywhere; white-space: normal; }
 </style>

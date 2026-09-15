@@ -39,7 +39,7 @@
       </screen-panel>
 
       <!-- 行 3 左：Linux TOP（CPU/内存切换） -->
-      <screen-panel class="area-cpu-top" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' TOP'">
+      <screen-panel class="area-cpu-top" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'">
         <template slot="extra">
           <div class="top-toggle">
             <span class="toggle-btn" :class="{ active: linMetric === 'cpu' }" @click="linMetric = 'cpu'">CPU</span>
@@ -55,7 +55,7 @@
       </screen-panel>
 
       <!-- 行 3 右：Windows TOP（CPU/内存切换） -->
-      <screen-panel class="area-mem-top" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' TOP'">
+      <screen-panel class="area-mem-top" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'">
         <template slot="extra">
           <div class="top-toggle">
             <span class="toggle-btn" :class="{ active: winMetric === 'cpu' }" @click="winMetric = 'cpu'">CPU</span>

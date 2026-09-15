@@ -8,7 +8,7 @@
 
       <a-table :loading="loading" :columns="columns" :data-source="list" :rowKey="r => r.id" :pagination="{ pageSize: 10 }" :scroll="{ x: 'max-content' }">
         <template slot="instance" slot-scope="text">
-          <a-tag :color="$themeColor">{{ text }}</a-tag>
+          <details><summary>查看标识</summary><a-tag :color="$themeColor">{{ text }}</a-tag></details>
         </template>
         <template slot="enabled" slot-scope="text, record">
           <a-tag v-if="record.enabled" :color="$themeColor">{{ $t('status_enabled') }}</a-tag>
@@ -17,7 +17,7 @@
         <template slot="zabbix" slot-scope="text, record">
           <div>
             <div><strong>{{ record.name }}</strong></div>
-            <div style="font-size: 12px; color: #999;">{{ record.url }}</div>
+            <details style="font-size: 12px;"><summary>连接地址</summary><div>{{ record.url }}</div></details>
           </div>
         </template>
         <template slot="version" slot-scope="text, record">
@@ -758,13 +758,13 @@ export default {
           // Webhook 安装流程
           this.addLog('info', this.$t('install_webhook_desc') + '...')
           this.addLog('info', `${this.$t('col_instance_id')}: ${this.currentRecord.instance}`)
-          this.addLog('info', `Zabbix: ${this.currentRecord.name} (${this.currentRecord.url})`)
+          this.addLog('info', `监控源: ${this.currentRecord.name} (${this.currentRecord.url})`)
           
           await this.sleep(500)
           this.currentStep = 0
           this.addLog('info', `[${this.$t('install_step_connect')} 1/3] ${this.$t('install_step_connect')} API...`)
           await this.sleep(500)
-          this.addLog('success', `✓ Zabbix API ${this.$t('status_connected')}`)
+          this.addLog('success', `✓ 监控服务 API ${this.$t('status_connected')}`)
           
           this.currentStep = 1
           this.addLog('info', `[${this.$t('install_step_create')} 2/3] ${this.$t('install_step_create')}...`)
@@ -806,16 +806,16 @@ export default {
           // MS-Agent 安装流程
           this.addLog('info', this.$t('install_msagent_desc') + '...')
           this.addLog('info', `${this.$t('col_instance_id')}: ${this.currentRecord.instance}`)
-          this.addLog('info', `Zabbix: ${this.currentRecord.name} (${this.currentRecord.url})`)
+          this.addLog('info', `监控源: ${this.currentRecord.name} (${this.currentRecord.url})`)
           
           await this.sleep(500)
           this.currentStep = 0
           this.addLog('info', `[${this.$t('install_step_connect')} 1/3] ${this.$t('install_step_connect')} API...`)
           await this.sleep(500)
-          this.addLog('success', `✓ Zabbix API ${this.$t('status_connected')}`)
+          this.addLog('success', `✓ 监控服务 API ${this.$t('status_connected')}`)
           
           this.currentStep = 1
-          this.addLog('info', `[${this.$t('install_step_create')} 2/3] ${this.$t('install_step_create')} Zabbix...`)
+          this.addLog('info', `[${this.$t('install_step_create')} 2/3] ${this.$t('install_step_create')} 监控服务...`)
           await this.sleep(300)
           this.addLog('info', '  - ' + this.$t('install_msagent_item1'))
           await this.sleep(300)
@@ -831,7 +831,7 @@ export default {
           
           if (biz && biz.code === 200) {
             await this.sleep(500)
-            this.addLog('success', '✓ Zabbix ' + this.$t('install_step_create') + this.$t('install_success_title'))
+            this.addLog('success', '✓ 监控服务 ' + this.$t('install_step_create') + this.$t('install_success_title'))
             
             this.currentStep = 2
             this.addLog('info', `[${this.$t('install_step_generate')} 3/3] ${this.$t('install_step_generate')}...`)
@@ -894,7 +894,7 @@ export default {
     handleReinstallMSAgent (record) {
       this.$confirm({
         title: '重新安装 MS-Agent 配置',
-        content: '确定要重新安装吗？这将重新创建 Zabbix 中的配置并生成新的 Token。',
+        content: '确定要重新安装吗？这将重新创建监控中心中的配置并生成新的访问令牌。',
         okText: '确定',
         cancelText: '取消',
         onOk: () => {

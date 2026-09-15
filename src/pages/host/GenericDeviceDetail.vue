@@ -10,7 +10,7 @@
         <!-- 基本信息卡片 -->
         <a-card title="基本信息" :body-style="{ padding: '12px' }" style="margin-bottom: 16px;">
           <a-alert
-            message="本页资产字段只读：Zabbix Inventory 仅作为监控侧信息展示，资产真值请在 CMDB 配置中心维护；历史自定义属性只读保留，不属于 CMDB。"
+            message="本页资产字段只读：监控侧资产信息仅供查看，正式资产信息请在资产配置中心维护；历史自定义属性只读保留，不属于 CMDB。"
             type="info"
             show-icon
             style="margin-bottom: 12px;"
@@ -46,9 +46,9 @@
                 </template>
                 <!-- ping -->
                 <template v-else-if="field.render === 'ping'">
-                  <a-tag v-if="detail[field.key] && detail[field.key].includes('Up')" color="#34af67">Up</a-tag>
-                  <a-tag v-else-if="detail[field.key] && detail[field.key].includes('Down')" color="#DC143C">Down</a-tag>
-                  <a-tag v-else color="#808080">Unknown</a-tag>
+                  <a-tag v-if="detail[field.key] && detail[field.key].includes('Up')" color="#34af67">在线</a-tag>
+                  <a-tag v-else-if="detail[field.key] && detail[field.key].includes('Down')" color="#DC143C">离线</a-tag>
+                  <a-tag v-else color="#808080">未知</a-tag>
                   <span v-if="detail.ping_sec" style="font-size: 12px; color: #888; margin-left: 4px;">
                     {{ (detail.ping_sec || '').replace(/\s/g, '') }} / {{ (detail.ping_loss || '').replace(/\s/g, '') }}
                   </span>

@@ -1,49 +1,49 @@
 const CONFIGURATION_SCOPES = [
-  {value: 'current', label: '当前', caption: '当前 Organization 与 GEN 下可执行的记录'},
+  {value: 'current', label: '当前', caption: '当前配置组织与组织映射版本下可执行的记录'},
   {value: 'archive', label: '归档', caption: '映射切换后保留的不可变记录'},
   {value: 'legacy', label: '遗留冻结', caption: '缺少 CMDB 身份的旧数据，只读保留'},
 ]
 
 const ERROR_MESSAGES = {
-  agentless_unconfigured: '平台尚未配置 Agentless 接入档案，请联系平台运维。',
+  agentless_unconfigured: '平台尚未配置免代理采集接入档案，请联系平台运维。',
   agentless_catalog_unavailable: '服务端接入档案不可用，请联系平台运维核验配置文件。',
-  agentless_denied: '该接入档案不属于当前租户、Organization、实例或 CI 类型。',
+  agentless_denied: '该接入档案不属于当前租户、配置组织、实例或配置项类型。',
   agentless_profile_stale: '接入档案已变更，请重新选择档案并保存场景。',
   agentless_credential_unavailable: '服务端凭据引用不可用，请联系平台运维核验；不要在页面填写密码。',
-  agentless_target_denied: 'CI 管理 IP 不在档案允许的地址范围，请核对资产与接入范围。',
+  agentless_target_denied: '配置项管理 IP 不在档案允许的地址范围，请核对资产与接入范围。',
   agentless_template_unsafe: '模板已偏离批准的协议安全设置，请联系平台运维核验。',
-  agentless_configuration_conflict: 'Host 存在受管配置冲突，未覆盖；请先核对现有接口与档案。',
-  agentless_profile_required: '该 Host 已使用 Agentless 档案，请选择对应档案后重新应用。',
-  agentless_transport_unsafe: 'Zabbix API 的安全连接不可用，请联系平台运维核验证书与 CA。',
-  configuration_cmdb_identity_required: '旧的裸 Host 入口已停用；请从当前 iTop CI 重新应用场景。',
-  configuration_context_stale: 'Organization 或 GEN 已变化；请刷新后重新操作。',
-  mapping_context_stale: 'Organization 或 GEN 已变化；请刷新后重新操作。',
+  agentless_configuration_conflict: '监控主机存在受管配置冲突，未覆盖；请先核对现有接口与档案。',
+  agentless_profile_required: '该监控主机已使用免代理采集档案，请选择对应档案后重新应用。',
+  agentless_transport_unsafe: '监控中心 API 的安全连接不可用，请联系平台运维核验证书与 CA。',
+  configuration_cmdb_identity_required: '旧的裸监控主机入口已停用；请从当前配置项重新应用场景。',
+  configuration_context_stale: '配置组织或组织映射版本已变化；请刷新后重新操作。',
+  mapping_context_stale: '配置组织或组织映射版本已变化；请刷新后重新操作。',
   mapping_generation_mismatch: 'CMDB 映射世代已更新；旧上下文不会继续执行。',
-  configuration_asset_revision_stale: 'CI revision 已更新；请重新检查关系与监控绑定。',
+  configuration_asset_revision_stale: '资产版本已更新；请重新检查关系与监控绑定。',
   configuration_scenario_version_stale: '场景版本已更新；请重新选择场景。',
   configuration_scenario_stale: '场景版本已更新；请重新选择场景。',
   configuration_scenario_disabled: '场景已停用；请选择其他启用场景。',
   configuration_scenario_in_use: '该场景已被任务使用，不能删除。',
-  configuration_application_relation_changed: 'CI 与应用系统的关系已变化；请在 iTop 核对后重新应用。',
-  configuration_application_mismatch: '所选 CI 不属于该 ApplicationSolution。',
-  configuration_application_inactive: '当前 ApplicationSolution 已停用；请在 iTop 恢复后重新应用。',
-  configuration_asset_retired: '该 CI 已退役，不允许继续应用监控策略。',
-  configuration_binding_stale: 'F49 监控绑定已变化；请重新确认 Host。',
-  configuration_binding_missing: '该 CI 没有可用的 F49 绑定；请先在 CMDB 配置中心关联监控主机。',
-  configuration_binding_required: '该 CI 没有可用的 F49 绑定；请先在 CMDB 配置中心关联监控主机。',
-  configuration_binding_ambiguous: '该 CI 的 F49 绑定不唯一；请先消除冲突。',
-  configuration_host_out_of_scope: '绑定 Host 已不在当前租户范围；请核对 F49 绑定。',
-  configuration_host_missing: '绑定的 Zabbix Host 已不存在；请修复 F49 绑定。',
+  configuration_application_relation_changed: '配置项与应用系统的关系已变化；请在配置管理中心核对后重新应用。',
+  configuration_application_mismatch: '所选配置项不属于该应用系统。',
+  configuration_application_inactive: '当前应用系统已停用；请在配置管理中心恢复后重新应用。',
+  configuration_asset_retired: '该配置项已退役，不允许继续应用监控策略。',
+  configuration_binding_stale: '监控关联已变化；请重新确认监控主机。',
+  configuration_binding_missing: '该配置项没有可用的监控关联；请先在资产配置中心关联监控主机。',
+  configuration_binding_required: '该配置项没有可用的监控关联；请先在资产配置中心关联监控主机。',
+  configuration_binding_ambiguous: '该配置项的监控关联不唯一；请先消除冲突。',
+  configuration_host_out_of_scope: '绑定监控主机已不在当前租户范围；请核对监控关联。',
+  configuration_host_missing: '绑定的监控主机已不存在；请修复 监控绑定。',
   configuration_template_missing: '场景模板已不可用；请更新场景。',
   configuration_task_version_stale: '任务版本已更新；请刷新后再重试。',
   configuration_version_stale: '记录版本已更新；请刷新后再操作。',
   configuration_legacy_frozen: '该记录缺少完整 CMDB 身份，已冻结为只读历史。',
   configuration_legacy_unresolved: '该记录缺少完整 CMDB 身份，已冻结为只读历史。',
   configuration_archived: '该记录已归档，不会重新执行。',
-  configuration_transient: 'iTop 或 Zabbix 暂时不可用；系统会在限定次数内重试。',
-  configuration_target_invalid: 'iTop CI、Zabbix Host、Host Group 或 Template 已不可用；请核对 F49 绑定与场景。',
-  configuration_denied: '该记录不属于当前租户或 Organization。',
-  configuration_validation: '请求参数不符合当前配置消费契约。',
+  configuration_transient: '配置管理中心或监控中心暂时不可用；系统会在限定次数内重试。',
+  configuration_target_invalid: '配置项、监控主机、主机组或监控模板已不可用；请核对监控绑定与场景。',
+  configuration_denied: '该记录不属于当前租户或配置组织。',
+  configuration_validation: '请求参数不符合当前监控配置契约。',
 }
 
 function emptyConfigurationPage(scope = 'current', pageSize = 20) {
@@ -152,9 +152,9 @@ function monitoringIdentity(monitoring) {
 }
 
 function applyEligibility(asset, applications, monitoring, scenario) {
-  if (!asset || !scenario) return {ready: false, code: 'selection_required', message: '请选择场景与 iTop CI。'}
+  if (!asset || !scenario) return {ready: false, code: 'selection_required', message: '请选择场景与配置项。'}
   const revision = String(asset.revision || '')
-  if (!revision) return {ready: false, code: 'asset_revision_missing', message: '该 CI 缺少 revision，不能建立并发快照。'}
+  if (!revision) return {ready: false, code: 'asset_revision_missing', message: '该配置项缺少资产版本，不能建立并发快照。'}
   const expectedClass = scenarioAssetClass(scenario)
   if (expectedClass && String(asset.class) !== expectedClass) return {ready: false, code: 'asset_class_mismatch', message: `该场景只适用于 ${expectedClass} CI。`}
   const applicationID = scenarioApplicationID(scenario)

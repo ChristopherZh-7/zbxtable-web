@@ -11,6 +11,7 @@ const {
   normalizeDashboardNodes,
   validateDashboardNodes,
 } = require('../../src/pages/dashboard/custom/dashboard-canvas')
+const {DASHBOARD_PRESETS} = require('../../src/pages/dashboard/custom/designer-presets')
 
 test('F31 extends the X6 designer to six scenario component types', () => {
   assert.deepEqual(CHART_TYPES.map(item => item.value), ['line', 'bar', 'pie', 'gauge', 'table', 'topology'])
@@ -96,4 +97,35 @@ test('designer uses X6 drag, styling, live history and secure public share route
   assert.match(designer, /\/topology\/custom-screens/)
   assert.match(designer, /this\.designerPath/)
   assert.match(designer, /this\.listPath/)
+})
+
+test('designer provides readable built-in layout presets with non-overlapping coordinates', () => {
+  assert.equal(DASHBOARD_PRESETS.length, 3)
+  for (const preset of DASHBOARD_PRESETS) {
+    assert.ok(preset.nodes.length >= 3)
+    for (const node of preset.nodes) {
+      assert.ok(node.position.x >= 0 && node.position.y >= 0)
+      assert.ok(node.position.x + node.size.width <= preset.width)
+      assert.ok(node.position.y + node.size.height <= preset.height)
+    }
+    for (let i = 0; i < preset.nodes.length; i += 1) {
+      for (let j = i + 1; j < preset.nodes.length; j += 1) {
+        const left = preset.nodes[i]
+        const right = preset.nodes[j]
+        const separated = left.position.x + left.size.width <= right.position.x ||
+          right.position.x + right.size.width <= left.position.x ||
+          left.position.y + left.size.height <= right.position.y ||
+          right.position.y + right.size.height <= left.position.y
+        assert.equal(separated, true, preset.key + ' nodes overlap')
+      }
+    }
+  }
+})
+
+test('designer exposes numeric layout controls beside the data editor', () => {
+  const designer = fs.readFileSync(path.join(__dirname, '../../src/pages/dashboard/custom/designer.vue'), 'utf8')
+  assert.match(designer, /X 坐标/)
+  assert.match(designer, /Y 坐标/)
+  assert.match(designer, /applyLayout/)
+  assert.match(designer, /套用模板/)
 })

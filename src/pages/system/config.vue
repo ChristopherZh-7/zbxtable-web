@@ -238,7 +238,7 @@
                 <a-select v-model="aiForm.ai_type" :placeholder="getConfigComment('ai_type')" style="width: 100%" @change="onAiTypeChange">
                   <a-select-option value="ollama">Ollama</a-select-option>
                   <a-select-option value="deepseek">Deepseek</a-select-option>
-                  <a-select-option value="custom">Custom</a-select-option>
+                  <a-select-option value="custom">自定义兼容接口</a-select-option>
                 </a-select>
                 <div class="config-hint">{{ getConfigComment('ai_type') }}</div>
               </a-form-model-item>

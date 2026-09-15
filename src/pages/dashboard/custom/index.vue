@@ -14,7 +14,7 @@
     </a-form-model>
 
     <a-alert
-      :message="`${resourceLabel}数据源由服务端按当前租户 Host Group 重验；个人${resourceLabel}仅创建者可见。`"
+      :message="`${resourceLabel}数据源由服务端按当前租户主机组重验；个人${resourceLabel}仅创建者可见。`"
       type="info"
       show-icon
       style="margin-bottom: 16px"

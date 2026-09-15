@@ -35,7 +35,7 @@
           <span>监控类型
             <a-tooltip>
               <template #title>
-                <div>Agent：Zabbix Agent，主机类设备</div>
+          <div>Agent：主机采集代理，适用于主机类设备</div>
                 <div>SNMP：SNMP轮询，网络设备/存储</div>
                 <div>IPMI：带外管理，物理服务器</div>
                 <div>JMX：Java监控，中间件/应用</div>

@@ -41,7 +41,10 @@ module.exports = {
       },
       assets: {
         name: '资产',
-        tree: {name: '设备树'}
+        tree: {name: '设备树'},
+        cmdb: {name: '资产配置中心'},
+        'cmdb-responsibilities': {name: '运维基础资料'},
+        configuration: {name: '监控配置'}
       },
       screen: {
         dashboard: {name: '运维大屏'}
@@ -59,7 +62,7 @@ module.exports = {
         systemGroups: {name: '用户组'},
         bandwidth: {name: '出口配置'},
         systemBandwidth: {name: '出口配置'},
-        zabbix: {name: 'Zabbix管理'},
+        zabbix: {name: '监控源管理'},
         proxyManagement: {name: '代理管理'},
         'proxy-management': {name: '代理管理'},
         config: {name: '参数配置'},
@@ -169,7 +172,7 @@ module.exports = {
         systemGroups: {name: 'User'},
         bandwidth: {name: 'Egress'},
         systemBandwidth: {name: 'Egress'},
-        zabbix: {name: 'Zabbix'},
+        zabbix: {name: 'Monitoring Service'},
         proxyManagement: {name: 'Proxy Management'},
         'proxy-management': {name: 'Proxy Management'},
         config: {name: 'Parameter'},
@@ -278,7 +281,7 @@ module.exports = {
         systemGroups: {name: '用戶組'},
         bandwidth: {name: '出口配置'},
         systemBandwidth: {name: '出口配置'},
-        zabbix: {name: 'Zabbix管理'},
+        zabbix: {name: '監控源管理'},
         proxyManagement: {name: '代理管理'},
         'proxy-management': {name: '代理管理'},
         config: {name: '參數配置'},

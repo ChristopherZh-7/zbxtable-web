@@ -1,11 +1,14 @@
 <template>
   <page-layout :noTitle="true">
     <div class="tenant-toolbar">
-      <a-alert type="info" show-icon message="租户范围由服务端按 Zabbix 实例和稳定 Host Group ID 强制隔离。" />
+      <a-alert type="info" show-icon message="租户范围由服务端按监控源和稳定主机组编号强制隔离。" />
 	  <a-button v-auth="'create'" type="primary" icon="plus" @click="openCreate">新增租户</a-button>
     </div>
 
     <a-table :loading="loading" :columns="columns" :data-source="tenants" :row-key="record => record.id">
+      <template slot="technicalCode" slot-scope="record">
+        <details class="tenant-technical-code"><summary>查看编码</summary><code>{{ record.code }}</code></details>
+      </template>
       <template slot="status" slot-scope="record">
 		<a-switch v-auth="'update'"
           :checked="Number(record.status) === 0"
@@ -52,14 +55,14 @@
         </a-form-model-item>
         <a-form-model-item label="资源范围">
           <div v-for="(scope, index) in draft.scopes" :key="index" class="scope-row">
-            <a-select v-model="scope.zid" placeholder="Zabbix 实例" @change="value => changeScopeInstance(scope, value)">
+            <a-select v-model="scope.zid" placeholder="监控源" @change="value => changeScopeInstance(scope, value)">
               <a-select-option v-for="instance in instances" :key="instance.id" :value="instance.id">{{ instance.name }}</a-select-option>
             </a-select>
             <a-select
               v-model="scope.host_group_id"
               show-search
               option-filter-prop="children"
-              placeholder="Host Group"
+              placeholder="主机组"
               @focus="loadGroups(scope.zid)"
               @change="value => changeScopeGroup(scope, value)"
             >
@@ -67,7 +70,7 @@
             </a-select>
             <a-button type="link" icon="delete" @click="removeScope(index)">移除</a-button>
           </div>
-          <a-button type="dashed" icon="plus" block @click="addScope">添加 Host Group 范围</a-button>
+          <a-button type="dashed" icon="plus" block @click="addScope">添加主机组范围</a-button>
         </a-form-model-item>
       </a-form-model>
     </a-modal>
@@ -110,8 +113,8 @@ export default {
       groupsByZID: {},
       draft: emptyDraft(),
       columns: [
-        {title: '编码', dataIndex: 'code'},
-        {title: '名称', dataIndex: 'name'},
+        {title: '名称', dataIndex: 'name', width: 170},
+        {title: '技术编码', scopedSlots: {customRender: 'technicalCode'}, width: 110},
         {title: '成员', scopedSlots: {customRender: 'members'}},
         {title: '资源范围', scopedSlots: {customRender: 'scopes'}},
         {title: '状态', scopedSlots: {customRender: 'status'}, width: 110},
@@ -143,12 +146,12 @@ export default {
         this.users = items(users)
         this.instances = items(instances)
       } catch (error) {
-        this.$message.error('加载用户或 Zabbix 实例失败')
+        this.$message.error('加载用户或监控源失败')
       }
     },
     instanceName(zid) {
       const instance = this.instances.find((item) => Number(item.id) === Number(zid))
-      return instance ? instance.name : `Zabbix #${zid}`
+      return instance ? instance.name : `监控源 #${zid}`
     },
     openCreate() {
       this.editingID = null
@@ -193,7 +196,7 @@ export default {
         const groups = items(await listTenantResources(zid))
         this.$set(this.groupsByZID, zid, groups)
       } catch (error) {
-        this.$message.error('加载 Host Group 失败')
+        this.$message.error('加载主机组失败')
       }
     },
     async save() {
