@@ -1,7 +1,6 @@
 module.exports = {
   messages: {
     CN: {
-      notice: '本页只读。纳管代理按监控源和代理编号组合去重统计，包含在线与离线代理；此数量不代表价格、账单或许可证。',
       billingIncomplete: '纳管代理数量待核对：至少一个启用监控源不可用，或汇总与代理明细不一致。请先处理下方连接错误。',
       refresh: '立即刷新', autoRefresh: '15 秒自动刷新', lastSuccess: '最后成功', never: '尚未成功加载',
       instances: '监控源', availableInstances: '可用实例', proxyGroups: '代理组', proxies: '代理', billableProxies: '计价代理数', online: '在线', offline: '离线',
@@ -10,7 +9,6 @@ module.exports = {
       unknown: '未知', recovering: '恢复中', degrading: '降级中', current: '当前版本', outdated: '版本较旧', unsupported: '不兼容', undefined: '未知', active: '主动', passive: '被动', empty: '当前筛选条件下没有数据',
     },
     US: {
-      notice: 'Read-only. Billable proxies are managed Proxy records keyed by (ZID, proxyid), regardless of online state; this is not a price, invoice, or license.',
       billingIncomplete: 'The billable proxy count cannot be confirmed because an enabled instance is unavailable or the summary does not match the Proxy rows.',
       refresh: 'Refresh', autoRefresh: 'Refresh every 15 seconds', lastSuccess: 'Last success', never: 'Not loaded yet',
       instances: 'monitoring sources', availableInstances: 'Available instances', proxyGroups: 'Proxy groups', proxies: 'Proxies', billableProxies: 'Billable proxies', online: 'Online', offline: 'Offline',
@@ -19,7 +17,6 @@ module.exports = {
       unknown: 'Unknown', recovering: 'Recovering', degrading: 'Degrading', current: 'Current', outdated: 'Outdated', unsupported: 'Unsupported', undefined: 'Undefined', active: 'Active', passive: 'Passive', empty: 'No data matches the current filters',
     },
     HK: {
-      notice: '本頁僅讀。計價代理數按 (ZID, proxyid) 統計已納管 Proxy，在線/離線均計；不代表價格、帳單或授權。',
       billingIncomplete: '計價代理數不可確認：至少一個啟用實例不可用，或彙總與 Proxy 明細不一致。請先排除下方實例錯誤。',
       refresh: '立即刷新', autoRefresh: '15 秒自動刷新', lastSuccess: '最後成功', never: '尚未成功載入',
       instances: '監控源', availableInstances: '可用實例', proxyGroups: '代理組', proxies: '代理', billableProxies: '計價代理數', online: '在線', offline: '離線',

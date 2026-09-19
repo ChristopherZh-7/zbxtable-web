@@ -124,8 +124,6 @@ module.exports = {
       scheduled_report:"循环报表",
       
       // host.vue 页面额外翻译
-      multi_instance_alert_title:"多实例主机报表说明",
-      multi_instance_alert_content:"系统已支持多实例数据聚合。在配置主机报表时,一个报表可以包含来自不同实例的主机指标数据。",
       select_instance_first:"请先选择实例",
       select_host_first:"请先选择主机",
       load_instances_failed:"加载实例列表失败",
@@ -266,8 +264,6 @@ module.exports = {
       scheduled_report:"循環報表",
       
       // host.vue 頁面額外翻譯
-      multi_instance_alert_title:"多實例主機報表說明",
-      multi_instance_alert_content:"系統已支持多實例數據聚合。在配置主機報表時,一個報表可以包含來自不同實例的主機指標數據。",
       select_instance_first:"請先選擇實例",
       select_host_first:"請先選擇主機",
       load_instances_failed:"加載實例列表失敗",
@@ -407,8 +403,6 @@ module.exports = {
       scheduled_report:"Scheduled",
       
       // host.vue page additional translations
-      multi_instance_alert_title:"Multi-Instance Host Report Description",
-      multi_instance_alert_content:"The system now supports multi-instance data aggregation. When configuring host reports, a report can include host metric data from different instances.",
       select_instance_first:"Please select an instance first",
       select_host_first:"Please select a host first",
       load_instances_failed:"Failed to load instance list",

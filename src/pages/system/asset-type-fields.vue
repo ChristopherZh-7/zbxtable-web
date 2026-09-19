@@ -6,12 +6,6 @@
     :destroy-on-close="true"
     @close="$emit('close')"
   >
-    <div class="field-toolbar">
-      <div class="field-hint">
-        仅可调整字段的显示、顺序和内置字段渲染方式。历史自定义字段只读保留，不属于 CMDB；资产模型请在资产配置中心维护。
-      </div>
-    </div>
-
     <a-spin :spinning="loading">
       <a-table
         :data-source="fields"
@@ -276,13 +270,7 @@ export default {
   text-align: right;
   background: #fff;
 }
-.field-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.field-hint, .muted {
+.muted {
   color: #888;
   font-size: 12px;
 }

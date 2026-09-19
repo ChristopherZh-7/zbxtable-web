@@ -1,7 +1,6 @@
 <template>
   <page-layout :noTitle="true">
     <div class="tenant-toolbar">
-      <a-alert type="info" show-icon message="租户范围由服务端按监控源和稳定主机组编号强制隔离。" />
 	  <a-button v-auth="'create'" type="primary" icon="plus" @click="openCreate">新增租户</a-button>
     </div>
 

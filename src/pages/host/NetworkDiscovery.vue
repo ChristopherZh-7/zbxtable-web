@@ -4,18 +4,12 @@
       <div class="content-page-header">
         <div>
           <h2>网络发现</h2>
-          <p>由监控中心扫描已授权的私有 IPv4 范围，展示真实发现的设备和服务端口。</p>
         </div>
         <div>
           <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新结果</a-button>
           <a-button v-if="canManage" type="primary" class="header-action" @click="openCreate"><a-icon type="plus" /> 新建扫描规则</a-button>
         </div>
       </div>
-
-      <a-alert
-        message="安全边界：只允许 RFC1918 私有 IPv4 单地址或 /24–/30；“开放端口”只表示所配置 TCP 检查已成功，不是全端口扫描。"
-        type="warning" show-icon class="section-alert"
-      />
 
       <section class="section-card">
         <div class="section-title">
@@ -55,7 +49,6 @@
     </div>
 
     <a-modal :visible="createVisible" title="新建网络发现规则" :confirm-loading="saving" width="620px" ok-text="创建并启用" @ok="saveRule" @cancel="closeCreate">
-      <a-alert message="规则创建后由监控中心执行，不会自动创建主机或关联模板。" type="info" show-icon class="section-alert" />
       <a-form-model layout="vertical">
         <a-form-model-item label="规则名称"><a-input v-model.trim="form.name" maxlength="100" placeholder="例如：办公网 C 段基础发现" /></a-form-model-item>
         <a-form-model-item label="监控源">
@@ -168,7 +161,6 @@ export default {
 .content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
 .content-page-header p, .muted, .field-tip { color: rgba(0, 0, 0, .45); }
 .header-action { margin-left: 8px; }
-.section-alert { margin-bottom: 16px; }
 .section-card { padding: 18px 20px; margin-bottom: 18px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .section-title strong { font-size: 16px; }

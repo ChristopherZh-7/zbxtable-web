@@ -1,11 +1,5 @@
 <template>
   <page-layout :noTitle="true">
-    <a-alert
-      class="audit-notice"
-      type="info"
-      show-icon
-      message="操作审计仅保存操作元数据，不保存请求正文、密码、访问令牌、通知收件人或第三方原始错误。"
-    />
 
     <a-form-model layout="inline" class="audit-filters">
       <a-form-model-item label="操作人">
@@ -197,7 +191,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.audit-notice { margin-bottom: 16px; }
 .audit-filters { margin-bottom: 16px; }
 .audit-filters .ant-form-item { margin-bottom: 10px; }
 .secondary { color: rgba(0, 0, 0, .45); font-size: 12px; }

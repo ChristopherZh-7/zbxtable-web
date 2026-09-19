@@ -46,7 +46,7 @@ test('Chinese navigation aliases leave routes and technical service identity int
   assert.equal(labels.configuration.name,'监控配置')
   assert.match(source('src/router/async/router.map.js'),/cmdbCenter/)
   assert.match(source('src/services/cmdb.js'),/X-CMDB-Mapping-Generation/)
-  assert.match(source('src/pages/host/ScriptDiscovery.vue'),/\[SmartOps Discovery\]/)
+  assert.match(source('src/pages/host/ScriptDiscovery.vue'),/\{\{ record\.item_key \}\}/)
   assert.doesNotMatch(source('src/pages/system/tenants/index.vue'),/\.filter\([^)]*harness/i)
   const selection=compiler.parseComponent(source('src/pages/system/tenants/select.vue')).template.content
   assert.doesNotMatch(selection,/tenant\.code/)
@@ -64,15 +64,18 @@ test('Chinese workplace and screen labels do not fall back to decorative English
   assert.equal(screen.US.screen_subtitle,'OPERATION COMMAND CENTER')
   assert.equal(workplace.CN.linux_systems_title,'Linux 主机排行')
   assert.equal(workplace.CN.windows_systems_title,'Windows 主机排行')
-  assert.match(source('src/pages/host/GenericDeviceList.vue'),/监控侧资产字段只读；历史自定义属性仅供查看，不属于 CMDB/)
+  assert.match(source('src/pages/host/GenericDeviceList.vue'),/历史只读 · 非 CMDB/)
 })
 
-test('legacy binding notice preserves read-only boundary without product branding',()=>{
+test('legacy binding controls preserve read-only behavior without engineering notices',()=>{
   const binding=source('src/pages/system/asset-binding.vue')
-  assert.match(binding,/旧配置不会再创建、修改、初始化、重试或自动执行/)
+  assert.match(binding,/只读保留/)
+  assert.doesNotMatch(binding,/handleAdd|handleEdit|handleDelete|handleInit|handleSubmit|metricMappingExecute/)
+  assert.doesNotMatch(binding,/<a-alert/)
   assert.match(binding,/不会再执行或写入监控中心/)
   assert.doesNotMatch(binding,/写入 Zabbix/)
-  assert.match(source('src/pages/host/GenericDeviceDetail.vue'),/本页资产字段只读：监控侧资产信息仅供查看/)
+  assert.match(source('src/pages/host/GenericDeviceDetail.vue'),/历史只读 · 非 CMDB/)
+  assert.doesNotMatch(source('src/pages/host/GenericDeviceDetail.vue'),/hostUpdate|handleSave|updateHostAssetAttributes/)
 })
 
 test('rendered screen components use Chinese ranking and total labels',()=>{

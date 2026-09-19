@@ -5,7 +5,6 @@
         <div>
           <p class="cmdb-kicker">资产配置管理</p>
           <h1>资产配置中心</h1>
-          <p>配置管理中心统一维护资产档案，统一门户提供按租户受控的资产维护入口与关系视图。</p>
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
@@ -28,10 +27,6 @@
           <span>当前配置组织</span>
           <strong>{{ organizationName }}</strong>
           <details v-if="organizationIdentity" class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details>
-        </div>
-        <div class="source-field">
-          <span>数据边界</span>
-          <strong>受控写入 · 租户隔离</strong>
         </div>
         <div class="source-total">
           <span>配置项</span>
@@ -636,13 +631,6 @@
       :body-style="{ maxHeight: 'calc(100vh - 190px)', overflowY: 'auto', padding: '18px 22px 20px' }"
       @cancel="closeMapping"
     >
-      <a-alert
-        type="info"
-        show-icon
-        message="配置组织数字 ID 是 CMDB 数据边界；名称和编码只用于识别。"
-        description="已建立的来源不能直接改写。切换必须先预览影响，再精确确认并留下原因。"
-        class="mapping-alert"
-      />
       <a-spin :spinning="mappingLoading">
         <a-alert
           v-if="mappingError"
@@ -2034,7 +2022,7 @@ export default {
 .cmdb-kicker { margin: 0 0 4px !important; color: var(--smartops-signal-blue) !important; font-family: var(--smartops-font-mono); font-size: 10px !important; font-weight: 700; letter-spacing: .14em; }
 .heading-actions { display: flex; flex-shrink: 0; gap: 8px; }
 
-.source-strip { display: grid; grid-template-columns: 220px 150px minmax(210px, 1fr) minmax(240px, 1fr) 105px; min-height: 78px; margin-bottom: 12px; border: 1px solid #173b63; background: var(--smartops-command-navy); color: #fff; }
+.source-strip { display: grid; grid-template-columns: 220px 150px minmax(210px, 1fr) 105px; min-height: 78px; margin-bottom: 12px; border: 1px solid #173b63; background: var(--smartops-command-navy); color: #fff; }
 .source-identity, .source-field, .source-total { display: flex; justify-content: center; flex-direction: column; padding: 12px 18px; border-right: 1px solid rgba(255,255,255,.13); }
 .source-identity strong { font-size: 17px; letter-spacing: .02em; }
 .source-strip__eyebrow { margin-bottom: 3px; color: #82b5df; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 700; letter-spacing: .13em; }
@@ -2263,7 +2251,6 @@ export default {
 .admission-result--completed .admission-result__icon { background: #dcefe5; color: #287752; }
 .admission-result--conflict { border-color: #dfabab; background: #fff7f7; }
 .admission-result--conflict .admission-result__icon { background: #f7dddd; color: #aa3f3f; }
-.mapping-alert { margin-bottom: 16px; }
 .mapping-inline-error { margin-bottom: 14px; }
 .mapping-governance-form /deep/ .ant-form-item { margin-bottom: 14px; }
 .mapping-initial-state { display: grid; padding: 16px 17px 4px; border: 1px solid #cbd9e4; border-left: 4px solid var(--smartops-signal-blue); background: #f7fafc; grid-template-columns: minmax(220px, .8fr) minmax(300px, 1.2fr); gap: 22px; }
@@ -2320,15 +2307,13 @@ export default {
 
 @media (max-width: 1240px) {
   .source-strip { grid-template-columns: 190px 140px minmax(180px, 1fr) 105px; }
-  .source-field:nth-child(4) { display: none; }
   .cmdb-workbench { grid-template-columns: minmax(0, 1fr) 350px; }
 }
 @media (max-width: 980px) {
   .cmdb-heading { align-items: flex-start; }
   .source-strip { grid-template-columns: 1fr 1fr; }
   .source-identity, .source-field, .source-total { min-height: 66px; border-bottom: 1px solid rgba(255,255,255,.13); }
-  .source-total { align-items: flex-start; grid-column: span 2; }
-  .source-field:nth-child(4) { display: flex; }
+  .source-total { align-items: flex-start; }
   .cmdb-toolbar { align-items: stretch; flex-wrap: wrap; }
   .search-control { width: 100%; max-width: none; }
   .toolbar-summary { display: flex; align-items: center; margin-left: 0; }
@@ -2351,7 +2336,6 @@ export default {
   .heading-actions { width: 100%; flex-wrap: wrap; }
   .source-strip { grid-template-columns: 1fr; }
   .source-total { grid-column: auto; }
-  .source-field:nth-child(4) { display: none; }
   .filter-control { width: calc(50% - 5px); }
   .panel-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .class-counts { max-width: 100%; flex-wrap: wrap; }

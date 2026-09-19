@@ -54,11 +54,11 @@ test('configuration consumption is registered under the asset router', () => {
   assert.match(router, /configConsumption:\s*\{[\s\S]*ConfigConsumption/)
 })
 
-test('page makes iTop CI, F49 binding and Zabbix policy the visible authority chain', () => {
+test('page retains CI identity, monitoring bindings and policy controls without architecture banners', () => {
   const page = source('src/pages/host/ConfigConsumption.vue')
   for (const copy of [
     '配置数据来源', '配置管理中心', '配置组织', '编码', '组织映射版本',
-    '配置项', '已确认的监控主机', '监控中心策略', '所属应用与配置项类型在创建后保持不变',
+    '配置项', '监控模板', '监控主机', '所属应用与配置项类型在创建后保持不变',
     '保留本次任务的资产、监控主机和执行结果', '当前', '归档', '遗留冻结',
   ]) assert.ok(page.includes(copy), `missing PRODUCT-003D authority copy: ${copy}`)
   assert.doesNotMatch(page, /hostList|business_system|asset_type_code/)

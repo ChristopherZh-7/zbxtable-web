@@ -4,23 +4,13 @@
       <div class="content-page-header">
         <div>
           <h2>扩展脚本发现</h2>
-          <p>读取监控中心已执行的受信 Agent UserParameter 或 External check 最新结果，作为 CMDB 入库候选供人工核对。</p>
         </div>
         <a-button :loading="loading" @click="loadCandidates"><a-icon type="reload" /> 刷新结果</a-button>
       </div>
 
-      <a-alert
-        message="安全边界：门户不提供脚本上传、脚本正文、命令行或凭据输入；仅识别名称以 [SmartOps Discovery] 开头的受信监控项。"
-        type="info" show-icon class="section-alert"
-      />
-      <a-alert
-        message="候选仅供查看：不会写入智能运维管理系统自定义属性，也不会自动创建或修改 CMDB。当前资产配置中心尚未接入此候选的写入动作；如需提升为资产字段，请通过独立、受审计的配置管理中心维护流程处理。"
-        type="warning" show-icon class="section-alert"
-      />
-
       <section class="section-card">
         <div class="section-title">
-          <div><strong>发现候选</strong><span>扁平 JSON，最大 64 KiB，字段仅作为 CMDB 候选值只读展示</span></div>
+          <div><strong>发现候选</strong><span>候选仅供查看</span></div>
           <a-tag :color="readyCount ? 'green' : 'default'">{{ readyCount }} 个待人工确认</a-tag>
         </div>
         <a-table :loading="loading" :columns="columns" :data-source="candidates" :row-key="rowKey" :pagination="{pageSize: 10}" :scroll="{x: 1380}">
@@ -99,7 +89,6 @@ export default {
 .content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
 .content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
-.section-alert { margin-bottom: 16px; }
 .section-card { padding: 18px 20px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .section-title strong { font-size: 16px; }

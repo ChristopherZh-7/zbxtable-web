@@ -5,7 +5,6 @@
         <div>
           <p class="page-kicker">监控配置管理</p>
           <h1>监控配置</h1>
-          <p>为正式配置项显式应用监控策略，配置项身份来自配置管理中心，目标主机仅取自已确认的监控绑定。</p>
         </div>
         <div class="heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
@@ -30,7 +29,6 @@
         <div class="source-identity">
           <span>配置数据来源</span>
           <strong>配置管理中心</strong>
-          <small>智能运维管理系统受控入口</small>
         </div>
         <div class="source-field">
           <span>配置组织</span>
@@ -49,29 +47,9 @@
         </div>
       </section>
 
-      <section class="authority-rail" aria-label="监控配置身份轨">
-        <div class="authority-node authority-node--cmdb">
-          <span>01 · 配置项身份</span>
-          <strong>配置项</strong>
-          <small>类型 · 编号 · 版本 · 所属应用</small>
-        </div>
-        <div class="authority-link"><a-icon type="arrow-right" /></div>
-        <div class="authority-node authority-node--binding">
-          <span>02 · 监控主机关联</span>
-          <strong>已确认的监控主机</strong>
-          <small>关联版本 · 监控源编号 · 主机编号</small>
-        </div>
-        <div class="authority-link"><a-icon type="arrow-right" /></div>
-        <div class="authority-node authority-node--policy">
-          <span>03 · 监控策略</span>
-          <strong>监控中心策略</strong>
-          <small>主机组 · 监控模板 · 受管标签</small>
-        </div>
-      </section>
-
       <section v-if="!loading && overview.state === 'unconfigured'" class="state-panel state-panel--warning">
         <a-icon type="disconnect" />
-        <div><strong>当前租户尚未关联配置组织</strong><span>请先由平台管理员完成 CMDB 映射；未建立 ID + 组织映射版本边界前不提供写入操作。</span></div>
+        <div><strong>当前租户尚未关联配置组织</strong><span>请联系平台管理员关联配置组织。</span></div>
       </section>
       <section v-else-if="!loading && overview.state === 'error'" class="state-panel state-panel--error">
         <a-icon type="warning" />
@@ -80,13 +58,6 @@
       </section>
 
       <template v-else-if="sourceReady">
-        <a-alert
-          class="boundary-alert"
-          message="工作边界"
-          description="任务执行时会重新验证配置组织、组织映射版本、资产版本、应用关系、场景版本与监控绑定；任一身份发生变化，任务均会终止且不修改监控配置。"
-          show-icon
-          type="info"
-        />
 
         <section class="section-card">
           <div class="section-heading">
@@ -285,7 +256,7 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-model-item label="配置项类型">
-              <a-select v-model="scenarioForm.asset_class" :disabled="Boolean(editingScenario)" placeholder="选择后端允许的配置项类型" @change="clearAgentlessSelection">
+              <a-select v-model="scenarioForm.asset_class" :disabled="Boolean(editingScenario)" placeholder="选择配置项类型" @change="clearAgentlessSelection">
                 <a-select-option v-for="item in assetClasses" :key="item.value" :value="item.value">{{ item.label }}（{{ item.value }}）</a-select-option>
               </a-select>
             </a-form-model-item>
@@ -1139,24 +1110,13 @@ export default {
 .source-identity small, .source-field small { display: block; margin-top: 3px; color: #8ca0b3; font-size: 11px; }
 .source-identity small { color: #aebdcb; }
 .source-field--mono strong, .source-field--mono small, code { font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace; }
-.authority-rail { display: grid; grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) 34px minmax(0, 1fr); align-items: stretch; margin-bottom: 16px; }
-.authority-node { position: relative; padding: 14px 16px; border: 1px solid #d6e0e9; background: #f7fafc; }
-.authority-node:first-child { border-radius: 8px 0 0 8px; }
-.authority-node:last-child { border-radius: 0 8px 8px 0; }
-.authority-node span { display: block; margin-bottom: 2px; color: #72879a; font-size: 9px; font-weight: 700; letter-spacing: 1.1px; }
-.authority-node strong { display: block; color: #17314e; font-size: 15px; }
-.authority-node small { color: #6b8093; }
-.authority-node--cmdb { border-top: 3px solid #159cab; }
-.authority-node--binding { border-top: 3px solid #51718e; }
-.authority-node--policy { border-top: 3px solid #d99a2b; }
-.authority-link { display: flex; align-items: center; justify-content: center; border-top: 1px solid #d6e0e9; border-bottom: 1px solid #d6e0e9; color: #159cab; background: #eef4f7; }
 .state-panel { display: flex; align-items: center; gap: 14px; margin: 20px 0; padding: 22px; border: 1px solid; border-radius: 8px; }
 .state-panel > .anticon { font-size: 24px; }
 .state-panel div { display: flex; flex: 1; flex-direction: column; }
 .state-panel span { margin-top: 3px; color: #5c7188; }
 .state-panel--warning { border-color: #efd7aa; background: #fffaf0; }
 .state-panel--error { border-color: #efc2c0; background: #fff6f5; }
-.boundary-alert, .modal-alert { margin-bottom: 16px; }
+.modal-alert { margin-bottom: 16px; }
 .section-card { margin-bottom: 16px; padding: 20px 20px 0; border: 1px solid #dce5ec; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px rgba(18, 38, 63, .045); }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
 .section-heading h2 { margin: 1px 0 2px; color: #17314e; font-size: 18px; }
@@ -1201,10 +1161,6 @@ export default {
   .source-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .source-strip > div:nth-child(3) { border-left: 0; border-top: 1px solid #e4ebf0; }
   .source-strip > div:nth-child(4) { border-top: 1px solid #e4ebf0; }
-  .authority-rail { grid-template-columns: 1fr; }
-  .authority-link { min-height: 28px; border: 0; }
-  .authority-link .anticon { transform: rotate(90deg); }
-  .authority-node:first-child, .authority-node:last-child { border-radius: 7px; }
   .apply-layout { grid-template-columns: 1fr; }
 }
 

@@ -12,10 +12,13 @@ test('network discovery is registered under the asset router', () => {
 
 test('page exposes confirmed safe scanning and read-only contract', () => {
   const page = source('src/pages/host/NetworkDiscovery.vue')
-  for (const text of ['网络发现', 'RFC1918', '/24–/30', '不是全端口扫描', '发现结果', '开放端口', '不会自动创建主机']) assert.ok(page.includes(text), `missing confirmed copy: ${text}`)
+  for (const text of ['网络发现', 'RFC1918', '/24–/30', '发现结果', '开放端口', 'TCP 检查端口', '最多 20 个']) assert.ok(page.includes(text), `missing confirmed copy: ${text}`)
   assert.match(page, /this\.\$can\('platform\.assets', 'create'\)/)
   assert.match(page, /this\.\$can\('platform\.assets', 'delete'\)/)
   assert.match(page, /v-if="canManage"/)
+  assert.match(page, /v-model.trim="form.ports"/)
+  assert.match(page, /v-for="port in record.open_ports"/)
+  assert.doesNotMatch(page, /createHost|hostCreate|linkTemplate|<a-alert/)
 })
 
 test('services cover resources, rules, results, create and delete', () => {

@@ -13,7 +13,7 @@
           <span class="designer-meta">画布 {{ form.canvasWidth }} × {{ form.canvasHeight }} · 拖拽后可在右侧精确调整</span>
           <a-tag :color="activePresetKey ? 'cyan' : 'default'">{{ activePresetLabel }}</a-tag>
         </div>
-        <div>
+        <div class="custom-dashboard-designer__actions">
           <a-button :loading="refreshing" @click="refreshAll"><a-icon type="sync" /> 刷新数据</a-button>
           <a-button
             v-if="dashboardId && !isReadonly"
@@ -31,7 +31,7 @@
             <a-button :loading="shareRevoking" style="margin-left: 8px"><a-icon type="stop" /> 撤销分享</a-button>
           </a-popconfirm>
           <a-button v-if="!isReadonly" type="primary" :loading="saving" style="margin-left: 8px" @click="save">
-            <a-icon type="save" /> 保存仪表盘
+            <a-icon type="save" /> 保存{{ resourceLabel }}
           </a-button>
           <a-popconfirm
             v-if="!isReadonly && nodes.length"
@@ -75,20 +75,31 @@
         </div>
       </div>
 
-      <div v-if="!isReadonly" class="custom-dashboard-designer__presets">
-        <div class="presets-heading">
-          <strong>预置布局</strong>
-          <span>模板只提供组件位置和尺寸，绑定监控项后再保存</span>
-        </div>
-        <div class="preset-list">
+      <details v-if="!isReadonly" class="custom-dashboard-designer__presets" @toggle="presetsExpanded = $event.target.open">
+        <summary class="presets-heading">
+          <strong>更换预置布局</strong>
+          <span>{{ visualizationMode ? '运维模块自动读取当前租户数据；单指标组件需绑定监控项' : '先预览图表样式，再为组件绑定监控项' }}</span>
+        </summary>
+        <div v-if="presetsExpanded" class="preset-list">
           <div v-for="preset in presets" :key="preset.key" class="preset-card">
-            <div class="preset-preview" :aria-label="preset.label + '布局预览'">
+            <div class="preset-preview" :class="{'preset-preview--dark': visualizationMode}" :aria-label="preset.label + '布局预览'">
+              <svg v-if="preset.key === 'operations-screen'" viewBox="0 0 1920 1080" width="100%" height="100%" aria-label="原版运维组件预览">
+                <foreignObject x="0" y="0" width="1920" height="1080">
+                  <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:1920px;height:1080px;pointer-events:none">
+                    <operations-widget v-for="node in preset.nodes" :key="node.chart_type" :type="node.chart_type" :title="node.title"
+                      :style="{position:'absolute', left: node.position.x + 'px', top: node.position.y + 'px', width: node.size.width + 'px', height: node.size.height + 'px'}" />
+                  </div>
+                </foreignObject>
+              </svg>
+              <template v-else>
               <span
                 v-for="node in preset.nodes"
                 :key="preset.key + '-' + node.title"
                 class="preset-preview__node"
                 :style="presetPreviewStyle(preset, node)"
-              >{{ node.title }}</span>
+                :title="node.title"
+              ><span class="preset-preview__graphic" v-html="previewGraphic(node.chart_type)"></span></span>
+              </template>
             </div>
             <div class="preset-card__body">
               <strong>{{ preset.label }}</strong>
@@ -97,18 +108,37 @@
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div class="custom-dashboard-designer__body">
         <div ref="canvasWrap" class="custom-dashboard-designer__canvas-wrap">
-          <div v-if="nodes.length" class="canvas-help">
+          <div class="canvas-help">
             <strong>画布布局</strong>
-            <span>点击组件后，在右侧编辑标题、数据源和 X / Y / 宽度 / 高度；拖动组件也会同步坐标。</span>
+            <span>{{ isReadonly ? '只读查看；拖动空白处平移画布。' : '点击组件或从配置区选择；拖动空白处平移画布。' }}</span>
+            <div class="canvas-tools">
+              <a-button size="small" aria-label="缩小画布" @click="changeZoom(-0.1)">−</a-button>
+              <span>{{ Math.round(canvasZoom * 100) }}%</span>
+              <a-button size="small" aria-label="放大画布" @click="changeZoom(0.1)">＋</a-button>
+              <a-button size="small" @click="resetZoom">{{ isReadonly ? '100% 查看' : '100% 编辑' }}</a-button>
+              <a-button size="small" @click="fitCanvas">查看全图</a-button>
+            </div>
           </div>
           <div ref="canvas" class="custom-dashboard-designer__canvas"></div>
         </div>
 
         <aside v-if="!isReadonly" class="custom-dashboard-designer__editor">
+          <label for="dashboard-component-picker">选择要编辑的组件</label>
+          <a-select
+            id="dashboard-component-picker"
+            :value="selectedNode ? selectedNode.id : undefined"
+            placeholder="选择组件"
+            style="width: 100%; margin: 8px 0 16px"
+            @change="selectComponent"
+          >
+            <a-select-option v-for="node in nodes" :key="node.id" :value="node.id">
+              {{ node.getData().title || '未命名组件' }}
+            </a-select-option>
+          </a-select>
           <template v-if="selectedNode">
             <h3>组件配置</h3>
             <div class="selected-node-summary">
@@ -132,12 +162,17 @@
                   <a-input-number v-model="layout.y" :min="0" :max="form.canvasHeight" @change="applyLayout" />
                 </a-form-model-item>
                 <a-form-model-item label="宽度">
-                  <a-input-number v-model="layout.width" :min="240" :max="form.canvasWidth" @change="applyLayout" />
+                  <a-input-number v-model="layout.width" :min="240" :max="Math.min(1600, form.canvasWidth)" @change="applyLayout" />
                 </a-form-model-item>
                 <a-form-model-item label="高度">
-                  <a-input-number v-model="layout.height" :min="160" :max="form.canvasHeight" @change="applyLayout" />
+                  <a-input-number v-model="layout.height" :min="160" :max="Math.min(1200, form.canvasHeight)" @change="applyLayout" />
                 </a-form-model-item>
               </div>
+              <a-alert v-if="isOperationsType(editor.chart_type)" message="数据源：当前租户运维汇总（与运维大屏一致）" type="info" show-icon />
+              <a-form-model-item v-if="isOperationsType(editor.chart_type) && ['ops-linux', 'ops-windows'].includes(editor.chart_type)" label="默认排行指标">
+                <a-select v-model="editor.data_source.metric" @change="applyEditor"><a-select-option value="cpu">CPU</a-select-option><a-select-option value="mem">内存</a-select-option></a-select>
+              </a-form-model-item>
+              <template v-if="!isOperationsType(editor.chart_type)">
               <a-form-model-item label="主机">
                 <a-select
                   v-model="selectedHostKey"
@@ -181,6 +216,7 @@
                   </a-select-option>
                 </a-select>
               </a-form-model-item>
+              </template>
             </a-form-model>
             <a-button type="danger" ghost block @click="removeSelected"><a-icon type="delete" /> 删除组件</a-button>
           </template>
@@ -190,7 +226,7 @@
 
       <a-modal v-model="shareVisible" title="只读分享链接" :footer="null" width="640px">
         <a-alert
-          message="此链接无需登录，仅展示当前场景和最近 24 小时数据。重新生成后旧链接立即失效。"
+          message="此链接无需登录，会公开所选组件的当前租户汇总或最近 24 小时监控数据，请仅提供给可信接收者。重新生成后旧链接立即失效。"
           type="warning"
           show-icon
           style="margin-bottom: 16px"
@@ -217,6 +253,7 @@ import {
   generateDashboardShare,
   revokeDashboardShare,
   updateDashboard,
+  indexInfo, indexTrigger, indexRestop, indexEgress,
 } from '@/services/admin'
 import {
   CHART_TYPES,
@@ -226,6 +263,10 @@ import {
   validateDashboardNodes,
 } from './dashboard-canvas'
 import {DASHBOARD_PRESETS} from './designer-presets'
+import {previewGraphic} from './component-preview'
+import {OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType} from '../../screen/operations-model'
+import {renderOperationsNode} from './operations-renderer'
+import OperationsWidget from '../../screen/components/OperationsWidget'
 
 registerDashboardChartNode(Graph, echarts)
 
@@ -235,15 +276,14 @@ function clone(value) {
 
 export default {
   name: 'CustomDashboardDesigner',
-  components: {PageLayout},
+  components: {PageLayout, OperationsWidget},
   data() {
     return {
       dashboardId: '',
       dashboard: null,
       graph: null,
-      chartTypes: CHART_TYPES,
-      presets: DASHBOARD_PRESETS,
       activePresetKey: '',
+      presetsExpanded: false,
       form: {name: '', visibility: 'personal', canvasWidth: 1600, canvasHeight: 900},
       nodes: [],
       selectedNode: null,
@@ -261,9 +301,13 @@ export default {
       shareUrl: '',
       loadingDashboard: false,
       addIndex: 0,
+      canvasZoom: 1,
+      canvasViewMode: 'edit',
     }
   },
   computed: {
+    chartTypes() { return this.visualizationMode ? [...OPERATIONS_TYPES, ...CHART_TYPES] : CHART_TYPES },
+    presets() { return this.visualizationMode ? [OPERATIONS_PRESET, ...DASHBOARD_PRESETS] : DASHBOARD_PRESETS },
     visualizationMode() {
       return this.$route.path.startsWith('/topology/custom-screen')
     },
@@ -284,6 +328,26 @@ export default {
       return preset ? '当前布局：' + preset.label : '自由布局'
     },
   },
+  watch: {
+    isReadonly() {
+      if (!this.graph) return
+      const content = this.graph.toJSON()
+      content.cells.forEach(cell => {
+        if (cell.data) cell.data.preview_enabled = !this.isReadonly
+      })
+      this.graph.dispose()
+      if (this._disposeRenderers) this._disposeRenderers()
+      this.selectedNode = null
+      this.selectedHostKey = ''
+      this.initGraph()
+      this.loadingDashboard = true
+      this.graph.fromJSON(content)
+      this.loadingDashboard = false
+      this.syncNodes()
+      this.fitCanvas()
+      if (!this.isReadonly) this.loadHosts()
+    },
+  },
   created() {
     this.dashboardId = this.$route.query.id || ''
     if (!this.dashboardId && !this.$can('tenant.dashboard', 'create')) {
@@ -292,21 +356,35 @@ export default {
   },
   mounted() {
     this.initGraph()
+    this._canvasObserver = new ResizeObserver(() => this.resizeCanvas())
+    this._canvasObserver.observe(this.$refs.canvasWrap)
+    window.addEventListener('resize', this.resizeCanvas)
     if (!this.isReadonly) this.loadHosts()
     if (this.dashboardId) this.loadDashboard()
+    else if (this.visualizationMode && !this.isReadonly) this.applyPreset(OPERATIONS_PRESET)
+    this._operationsTimer = setInterval(() => {
+      if (this.nodes.some(node => isOperationsType(node.getData().chart_type))) this.refreshAll()
+    }, 30000)
   },
   beforeDestroy() {
+    if (this._canvasObserver) this._canvasObserver.disconnect()
+    window.removeEventListener('resize', this.resizeCanvas)
     if (this.graph) this.graph.dispose()
+    if (this._disposeRenderers) this._disposeRenderers()
+    clearInterval(this._operationsTimer)
   },
   methods: {
+    previewGraphic,
+    isOperationsType,
     initGraph() {
+      this._disposeRenderers = registerDashboardChartNode(Graph, echarts, node => renderOperationsNode(node, this))
       const canvasWidth = Math.max(this.$refs.canvas.clientWidth || 960, 320)
       const canvasHeight = Math.max(this.$refs.canvas.clientHeight || 720, 480)
       this.graph = new Graph({
         container: this.$refs.canvas,
         width: canvasWidth,
         height: canvasHeight,
-        background: {color: '#f5f7fb'},
+        background: {color: this.visualizationMode ? '#061226' : '#f5f7fb'},
         grid: {visible: true, size: 10},
         panning: true,
         mousewheel: {enabled: true, modifiers: ['ctrl', 'meta']},
@@ -320,10 +398,13 @@ export default {
       this.graph.on('node:added', ({node}) => {
         this.syncNodes()
         if (!this.loadingDashboard && !this.isReadonly) this.selectNode(node)
+        if (!this.loadingDashboard && isOperationsType(node.getData().chart_type)) this.$nextTick(() => this.refreshAll())
       })
       this.graph.on('node:removed', () => this.syncNodes())
       this.graph.on('node:change:position', () => this.syncNodes())
       this.graph.on('node:change:size', () => this.syncNodes())
+      this.graph.on('node:change:data', () => this.syncNodes())
+      this.graph.on('scale', ({sx}) => { this.canvasZoom = sx })
       this.graph.on('blank:click', () => {
         this.selectedNode = null
         this.selectedHostKey = ''
@@ -331,10 +412,51 @@ export default {
     },
     syncNodes() {
       this.nodes = this.graph ? this.graph.getNodes() : []
+      if (this.selectedNode && this.nodes.includes(this.selectedNode)) {
+        const {x, y} = this.selectedNode.getPosition()
+        const {width, height} = this.selectedNode.getSize()
+        this.layout = {x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height)}
+      }
     },
-    nodeConfig(chartType, position, size = {width: 360, height: 240}, title = '') {
+    resizeCanvas() {
+      if (this.graph && this.$refs.canvas) {
+        // X6 writes an inline canvas width; measure the flex parent, not that stale width.
+        this.graph.resize(this.$refs.canvasWrap.clientWidth, Math.max(420, Math.min(window.innerHeight * 0.65, 720)))
+        if (this.canvasViewMode === 'fit' && this.nodes.length) this.graph.zoomToFit({padding: 30, maxScale: 1})
+        else if (this.selectedNode) this.graph.centerCell(this.selectedNode)
+      }
+    },
+    changeZoom(delta) {
+      this.canvasViewMode = 'edit'
+      this.graph.zoomTo(Math.min(2, Math.max(0.25, this.canvasZoom + delta)))
+    },
+    resetZoom() {
+      this.canvasViewMode = 'edit'
+      this.graph.zoomTo(1)
+      if (this.selectedNode) this.graph.centerCell(this.selectedNode)
+      else this.graph.centerContent()
+    },
+    fitCanvas() {
+      this.canvasViewMode = 'fit'
+      this.resizeCanvas()
+      if (this.nodes.length) this.graph.zoomToFit({padding: 30, maxScale: 1})
+    },
+    selectComponent(id) {
+      const node = this.nodes.find(item => item.id === id)
+      if (!node || this.isReadonly) return
+      this.selectNode(node)
+      this.resetZoom()
+    },
+    nodeConfig(chartType, position, size = null, title = '') {
+      size = size || (isOperationsType(chartType) ? OPERATIONS_PRESET.nodes.find(node => node.chart_type === chartType).size : {width: 360, height: 240})
       const data = defaultNodeData(chartType)
+      data.preview_enabled = !this.isReadonly
+      if (this.visualizationMode) data.style = {...data.style, color: '#00e6ff', background: '#061226'}
       if (title) data.title = title
+      if (isOperationsType(chartType)) {
+        data.data_source = {kind: 'operations', metric: chartType === 'ops-windows' ? 'mem' : 'cpu'}
+        data.loadState = 'loading'
+      }
       return {
         shape: 'dashboard-chart',
         x: position.x,
@@ -367,18 +489,21 @@ export default {
         this.activePresetKey = preset.key
         this.form.canvasWidth = preset.width
         this.form.canvasHeight = preset.height
+        this.selectedNode = null
         this.graph.removeCells(this.graph.getCells())
         this.addIndex = preset.nodes.length
+        this.loadingDashboard = true
         preset.nodes.forEach(node => this.graph.addNode(this.nodeConfig(node.chart_type, node.position, node.size, node.title)))
+        this.loadingDashboard = false
         this.syncNodes()
         this.$nextTick(() => {
-          this.graph.resize(this.$refs.canvas.clientWidth || 960, this.$refs.canvas.clientHeight || 720)
-          this.graph.zoomToFit({padding: 30, maxScale: 1})
-          this.focusCanvas()
+          this.resizeCanvas()
+          this.selectNode(this.nodes[0])
+          this.fitCanvas()
         })
-        this.selectedNode = null
         this.selectedHostKey = ''
-        this.$message.success('已套用「' + preset.label + '」布局，请为组件绑定监控项')
+        this.$message.success('已套用「' + preset.label + '」布局')
+        this.refreshAll()
       }
       if (this.nodes.length) {
         this.$confirm({title: '套用模板会替换当前画布组件，是否继续？', onOk: apply})
@@ -422,6 +547,7 @@ export default {
     },
     selectNode(node) {
       this.selectedNode = node
+      this.graph.resetSelection([node])
       this.editor = clone(node.getData() || defaultNodeData('line'))
       if (!this.editor.data_source) this.editor.data_source = defaultNodeData('line').data_source
       if (!this.editor.style) this.editor.style = defaultNodeData('line').style
@@ -435,15 +561,20 @@ export default {
       this.$nextTick(() => this.focusCanvas())
     },
     applyEditor() {
-      if (!this.selectedNode) return
-      this.selectedNode.setData(clone(this.editor))
+      if (!this.selectedNode || this.isReadonly) return
+      const current = this.selectedNode.getData() || {}
+      const sourceChanged = JSON.stringify(current.data_source) !== JSON.stringify(this.editor.data_source)
+      const typeChanged = current.chart_type !== this.editor.chart_type
+      if (typeChanged) this.editor.data_source = isOperationsType(this.editor.chart_type) ? {kind: 'operations', metric: 'cpu'} : defaultNodeData('line').data_source
+      this.selectedNode.setData({...clone(this.editor), operations: typeChanged ? undefined : current.operations, series: sourceChanged ? [] : (current.series || []), loadState: sourceChanged ? '' : current.loadState}, {overwrite: true})
+      if (typeChanged && isOperationsType(this.editor.chart_type)) this.refreshAll()
     },
     applyLayout() {
-      if (!this.selectedNode) return
+      if (!this.selectedNode || this.isReadonly) return
       const x = Math.max(0, Number(this.layout.x) || 0)
       const y = Math.max(0, Number(this.layout.y) || 0)
-      const width = Math.max(240, Number(this.layout.width) || 360)
-      const height = Math.max(160, Number(this.layout.height) || 240)
+      const width = Math.min(1600, Math.max(240, Number(this.layout.width) || 360))
+      const height = Math.min(1200, Math.max(160, Number(this.layout.height) || 240))
       this.selectedNode.position(x, y)
       this.selectedNode.resize(width, height)
       this.layout = {x, y, width, height}
@@ -472,13 +603,17 @@ export default {
       this.loadItems(host.zid, host.hostid)
     },
     loadItems(zid, hostid) {
+      const request = this._itemsRequest = (this._itemsRequest || 0) + 1
+      const node = this.selectedNode
       this.itemsLoading = true
+      this.numericItems = []
       itemList({zid, hostid}).then((response) => {
+        if (request !== this._itemsRequest || node !== this.selectedNode || this.selectedHostKey !== `${zid}:${hostid}`) return
         const result = response.data
         if (result.code !== 200) throw new Error(result.message || '监控项加载失败')
         this.numericItems = (result.data.items || []).filter(item => ['0', '3'].includes(String(item.value_type)))
       }).catch((error) => this.$message.error(error.message || '监控项加载失败'))
-        .finally(() => { this.itemsLoading = false })
+        .finally(() => { if (request === this._itemsRequest) this.itemsLoading = false })
     },
     selectItem(itemid) {
       const item = this.numericItems.find(candidate => String(candidate.itemid) === String(itemid))
@@ -492,7 +627,7 @@ export default {
       }
       if (!this.editor.title || CHART_TYPES.some(chart => chart.label === this.editor.title)) this.editor.title = item.name
       this.applyEditor()
-      this.refreshNode(this.selectedNode)
+      this.refreshNode(this.selectedNode).catch(error => this.$message.error(error.message || '数据加载失败'))
     },
     removeSelected() {
       if (!this.selectedNode) return
@@ -541,9 +676,12 @@ export default {
           canvasHeight: this.dashboard.canvas_height || 900,
         }
         const nodes = Array.isArray(this.dashboard.nodes) ? this.dashboard.nodes : JSON.parse(this.dashboard.nodes || '[]')
+        nodes.forEach(node => {
+          node.data = {...node.data, preview_enabled: !this.isReadonly}
+        })
         this.graph.fromJSON({nodes, edges: []})
         this.syncNodes()
-        this.graph.zoomToFit({padding: 30, maxScale: 1})
+        this.fitCanvas()
         return this.refreshAll()
       }).catch((error) => this.$message.error(error.message || '仪表盘加载失败'))
         .finally(() => { this.loadingDashboard = false })
@@ -553,20 +691,67 @@ export default {
       const data = clone(node.getData() || {})
       const source = data.data_source || {}
       if (!source.itemid || !['0', '3'].includes(String(source.history))) return Promise.resolve()
+      if (!this._refreshRequests) this._refreshRequests = new WeakMap()
+      const request = (this._refreshRequests.get(node) || 0) + 1
+      this._refreshRequests.set(node, request)
+      const isCurrent = () => this.graph && this.graph.getNodes().includes(node) &&
+        this._refreshRequests.get(node) === request &&
+        JSON.stringify(node.getData().data_source) === JSON.stringify(source)
+      node.setData({...node.getData(), loadState: 'loading'}, {overwrite: true})
       const period = [moment().subtract(24, 'hours').format('YYYY-MM-DD HH:mm:ss'), moment().format('YYYY-MM-DD HH:mm:ss')]
       return hostMockd({history: source.history, itemids: source.itemid, period}).then((response) => {
+        if (!isCurrent()) return
         const result = response.data
         if (result.code !== 200) throw new Error(result.message || '历史数据加载失败')
-        data.series = (result.data.items || []).map(item => ({clock: item.clock, value: Number(item.value)}))
-        node.setData(data)
+        const series = (result.data.items || []).map(item => ({clock: item.clock, value: Number(item.value)}))
+        node.setData({...node.getData(), series, loadState: ''}, {overwrite: true})
+      }).catch(error => {
+        if (!isCurrent()) return
+        node.setData({...node.getData(), series: [], loadState: 'error'}, {overwrite: true})
+        throw error
       })
     },
     refreshAll() {
       if (!this.graph) return Promise.resolve()
       this.refreshing = true
-      return Promise.all(this.graph.getNodes().map(node => this.refreshNode(node))).catch((error) => {
+      return Promise.all([this.refreshOperations(), ...this.graph.getNodes().map(node => this.refreshNode(node))]).catch((error) => {
         this.$message.error(error.message || '部分图表刷新失败')
       }).finally(() => { this.refreshing = false })
+    },
+    async refreshOperations() {
+      const nodes = this.graph.getNodes().filter(node => isOperationsType(node.getData().chart_type))
+      if (!nodes.length) return
+      const request = this._operationsRequest = (this._operationsRequest || 0) + 1
+      const cache = new Map()
+      const read = (key, fetcher) => {
+        if (!cache.has(key)) cache.set(key, fetcher().then(response => {
+          if (response.data.code !== 200) throw new Error('运维数据加载失败')
+          return response.data.data
+        }))
+        return cache.get(key)
+      }
+      await Promise.all(nodes.map(async node => {
+        const type = node.getData().chart_type
+        if (!node.getData().operations) node.setData({...node.getData(), loadState: 'loading'}, {overwrite: true})
+        const current = () => this.graph && this._operationsRequest === request && this.graph.getNodes().includes(node) && node.getData().chart_type === type
+        try {
+          const payload = {}
+          if (['ops-hosts', 'ops-kpi'].includes(type)) payload.info = await read('info', indexInfo)
+          if (['ops-kpi', 'ops-severity', 'ops-alerts'].includes(type)) {
+            const result = await read('triggers', indexTrigger)
+            payload.triggers = (result && result.items) || []
+          }
+          if (type === 'ops-egress') payload.egress = await read('egress', indexEgress) || []
+          if (['ops-linux', 'ops-windows'].includes(type)) {
+            const host_type = type === 'ops-linux' ? 'VM_LIN' : 'VM_WIN'
+            const [cpu, mem] = await Promise.all(['CPU', 'MEM'].map(metrics_type => read(type + metrics_type, () => indexRestop({host_type, metrics_type, top_num: '10'}))))
+            payload.cpu = cpu || []; payload.mem = mem || []
+          }
+          if (current()) node.setData({...node.getData(), operations: payload, loadState: ''}, {overwrite: true})
+        } catch (_) {
+          if (current()) node.setData({...node.getData(), operations: {}, loadState: 'error'}, {overwrite: true})
+        }
+      }))
     },
     save() {
       if (!this.form.name || this.form.name.length < 2) {
@@ -592,7 +777,7 @@ export default {
         if (result.code !== 200) throw new Error(result.message || '保存失败')
         this.dashboard = result.data
         this.dashboardId = String(result.data.id)
-        this.$router.replace({path: this.designerPath, query: {id: this.dashboardId}})
+        if (String(this.$route.query.id || '') !== this.dashboardId) this.$router.replace({path: this.designerPath, query: {id: this.dashboardId}})
         this.$message.success(`${this.resourceLabel}保存成功`)
       }).catch((error) => this.$message.error(error.message || `${this.resourceLabel}保存失败`))
         .finally(() => { this.saving = false })
@@ -607,10 +792,13 @@ export default {
 <style lang="less">
 .custom-dashboard-designer {
   background: #fff;
+  min-width: 0;
+  max-width: 100%;
 }
 .custom-dashboard-designer__header {
   min-height: 68px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -619,6 +807,8 @@ export default {
 }
 .custom-dashboard-designer__identity {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 10px;
 }
@@ -629,6 +819,7 @@ export default {
 .custom-dashboard-designer__palette {
   min-height: 70px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
@@ -665,7 +856,7 @@ export default {
 .designer-meta {
   color: #6b7f95;
   font-size: 12px;
-  white-space: nowrap;
+  white-space: normal;
 }
 .custom-dashboard-designer__presets {
   padding: 12px 16px 14px;
@@ -673,7 +864,9 @@ export default {
   background: #f8fafc;
 }
 .presets-heading {
+  cursor: pointer;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 10px;
@@ -689,6 +882,7 @@ export default {
 }
 .preset-card {
   display: flex;
+  flex-direction: column;
   min-width: 0;
   gap: 12px;
   padding: 10px;
@@ -698,12 +892,26 @@ export default {
 }
 .preset-preview {
   position: relative;
-  flex: 0 0 132px;
-  height: 76px;
+  flex: none;
+  width: 100%;
+  height: 126px;
   overflow: hidden;
   border: 1px solid #cbd9e8;
   background: linear-gradient(90deg, rgba(27, 90, 150, .06) 1px, transparent 1px), linear-gradient(rgba(27, 90, 150, .06) 1px, transparent 1px), #f5f8fb;
   background-size: 12px 12px;
+}
+.preset-preview--dark {
+  background: #061226;
+  border-color: #1c5269;
+}
+.preset-preview--dark .preset-preview__node {
+  background: #091c34;
+  color: #00e6ff;
+  border-color: #1c5269;
+}
+.preset-preview__graphic {
+  width: 100%;
+  height: 100%;
 }
 .preset-preview__node {
   position: absolute;
@@ -757,7 +965,7 @@ export default {
 }
 .custom-dashboard-designer__body {
   display: flex;
-  min-height: 720px;
+  align-items: flex-start;
 }
 .custom-dashboard-designer__canvas-wrap {
   flex: 1;
@@ -768,6 +976,7 @@ export default {
 .canvas-help {
   min-height: 38px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 14px;
@@ -782,10 +991,13 @@ export default {
 }
 .custom-dashboard-designer__canvas {
   width: 100%;
-  height: 720px;
+  height: clamp(420px, 65vh, 720px);
 }
 .custom-dashboard-designer__editor {
   width: 320px;
+  flex: 0 0 320px;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 18px;
   border-left: 1px solid #e8e8e8;
   background: #fff;
@@ -807,11 +1019,27 @@ export default {
   background: #fff;
 }
 @media (max-width: 1100px) {
+  .custom-dashboard-designer__editor {
+    width: 280px;
+    flex-basis: 280px;
+  }
   .preset-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 }
 @media (max-width: 760px) {
+  .custom-dashboard-designer__body {
+    flex-direction: column;
+  }
+  .custom-dashboard-designer__canvas-wrap,
+  .custom-dashboard-designer__editor {
+    width: 100%;
+    flex: auto;
+  }
+  .custom-dashboard-designer__editor {
+    border-left: 0;
+    border-top: 1px solid #e8e8e8;
+  }
   .designer-meta {
     display: none;
   }
@@ -826,6 +1054,45 @@ export default {
     flex: 0 0 224px;
     flex-direction: column;
   }
+}
+.custom-dashboard-designer__actions,
+.canvas-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dashboard-chart-node__empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+  color: #66788a;
+  text-align: center;
+  font-size: 14px;
+}
+.dashboard-chart-node__empty--preview {
+  justify-content: flex-start;
+  padding: 18px 20px 14px;
+}
+.dashboard-chart-node__preview {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+.dashboard-chart-node__empty--preview > strong {
+  flex: none;
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: .04em;
+}
+.custom-dashboard-designer .x6-node-selected .dashboard-chart-node {
+  outline: 2px solid #1677ff;
+  outline-offset: -2px;
 }
 .dashboard-chart-node {
   width: 100%;

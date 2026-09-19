@@ -9,12 +9,6 @@
 
         <!-- 基本信息卡片 -->
         <a-card title="基本信息" :body-style="{ padding: '12px' }" style="margin-bottom: 16px;">
-          <a-alert
-            message="本页资产字段只读：监控侧资产信息仅供查看，正式资产信息请在资产配置中心维护；历史自定义属性只读保留，不属于 CMDB。"
-            type="info"
-            show-icon
-            style="margin-bottom: 12px;"
-          />
           <a-descriptions bordered size="small" :column="{ xxl: 4, xl: 3, lg: 2, md: 2, sm: 1 }">
             <template v-for="field in visibleFields">
               <a-descriptions-item :key="field.key" :label="fieldLabel(field)">

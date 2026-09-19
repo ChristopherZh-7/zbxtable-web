@@ -1,5 +1,5 @@
 <template>
-  <div class="public-dashboard">
+  <div class="public-dashboard" :class="{'public-dashboard--operations': operationsScreen}">
     <header class="public-dashboard__header">
       <div>
         <span class="public-dashboard__eyebrow">自定义展示场景</span>
@@ -27,7 +27,7 @@
       >
         <div ref="canvas" class="public-dashboard__canvas"></div>
       </div>
-      <div v-else class="public-dashboard__loading"><a-spin size="large" tip="正在读取最近 24 小时数据…" /></div>
+      <div v-else class="public-dashboard__loading"><a-spin size="large" tip="正在读取场景数据…" /></div>
     </main>
   </div>
 </template>
@@ -37,6 +37,8 @@ import axios from 'axios'
 import * as echarts from 'echarts'
 import {Graph} from '@antv/x6'
 import {registerDashboardChartNode} from './dashboard-canvas'
+import {renderOperationsNode} from './operations-renderer'
+import {isOperationsType} from '../../screen/operations-model'
 
 const publicAxios = axios.create({timeout: 20000, withCredentials: false})
 registerDashboardChartNode(Graph, echarts)
@@ -55,6 +57,7 @@ export default {
     }
   },
   computed: {
+    operationsScreen() { return Boolean(this.dashboard && (this.dashboard.nodes || []).some(node => isOperationsType(node.data.chart_type))) },
     token() {
       return String(this.$route.params.token || '')
     },
@@ -77,6 +80,7 @@ export default {
     window.removeEventListener('resize', this.resize)
     if (this.refreshTimer) window.clearInterval(this.refreshTimer)
     if (this.graph) this.graph.dispose()
+    if (this._disposeRenderers) this._disposeRenderers()
   },
   methods: {
     load() {
@@ -102,16 +106,19 @@ export default {
           this.graph.dispose()
           this.graph = null
         }
+        if (this._disposeRenderers) this._disposeRenderers()
       }).finally(() => { this.loading = false })
     },
     render() {
       if (!this.$refs.canvas || !this.dashboard) return
       if (this.graph) this.graph.dispose()
+      if (this._disposeRenderers) this._disposeRenderers()
+      this._disposeRenderers = registerDashboardChartNode(Graph, echarts, node => renderOperationsNode(node, this))
       this.graph = new Graph({
         container: this.$refs.canvas,
         width: this.dashboard.canvas_width,
         height: this.dashboard.canvas_height,
-        background: {color: '#f5f7fb'},
+        background: {color: this.operationsScreen ? '#061226' : '#f5f7fb'},
         interacting: false,
         panning: false,
         mousewheel: false,
@@ -233,6 +240,26 @@ body,
   width: 100%;
   height: calc(100% - 48px);
   overflow: auto;
+}
+.dashboard-chart-node__empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+  color: #66788a;
+  text-align: center;
+  font-size: 14px;
+}
+.public-dashboard--operations {
+  background: radial-gradient(ellipse at top, #102b45, #02060d 70%);
+  color: #cfe8ff;
+  .public-dashboard__header { background: rgba(0,230,255,.04); border-bottom: 1px solid rgba(0,230,255,.35); }
+  .public-dashboard__header h1 { color: #00e6ff; }
+  .public-dashboard__stage { background: #061226; }
 }
 .dashboard-data-table {
   width: 100%;

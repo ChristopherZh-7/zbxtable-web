@@ -1,13 +1,6 @@
 <template>
   <component :is="embedded ? 'div' : 'page-layout'" v-bind="embedded ? {} : { noTitle: true }">
     <div class="asset-binding-page">
-      <a-alert
-        message="历史只读 · 已废弃"
-        description="这些设备绑定曾向监控中心写入资产类型和监控项。配置管理中心现为唯一 CMDB 字段权威，旧配置不会再创建、修改、初始化、重试或自动执行；仅保留列表和历史记录用于核对。"
-        type="warning"
-        show-icon
-        class="legacy-alert"
-      />
 
       <a-card :bordered="false" class="table-card">
         <template #title>
@@ -158,7 +151,6 @@
         @cancel="systemDetailVisible = false"
       >
         <a-spin :spinning="systemDetailLoading">
-          <a-alert message="原始配置仅用于核对，不会保存、初始化或再次执行。" type="info" show-icon />
           <a-descriptions v-if="systemDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
             <a-descriptions-item label="名称">{{ systemDetailRecord.name || '-' }}</a-descriptions-item>
             <a-descriptions-item label="历史资产类型">{{ systemDetailRecord.type_code || '-' }}</a-descriptions-item>
@@ -183,7 +175,6 @@
         @cancel="metricMappingDetailVisible = false"
       >
         <a-spin :spinning="metricMappingDetailLoading">
-          <a-alert message="完整指标配置仅用于核对，不会保存、执行或写入监控侧资产信息。" type="info" show-icon />
           <a-descriptions v-if="metricMappingDetailRecord" bordered :column="2" size="small" class="detail-descriptions">
             <a-descriptions-item label="历史系统类型">{{ metricMappingDetailRecord.system_type || '-' }}</a-descriptions-item>
             <a-descriptions-item label="监控源">{{ getInstanceName(metricMappingDetailRecord.zid) }}</a-descriptions-item>
@@ -207,12 +198,6 @@
         :footer="null"
         @cancel="historyVisible = false"
       >
-        <a-alert
-          message="历史记录仅用于审计和迁移核对，不会再次执行。"
-          type="info"
-          show-icon
-          style="margin-bottom: 12px;"
-        />
         <a-table
           data-testid="system-binding-history-table"
           :loading="historyLoading"
@@ -241,12 +226,6 @@
         :footer="null"
         @cancel="metricMappingHistoryVisible = false"
       >
-        <a-alert
-          message="历史记录仅用于审计和迁移核对，不会再次执行或建立监控侧资产信息关联。"
-          type="info"
-          show-icon
-          style="margin-bottom: 12px;"
-        />
         <a-table
           data-testid="metric-mapping-history-table"
           :loading="metricMappingHistoryLoading"
@@ -598,7 +577,6 @@ export default {
 
 <style lang="less" scoped>
 .asset-binding-page { min-height: 100%; background: #f5f7fb; }
-.legacy-alert { margin-bottom: 16px; }
 .table-card { margin-bottom: 20px; border-radius: 14px; box-shadow: 0 10px 30px rgba(31, 35, 41, 0.04); }
 .table-card__title-wrap { display: flex; flex-direction: column; gap: 4px; }
 .table-card__title { color: #1f2329; font-size: 18px; font-weight: 600; }

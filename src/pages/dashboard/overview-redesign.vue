@@ -5,7 +5,6 @@
         <div>
           <p class="overview-kicker">运行脉络</p>
           <h1>资产运行总览</h1>
-          <p>沿服务端采集健康、告警影响与可达性证据快速定位当前运行风险。</p>
         </div>
         <div class="smartops-heading-metric">纳管资产<strong>{{ totalAssets }}</strong></div>
       </div>

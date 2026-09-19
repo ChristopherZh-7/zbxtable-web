@@ -1,17 +1,10 @@
 <template>
   <page-layout :noTitle="true">
-    <a-alert
-      type="info"
-      show-icon
-      message="内置角色与权限边界"
-      description="平台管理员管理全局账号和配置；租户管理员管理当前租户；只读用户只能查询当前租户且不能导出或修改。"
-      class="role-alert"
-    />
 
     <a-card title="添加已有普通账号" class="member-card">
       <a-form-model layout="inline" :model="draft">
         <a-form-model-item label="准确用户名" required>
-          <a-input v-model.trim="draft.username" autocomplete="off" placeholder="不会提供全平台账号搜索" />
+          <a-input v-model.trim="draft.username" autocomplete="off" placeholder="请输入完整用户名" />
         </a-form-model-item>
         <a-form-model-item label="租户角色" required>
           <a-select v-model="draft.role" style="width: 150px">
@@ -136,6 +129,5 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.role-alert { margin-bottom: 16px; }
 .member-card { margin-bottom: 16px; }
 </style>

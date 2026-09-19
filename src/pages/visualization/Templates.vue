@@ -4,12 +4,9 @@
       <div class="content-page-header">
         <div>
           <h2>五类展示视图</h2>
-          <p>网络、系统、应用、业务与综合运行五套内置模板，直接读取当前租户真实数据。</p>
         </div>
-        <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新真实数据</a-button>
+        <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新</a-button>
       </div>
-
-      <a-alert message="空数据保持 0 或“暂无数据”，不生成演示数字；业务健康分由当前活动告警透明推导。" type="info" show-icon class="view-alert" />
 
       <div class="template-tabs">
         <a-radio-group v-model="active" button-style="solid">
@@ -23,10 +20,6 @@
         <div class="view-title">
           <div><h3>{{ activeTemplate.name }}模板</h3><p>{{ activeTemplate.subtitle }}</p></div>
           <span>最近刷新：{{ updatedAt || '尚未刷新' }}</span>
-        </div>
-        <div class="source-strip">
-          <span>真实数据来源</span>
-          <a-tag v-for="source in activeTemplate.sources" :key="source" color="blue">{{ source }}</a-tag>
         </div>
 
         <a-row :gutter="16" class="metric-grid">
@@ -60,7 +53,7 @@
         <div v-else-if="active === 'business'" class="data-section business-section">
           <h4>业务健康口径</h4>
           <div class="health-score"><strong>{{ businessHealth }}</strong><span>/ 100</span></div>
-          <p>计算公式：100 − 活动告警数×2 − 严重告警数×8，最低为 0；该分数只反映当前告警健康，不冒充业务交易 KPI。</p>
+          <p>评分：100 − 活动告警数×2 − 严重告警数×8，最低为 0。</p>
           <div class="severity-list"><a-tag v-for="item in severityRows" :key="item.name" color="orange">{{ item.name }} {{ item.value }}</a-tag></div>
         </div>
 
@@ -188,12 +181,11 @@ export default {
 .content-page-header { margin-bottom: 16px; }
 .content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
 .content-page-header p, .view-title p, .view-title span { color: rgba(0,0,0,.45); }
-.view-alert, .template-tabs { margin-bottom: 16px; }
+.template-tabs { margin-bottom: 16px; }
 .template-tabs { overflow-x: auto; white-space: nowrap; }
 .view-shell { min-height: 560px; padding: 22px; border: 1px solid #e8edf5; border-radius: 10px; background: linear-gradient(145deg,#fff,#f6f9ff); }
 .view-title h3 { margin: 0; font-size: 22px; }
 .view-title p { margin: 5px 0 0; }
-.source-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 18px 0; padding: 10px 12px; border-left: 3px solid #1890ff; background: #eef6ff; }
 .source-strip > span { margin-right: 6px; font-weight: 600; }
 .metric-grid { margin-bottom: 18px; }
 .metric-grid .ant-col { margin-bottom: 12px; }

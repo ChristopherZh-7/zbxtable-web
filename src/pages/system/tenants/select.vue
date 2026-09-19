@@ -1,7 +1,6 @@
 <template>
   <div class="tenant-select-page">
     <a-card title="选择当前租户" class="tenant-select-card" :loading="loading">
-      <a-alert type="info" show-icon message="业务数据始终以当前租户为边界；如有多个租户，必须明确选择。" />
       <a-select v-model="selectedID" size="large" placeholder="请选择租户" class="tenant-select-input">
         <a-select-option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
           {{ tenant.name }}（编号 {{ tenant.id }}）

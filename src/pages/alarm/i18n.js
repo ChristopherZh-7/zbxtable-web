@@ -72,13 +72,12 @@ module.exports = {
       handling_action_failed: '告警处置失败',
       pipeline_config: '流水线配置',
       pipeline_config_title: '告警流水线协作',
-      pipeline_scope_hint: '每周固定班次使用服务器本地时间；超时未认领只生成一次站内升级事件。',
       pipeline_policy: '一级升级策略',
       pipeline_enabled: '启用',
       pipeline_delay: '未认领分钟',
       pipeline_escalation_user: '升级给',
       pipeline_select_admin: '选择租户管理员',
-      pipeline_shifts: '每周值班表',
+      pipeline_shifts: '每周值班表（服务器时间）',
       pipeline_add_shift: '新增班次',
       pipeline_no_shifts: '暂无班次，无命中班次的告警将保持未分配',
       pipeline_shift_name: '班次名称',
@@ -101,7 +100,6 @@ module.exports = {
       pipeline_run_failed: '执行升级检查失败',
       aggregation_config: '聚合降噪',
       aggregation_config_title: '告警聚合降噪',
-      aggregation_scope_hint: '仅合并同租户、同实例、同主机和同监控项的连续待认领故障；原始事件仍可追溯。',
       aggregation_enabled: '启用聚合',
       aggregation_window: '时间窗（分钟）',
       aggregation_save: '保存聚合策略',
@@ -254,8 +252,6 @@ module.exports = {
       msg_export_failed: '导出失败',
       
       // 告警规则页面 - a-alert
-      alert_multi_instance_title: '多实例告警规则说明',
-      alert_multi_instance_desc: '系统已支持多实例数据聚合。在配置告警分发规则时，可以选择一个或多个实例，规则将应用于所选实例的告警。',
       
       // 告警规则页面 - 表格列
       col_name: '名称',
@@ -501,13 +497,12 @@ module.exports = {
       handling_action_failed: 'Alarm handling failed',
       pipeline_config: 'Pipeline Settings',
       pipeline_config_title: 'Alarm Pipeline Collaboration',
-      pipeline_scope_hint: 'Weekly shifts use server local time. An unclaimed alarm produces only one in-app escalation event.',
       pipeline_policy: 'Single-level Escalation Policy',
       pipeline_enabled: 'Enabled',
       pipeline_delay: 'Unclaimed Minutes',
       pipeline_escalation_user: 'Escalate To',
       pipeline_select_admin: 'Select tenant administrator',
-      pipeline_shifts: 'Weekly Duty Schedule',
+      pipeline_shifts: 'Weekly Duty Schedule (Server Time)',
       pipeline_add_shift: 'Add Shift',
       pipeline_no_shifts: 'No shifts. Alarms outside a shift stay unassigned.',
       pipeline_shift_name: 'Shift name',
@@ -530,7 +525,6 @@ module.exports = {
       pipeline_run_failed: 'Escalation check failed',
       aggregation_config: 'Noise Reduction',
       aggregation_config_title: 'Alarm Aggregation',
-      aggregation_scope_hint: 'Only continuous unclaimed problems for the same tenant, instance, host and item are merged. Every source event remains traceable.',
       aggregation_enabled: 'Enable aggregation',
       aggregation_window: 'Window (minutes)',
       aggregation_save: 'Save Aggregation Policy',
@@ -683,8 +677,6 @@ module.exports = {
       msg_export_failed: 'Export Failed',
       
       // Alarm rule page - a-alert
-      alert_multi_instance_title: 'Multi-Instance Alarm Rule Description',
-      alert_multi_instance_desc: 'The system now supports multi-instance data aggregation. When configuring alarm distribution rules, you can select one or more instances, and the rule will apply to alarms from the selected instances.',
       
       // Alarm rule page - Table columns
       col_name: 'Name',
@@ -930,13 +922,12 @@ module.exports = {
       handling_action_failed: '告警處置失敗',
       pipeline_config: '流水線配置',
       pipeline_config_title: '告警流水線協作',
-      pipeline_scope_hint: '每週固定班次使用伺服器本地時間；逾時未認領只產生一次站內升級事件。',
       pipeline_policy: '一級升級策略',
       pipeline_enabled: '啟用',
       pipeline_delay: '未認領分鐘',
       pipeline_escalation_user: '升級給',
       pipeline_select_admin: '選擇租戶管理員',
-      pipeline_shifts: '每週值班表',
+      pipeline_shifts: '每週值班表（伺服器時間）',
       pipeline_add_shift: '新增班次',
       pipeline_no_shifts: '暫無班次，未命中班次的告警將保持未分配',
       pipeline_shift_name: '班次名稱',
@@ -959,7 +950,6 @@ module.exports = {
       pipeline_run_failed: '執行升級檢查失敗',
       aggregation_config: '聚合降噪',
       aggregation_config_title: '告警聚合降噪',
-      aggregation_scope_hint: '僅合併同租戶、同實例、同主機和同監控項的連續待認領故障；原始事件仍可追溯。',
       aggregation_enabled: '啟用聚合',
       aggregation_window: '時間窗（分鐘）',
       aggregation_save: '保存聚合策略',
@@ -1112,8 +1102,6 @@ module.exports = {
       msg_export_failed: '導出失敗',
       
       // 告警規則頁面 - a-alert
-      alert_multi_instance_title: '多實例告警規則說明',
-      alert_multi_instance_desc: '系統已支持多實例數據聚合。在配置告警分發規則時，可以選擇一個或多個實例，規則將應用於所選實例的告警。',
       
       // 告警規則頁面 - 表格列
       col_name: '名稱',

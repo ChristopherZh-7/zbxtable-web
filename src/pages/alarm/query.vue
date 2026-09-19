@@ -189,7 +189,6 @@
       :closable="true"
       @close="closeAggregation">
       <a-spin :spinning="aggregationLoading">
-        <a-alert type="info" show-icon :message="$t('aggregation_scope_hint')" />
         <a-form-model layout="vertical" class="aggregation-form">
           <a-form-model-item :label="$t('aggregation_enabled')">
             <a-switch v-model="aggregationConfig.enabled" />
@@ -212,7 +211,6 @@
       :closable="true"
       @close="closePipeline">
       <a-spin :spinning="pipelineLoading">
-        <a-alert type="info" show-icon :message="$t('pipeline_scope_hint')" />
         <a-card size="small" :title="$t('pipeline_policy')" class="pipeline-card">
           <a-form-model layout="inline">
             <a-form-model-item :label="$t('pipeline_enabled')">
@@ -348,7 +346,6 @@
         </div>
       </div>
     </a-drawer>
-
 
   </page-layout>
 </template>

@@ -1,3 +1,6 @@
+const {previewGraphic, darkBackground} = require('./component-preview')
+const {OPERATIONS_TYPES, isOperationsType} = require('../../screen/operations-model')
+
 const CHART_TYPES = Object.freeze([
   {value: 'line', label: '折线图', icon: 'line-chart'},
   {value: 'bar', label: '柱状图', icon: 'bar-chart'},
@@ -7,7 +10,7 @@ const CHART_TYPES = Object.freeze([
   {value: 'topology', label: '拓扑', icon: 'share-alt'},
 ])
 
-const CHART_LABELS = CHART_TYPES.reduce((result, item) => {
+const CHART_LABELS = [...CHART_TYPES, ...OPERATIONS_TYPES].reduce((result, item) => {
   result[item.value] = item.label
   return result
 }, {})
@@ -41,6 +44,16 @@ function normalizeSeries(series) {
   })).filter((point) => point.clock)
 }
 
+function emptyMessage(data) {
+  if (data.loadState === 'loading') return ['正在加载数据', '请稍候']
+  if (data.loadState === 'error') return ['数据加载失败', '请检查数据源并刷新重试']
+  if (normalizeSeries(data.series).length) return null
+  const source = data.data_source || {}
+  // Public projections deliberately omit internal source identifiers.
+  if (!source.itemid && !source.item_name) return ['待绑定数据源', '在组件配置中选择主机和数值监控项']
+  return ['暂无采样数据', '最近 24 小时没有可展示的数据']
+}
+
 function chartOption(data) {
   const source = data && data.data_source || {}
   const series = normalizeSeries(data && data.series)
@@ -53,29 +66,30 @@ function chartOption(data) {
   const units = source.units || ''
   const style = data && data.style || {}
   const color = style.color || '#1677ff'
+  const textColor = darkBackground(style.background) ? '#cfe8ff' : '#455468'
   const common = {
     animation: false,
     color: [color],
     backgroundColor: style.background || '#ffffff',
-    textStyle: {fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'},
+    textStyle: {fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: textColor},
     tooltip: {trigger: data.chart_type === 'pie' ? 'item' : 'axis'},
   }
   if (data.chart_type === 'gauge') {
     const max = units === '%' ? 100 : Math.max(100, Math.ceil(latest * 1.2))
-    return {...common, series: [{type: 'gauge', min: 0, max, detail: {formatter: `{value}${units}`}, data: [{value: latest, name: source.item_name || ''}]}]}
+    return {...common, series: [{type: 'gauge', min: 0, max, axisLabel: {color: textColor}, detail: {color: textColor, formatter: `{value}${units}`}, data: [{value: latest, name: source.item_name || ''}]}]}
   }
   if (data.chart_type === 'pie') {
     const max = units === '%' ? 100 : Math.max(latest, 1)
     return {...common, series: [{type: 'pie', radius: ['38%', '68%'], data: [
       {name: source.item_name || '最新值', value: latest},
       {name: '剩余', value: Math.max(0, max - latest), itemStyle: {color: '#e8edf5'}},
-    ], label: {formatter: `{b}\n{c}${units}`}}]}
+    ], label: {color: textColor, formatter: `{b}\n{c}${units}`}}]}
   }
   return {
     ...common,
     grid: {left: 52, right: 18, top: 20, bottom: 38},
-    xAxis: {type: 'category', data: labels, axisLabel: {fontSize: 10}},
-    yAxis: {type: 'value', name: units, axisLabel: {fontSize: 10}},
+    xAxis: {type: 'category', data: labels, axisLabel: {fontSize: 10, color: textColor}},
+    yAxis: {type: 'value', name: units, nameTextStyle: {color: textColor}, axisLabel: {fontSize: 10, color: textColor}},
     series: [{type: data.chart_type === 'bar' ? 'bar' : 'line', data: values, smooth: data.chart_type === 'line', areaStyle: data.chart_type === 'line' ? {opacity: 0.12} : undefined}],
   }
 }
@@ -144,46 +158,106 @@ function renderTopology(plot, data) {
   plot.appendChild(topology)
 }
 
-function registerDashboardChartNode(Graph, echarts) {
+function registerDashboardChartNode(Graph, echarts, operationsRenderer) {
+  const charts = new WeakMap()
+  const resources = new Set()
+  const release = resource => { resource.dispose(); resources.delete(resource) }
+  const watched = new WeakSet()
   Graph.registerNode('dashboard-chart', {
     inherit: 'html',
     width: 360,
     height: 240,
-    html(node) {
-      const data = node.getData() || defaultNodeData('line')
-      const wrap = document.createElement('div')
-      wrap.className = 'dashboard-chart-node'
-      const style = data.style || defaultNodeData('line').style
-      wrap.style.background = style.background || '#ffffff'
-      wrap.style.setProperty('--dashboard-accent', style.color || '#1677ff')
-      const header = document.createElement('div')
-      header.className = 'dashboard-chart-node__header'
-      const title = document.createElement('strong')
-      title.textContent = data.title || CHART_LABELS[data.chart_type] || '未命名图表'
-      const source = document.createElement('span')
-      source.textContent = data.data_source && data.data_source.item_name || '待绑定监控项'
-      header.appendChild(title)
-      header.appendChild(source)
-      const plot = document.createElement('div')
-      plot.className = 'dashboard-chart-node__plot'
-      wrap.appendChild(header)
-      wrap.appendChild(plot)
-      const render = () => {
-        if (!plot.isConnected) return
-        if (data.chart_type === 'table') {
-          renderTable(plot, data)
-        } else if (data.chart_type === 'topology') {
-          renderTopology(plot, data)
-        } else {
-          const chart = echarts.init(plot)
-          chart.setOption(chartOption(data), true)
+    html: {
+      shouldComponentUpdate: node => node.hasChanged('data') || node.hasChanged('size'),
+      render(node) {
+        const previous = charts.get(node)
+        const data = node.getData() || defaultNodeData('line')
+        if (previous && previous.operationsType === data.chart_type) {
+          previous.update()
+          return previous.element
         }
-      }
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(render)
-      else setTimeout(render, 0)
-      return wrap
+        if (previous) { release(previous); charts.delete(node) }
+        if (!watched.has(node)) {
+          watched.add(node)
+          node.once('removed', () => {
+            const chart = charts.get(node)
+            if (chart) release(chart)
+            charts.delete(node)
+            watched.delete(node)
+          })
+        }
+        if (isOperationsType(data.chart_type) && operationsRenderer) {
+          const resource = operationsRenderer(node)
+          resource.operationsType = data.chart_type
+          charts.set(node, resource)
+          resources.add(resource)
+          return resource.element
+        }
+        const wrap = document.createElement('div')
+        wrap.className = 'dashboard-chart-node'
+        const style = data.style || defaultNodeData('line').style
+        wrap.style.background = style.background || '#ffffff'
+        const dark = darkBackground(style.background)
+        wrap.style.color = dark ? '#cfe8ff' : '#455468'
+        wrap.style.borderColor = dark ? '#1c5269' : '#dfe5ef'
+        wrap.style.setProperty('--dashboard-accent', style.color || '#1677ff')
+        const header = document.createElement('div')
+        header.className = 'dashboard-chart-node__header'
+        const title = document.createElement('strong')
+        title.textContent = data.title || CHART_LABELS[data.chart_type] || '未命名图表'
+        const source = document.createElement('span')
+        source.textContent = data.data_source && data.data_source.item_name || '待绑定监控项'
+        source.style.color = dark ? '#85a5bd' : '#8c8c8c'
+        header.appendChild(title)
+        header.appendChild(source)
+        const plot = document.createElement('div')
+        plot.className = 'dashboard-chart-node__plot'
+        wrap.appendChild(header)
+        wrap.appendChild(plot)
+        const render = () => {
+          if (!plot.isConnected) return
+          const message = emptyMessage(data)
+          if (message) {
+            const empty = document.createElement('div')
+            empty.className = 'dashboard-chart-node__empty'
+            if (data.preview_enabled) {
+              empty.classList.add('dashboard-chart-node__empty--preview')
+              const graphic = document.createElement('div')
+              graphic.className = 'dashboard-chart-node__preview'
+              graphic.style.color = style.color || '#1677ff'
+              graphic.innerHTML = previewGraphic(data.chart_type)
+              empty.appendChild(graphic)
+              const badge = document.createElement('strong')
+              badge.textContent = '样式预览 · ' + message[0]
+              badge.style.color = dark ? '#85a5bd' : '#66788a'
+              empty.appendChild(badge)
+              plot.appendChild(empty)
+              return
+            }
+            message.forEach(text => {
+              const line = document.createElement('div')
+              line.textContent = text
+              empty.appendChild(line)
+            })
+            plot.appendChild(empty)
+          } else if (data.chart_type === 'table') {
+            renderTable(plot, data)
+          } else if (data.chart_type === 'topology') {
+            renderTopology(plot, data)
+          } else {
+            const chart = echarts.init(plot)
+            charts.set(node, chart)
+            resources.add(chart)
+            chart.setOption(chartOption(data), true)
+          }
+        }
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(render)
+        else setTimeout(render, 0)
+        return wrap
+      },
     },
   }, true)
+  return () => { resources.forEach(release) }
 }
 
 function nodeJSON(node) {
@@ -207,6 +281,7 @@ function normalizeDashboardNodes(nodes) {
         chart_type: String(data.chart_type || ''),
         title: String(data.title || '').trim(),
         data_source: {
+          ...(isOperationsType(data.chart_type) ? {kind: 'operations', metric: source.metric || 'cpu'} : {}),
           zid: Number(source.zid || 0),
           hostid: String(source.hostid || ''),
           host_name: String(source.host_name || ''),
@@ -233,7 +308,7 @@ function validateDashboardNodes(nodes) {
     if (!CHART_LABELS[node.data.chart_type]) return '存在不支持的图表类型'
     if (!node.data.title) return '请填写图表标题'
     const source = node.data.data_source
-    if (!source.zid || !source.hostid || !source.itemid || !['0', '3'].includes(source.history)) {
+    if (!isOperationsType(node.data.chart_type) && (!source.zid || !source.hostid || !source.itemid || !['0', '3'].includes(source.history))) {
       return `请为「${node.data.title}」绑定数值监控项`
     }
     const style = node.data.style
@@ -248,6 +323,7 @@ module.exports = {
   CHART_TYPES,
   chartOption,
   defaultNodeData,
+  emptyMessage,
   formatDashboardValue,
   normalizeDashboardNodes,
   registerDashboardChartNode,

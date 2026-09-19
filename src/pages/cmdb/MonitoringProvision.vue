@@ -15,8 +15,7 @@
         <code>#{{ latest.id }} · v{{ latest.version }}</code>
       </div>
       <p v-if="latest.error_message">{{ latest.error_message }}</p>
-      <p v-else-if="latest.status === 'bound'">只完成监控主机创建与身份绑定；配置和采集状态以上方实时结果为准。</p>
-      <p v-else>响应丢失时会核验本次创建记录，不盲目重复建监控主机。</p>
+      <p v-else-if="latest.status === 'bound'">监控对象已创建并绑定。</p>
       <small v-if="latest.host_id">监控源编号 {{ latest.zid }} · 监控主机 {{ latest.host_id }}</small>
       <a-button v-if="writable && latest.status === 'failed' && latest.retryable" data-testid="cmdb-provision-retry" type="link" size="small" :loading="submitting" @click="retry">核验并重试</a-button>
     </div>
@@ -39,7 +38,6 @@
         <strong>{{ asset.name }}</strong>
         <code>{{ asset.class }}:{{ asset.id }} · 组织编号 {{ context.organization_id }} · 组织映射版本 {{ context.generation }}</code>
       </div>
-      <a-alert show-icon type="info" message="创建不是采集就绪" description="本次只创建监控主机并建立监控关联，不下发模板、接口或采集凭据。完成后前往监控配置应用监控策略。" />
       <a-alert v-if="error" class="provision-modal-error" show-icon type="error" :message="error" />
       <a-form-model layout="vertical" class="provision-form">
         <a-form-model-item label="目标主机组（当前租户范围）">
@@ -48,7 +46,6 @@
           </a-select>
         </a-form-model-item>
       </a-form-model>
-      <p class="provision-note">主机技术名由服务端生成。遇到冲突或部分失败时保留原对象，不自动覆盖或删除。</p>
     </a-modal>
   </section>
 </template>
@@ -204,7 +201,7 @@ export default {
 .provision-record { margin-top: 12px; padding: 12px; background: #f4f8fb; border-left: 2px solid #1f5f9f; }
 .provision-record__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .provision-record code, .provision-authority code { font: 11px/1.6 monospace; color: #536780; overflow-wrap: anywhere; }
-.provision-record p, .provision-note { margin: 8px 0 0; color: #536780; font-size: 12px; line-height: 1.7; }
+.provision-record p { margin: 8px 0 0; color: #536780; font-size: 12px; line-height: 1.7; }
 .provision-record small { display: block; color: #536780; }
 .provision-authority { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; color: #0b2147; overflow-wrap: anywhere; }
 .provision-form, .provision-modal-error { margin-top: 18px; }

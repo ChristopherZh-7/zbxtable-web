@@ -4,7 +4,6 @@
       <div class="baseline-page__header">
         <div>
           <h2>动态基线</h2>
-          <p>使用监控中心历史同期趋势识别偏离；每条规则对应一个可审计的真实触发器。</p>
         </div>
         <div>
           <a-button :loading="loading" @click="load"><a-icon type="reload" /> 刷新</a-button>
@@ -13,13 +12,6 @@
           </a-button>
         </div>
       </div>
-
-      <a-alert
-        message="基线固定使用 1 小时趋势数据，按日或周比较 3-30 个同期样本；这是统计基线，不是 AI 预测。"
-        type="info"
-        show-icon
-        style="margin-bottom: 16px"
-      />
 
       <a-table :loading="loading" :columns="columns" :data-source="rules" :row-key="record => `${record.zid}:${record.triggerid}`">
         <span slot="source" slot-scope="record">

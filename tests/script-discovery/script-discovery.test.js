@@ -14,19 +14,19 @@ test('page exposes trusted CMDB candidates as a manual-confirmation read-only vi
 
   for (const text of [
     '扩展脚本发现',
-    'Agent UserParameter',
-    'External check',
-    '[SmartOps Discovery]',
-    '扁平 JSON',
-    '64 KiB',
-    '资产配置中心',
     '人工确认',
-    '配置管理中心',
-    '不会写入智能运维管理系统自定义属性',
+    '候选仅供查看',
+    'CMDB 候选字段（只读）',
+    '{{ record.item_key }}',
+    '{{ record.item_type }}',
+    'record.mappable_fields',
+    'record.error_message',
   ]) {
     assert.ok(page.includes(text), `missing confirmed copy: ${text}`)
   }
 
+  assert.doesNotMatch(page, /<a-alert|<a-input|<a-textarea|<a-modal/)
+  assert.match(page, /await scriptDiscoveryList\(\)/)
   assert.doesNotMatch(page, /type="file"|<a-upload/)
   assert.doesNotMatch(page, /应用映射|applyScriptDiscovery|canApply|@click="apply\(record\)"/)
 })

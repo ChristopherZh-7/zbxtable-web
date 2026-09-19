@@ -11,7 +11,7 @@ test('legacy custom field definitions are read-only while visibility, width and 
   for (const type of ['text', 'number', 'date', 'select']) {
     assert.match(drawer, new RegExp(`${type}:`))
   }
-  for (const copy of ['历史只读', '非 CMDB', '资产配置中心']) {
+  for (const copy of ['历史只读', '非 CMDB']) {
     assert.ok(drawer.includes(copy), `missing read-only boundary copy: ${copy}`)
   }
 
@@ -42,7 +42,7 @@ test('list and detail show legacy values without asset-field edit or save paths'
     assert.match(page, /custom_attributes/)
     assert.match(page, /历史只读/)
     assert.match(page, /非 CMDB|不属于 CMDB/)
-    assert.match(page, /资产配置中心/)
+    assert.doesNotMatch(page, /<a-alert[^>]*message="(?:本页资产字段只读|监控侧资产字段只读)/)
     assert.doesNotMatch(page, /updateHostAssetAttributes|EDITABLE_FIELDS|DATE_FIELDS|editForm|isEditing/)
     assert.doesNotMatch(page, /tenant\.assets', 'update'/)
   }
@@ -79,7 +79,7 @@ test('deprecated Zabbix inventory binding UI is historical read-only and cannot 
   const services = source('src/services/admin.js')
   const config = source('src/pages/system/config.vue')
 
-  for (const copy of ['历史只读 · 已废弃', '配置管理中心现为唯一 CMDB 字段权威', '仅保留列表和历史记录']) {
+  for (const copy of ['旧设备绑定配置', '历史配置', '只读保留']) {
     assert.ok(binding.includes(copy), `missing deprecated binding boundary: ${copy}`)
   }
   assert.match(binding, /getSystemBindings/)

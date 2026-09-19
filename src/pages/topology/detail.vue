@@ -172,12 +172,6 @@
           />
           <span style="color: #999; font-size: 12px;">{{ $t('unit_pixels_range', { min: 600, max: 10000 }) }}</span>
         </a-form-item>
-        <a-alert 
-          :message="$t('hint_title')" 
-          :description="$t('canvas_size_hint')" 
-          type="info" 
-          show-icon 
-        />
       </a-form>
     </a-modal>
 

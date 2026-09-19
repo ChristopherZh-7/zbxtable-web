@@ -10,11 +10,14 @@ test('resource discovery is registered under the asset router', () => {
   assert.match(router, /resourceDiscovery:\s*\{[\s\S]*ResourceDiscovery/)
 })
 
-test('page exposes the confirmed five-category read-only contract', () => {
+test('page renders server-provided categories and evidence without write controls or explanatory banners', () => {
   const page = source('src/pages/host/ResourceDiscovery.vue')
-  for (const text of ['五类资源发现', 'Cisco IOS', 'Linux', 'VMware', 'MySQL', 'Nginx', '模板证据', '未采集', '不扫描凭据', '不自动创建主机']) {
-    assert.ok(page.includes(text), `missing confirmed copy: ${text}`)
+  for (const text of ['五类资源发现', '模板证据', '未采集', 'profile.category', 'profile.product', 'profile.template_signatures', 'record.template_name', 'record.evidence']) {
+    assert.ok(page.includes(text), `missing resource data presentation: ${text}`)
   }
+  for (const category of ['network', 'server', 'virtualization', 'database', 'middleware']) assert.ok(page.includes(`${category}:`))
+  assert.match(page, /this\.overview = result\.data \|\| \{profiles: \[\], resources: \[\]/)
+  assert.doesNotMatch(page, /<a-alert|<a-upload|<a-input|<a-modal/)
   assert.doesNotMatch(page, /METHOD\.(POST|PUT|DELETE)|\$can\([^)]*,\s*'(create|update|delete|operate)'/)
 })
 

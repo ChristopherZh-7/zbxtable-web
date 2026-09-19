@@ -1,6 +1,5 @@
 <template>
   <page-layout :noTitle="true">
-    <a-alert class="proxy-notice" type="info" show-icon :message="$t('notice')" />
     <a-alert v-if="!pricingBasis.complete" class="proxy-error" type="warning" show-icon :message="$t('billingIncomplete')" />
 
     <div class="proxy-toolbar">
@@ -215,7 +214,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.proxy-notice, .proxy-error, .proxy-filters, .table-card { margin-bottom: 16px; }
+.proxy-error, .proxy-filters, .table-card { margin-bottom: 16px; }
 .proxy-toolbar { display: flex; justify-content: space-between; align-items: center; margin: 16px 0; }
 .last-success, .secondary { color: rgba(0, 0, 0, .45); font-size: 12px; }
 .auto-refresh-label { margin-right: 8px; }

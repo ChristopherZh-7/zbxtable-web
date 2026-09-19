@@ -47,7 +47,7 @@ test('CMDB route and services stay inside the SmartOps application API', () => {
 
 test('CMDB page presents authoritative governed lifecycle and tenant isolation', () => {
   const page = source('src/pages/cmdb/index.vue')
-  for (const copy of ['配置数据来源', '配置管理中心', '统一维护资产档案', '受控写入 · 租户隔离', '新增资产', '编辑资产', '退役', '重新启用', '不会删除历史', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
+  for (const copy of ['配置数据来源', '配置管理中心', '新增资产', '编辑资产', '退役', '重新启用', '不会删除历史', '资产台账', '配置属性', '配置关系', '上游依赖', '下游支撑']) {
     assert.ok(page.includes(copy), `missing confirmed CMDB UI copy: ${copy}`)
   }
   assert.match(page, /v-if="platformAdmin"[\s\S]*配置组织映射/)
@@ -55,6 +55,8 @@ test('CMDB page presents authoritative governed lifecycle and tenant isolation',
   assert.match(page, /v-if="canUpdate && !selectedLifecycle\.retired"[\s\S]*编辑资产/)
   assert.match(page, /canPerform\(this\.permissions, 'tenant\.cmdb', 'operate'\)/)
   assert.match(page, /organizationAssignedElsewhere/)
+  assert.match(page, /getCMDBOverview/)
+  assert.match(page, /listCMDBAssets/)
   assert.doesNotMatch(page, /iframe|window\.open|target="_blank"/)
 })
 

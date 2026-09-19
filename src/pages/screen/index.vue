@@ -15,55 +15,27 @@
       <div class="screen-body">
 
       <!-- 行 1 左：主机类型分布 -->
-      <screen-panel class="area-host-pie" :title="$t('panel_host_type')">
-        <host-type-pie :data="info" />
-      </screen-panel>
+      <operations-widget class="area-host-pie" type="ops-hosts" :title="$t('panel_host_type')" :payload="{info}" :status="dataStatus.info" />
 
       <!-- 行 1 中：KPI 卡 + 出入口流量 -->
       <div class="area-kpi" style="display:flex;flex-direction:column;gap:14px;min-height:0;">
-        <kpi-cards
-          :total="kpi.total"
-          :online="kpi.online"
-          :alarms="kpi.alarms"
-          :critical="kpi.critical"
+        <operations-widget type="ops-kpi" :payload="{info, triggers: triggerList}" :status="dataStatus.info || dataStatus.alarms"
           style="flex:0 0 auto;height:42%;"
         />
-        <screen-panel :title="$t('panel_egress')" style="flex:1 1 auto;min-height:0;">
-          <egress-area :data="egressData" />
-        </screen-panel>
+        <operations-widget type="ops-egress" :title="$t('panel_egress')" :payload="{egress: egressData}" :status="dataStatus.egress" style="flex:1 1 auto;min-height:0;" />
       </div>
 
       <!-- 行 1 右：告警分级玫瑰图 -->
-      <screen-panel class="area-severity" :title="$t('panel_severity')">
-        <severity-rose :triggers="triggerList" />
-      </screen-panel>
+      <operations-widget class="area-severity" type="ops-severity" :title="$t('panel_severity')" :payload="{triggers: triggerList}" :status="dataStatus.alarms" />
 
       <!-- 行 3 左：Linux TOP（CPU/内存切换） -->
-      <screen-panel class="area-cpu-top" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'">
-        <template slot="extra">
-          <div class="top-toggle">
-            <span class="toggle-btn" :class="{ active: linMetric === 'cpu' }" @click="linMetric = 'cpu'">CPU</span>
-            <span class="toggle-btn" :class="{ active: linMetric === 'mem' }" @click="linMetric = 'mem'">内存</span>
-          </div>
-        </template>
-        <resource-top-bar :rows="linMetric === 'cpu' ? linCpuTop : linMemTop" :metric="linMetric" />
-      </screen-panel>
+      <operations-widget class="area-cpu-top" type="ops-linux" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="linMetric" :payload="{cpu: linCpuTop, mem: linMemTop}" :status="dataStatus[linMetric === 'cpu' ? 'linCpuTop' : 'linMemTop']" @metric-change="linMetric = $event" />
 
       <!-- 行 3 中：实时告警动态 -->
-      <screen-panel class="area-alert" :title="$t('panel_alert_list')" :extra="lastUpdated">
-        <alert-marquee :list="triggerList" />
-      </screen-panel>
+      <operations-widget class="area-alert" type="ops-alerts" :title="$t('panel_alert_list')" :payload="{triggers: triggerList}" :status="dataStatus.alarms" />
 
       <!-- 行 3 右：Windows TOP（CPU/内存切换） -->
-      <screen-panel class="area-mem-top" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'">
-        <template slot="extra">
-          <div class="top-toggle">
-            <span class="toggle-btn" :class="{ active: winMetric === 'cpu' }" @click="winMetric = 'cpu'">CPU</span>
-            <span class="toggle-btn" :class="{ active: winMetric === 'mem' }" @click="winMetric = 'mem'">内存</span>
-          </div>
-        </template>
-        <resource-top-bar :rows="winMetric === 'cpu' ? winCpuTop : winMemTop" :metric="winMetric" />
-      </screen-panel>
+      <operations-widget class="area-mem-top" type="ops-windows" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="winMetric" :payload="{cpu: winCpuTop, mem: winMemTop}" :status="dataStatus[winMetric === 'cpu' ? 'winCpuTop' : 'winMemTop']" @metric-change="winMetric = $event" />
 
       </div>
     </div>
@@ -72,13 +44,8 @@
 
 <script>
 import HeaderBar from './components/HeaderBar'
-import ScreenPanel from './components/ScreenPanel'
-import KpiCards from './components/KpiCards'
-import HostTypePie from './components/HostTypePie'
-import SeverityRose from './components/SeverityRose'
-import ResourceTopBar from './components/ResourceTopBar'
-import EgressArea from './components/EgressArea'
-import AlertMarquee from './components/AlertMarquee'
+import OperationsWidget from './components/OperationsWidget'
+import {operationsKpi} from './operations-model'
 import SessionOverlay from './components/SessionOverlay'
 import { startTokenRefresher } from '@/utils/tokenRefresher'
 import { indexInfo, indexTrigger, indexRestop, indexEgress } from '@/services/admin'
@@ -89,11 +56,11 @@ export default {
   name: 'ScreenDashboard',
   i18n: require('./i18n'),
   components: {
-    HeaderBar, ScreenPanel, KpiCards,
-    HostTypePie, SeverityRose, ResourceTopBar, EgressArea, AlertMarquee, SessionOverlay
+    HeaderBar, OperationsWidget, SessionOverlay
   },
   data() {
     return {
+      dataStatus: {info:'loading', alarms:'loading', egress:'loading', linCpuTop:'loading', linMemTop:'loading', winCpuTop:'loading', winMemTop:'loading'},
       info: { net_count: 0, srv_count: 0, win_count: 0, lin_count: 0, total_count: 0, asset_type_counts: [] },
       triggerList: [],
       egressData: [],
@@ -121,15 +88,7 @@ export default {
       return `${this.viewportWidth}×${this.viewportHeight}`
     },
     kpi() {
-      const dynamicCounts = Array.isArray(this.info.asset_type_counts) ? this.info.asset_type_counts : []
-      const total = dynamicCounts.length
-        ? dynamicCounts.reduce((sum, item) => sum + (Number(item && item.count) || 0), 0)
-        : (this.info.net_count || 0) + (this.info.srv_count || 0) +
-          (this.info.win_count || 0) + (this.info.lin_count || 0)
-      const alarms = this.triggerList.length
-      const critical = this.triggerList.filter(t => Number(t && t.severity) >= 4).length
-      const online = total > 0 ? Math.max(0, Math.round(((total - critical) / total) * 1000) / 10) : 0
-      return { total, alarms, critical, online }
+      return operationsKpi(this.info, this.triggerList)
     }
   },
   mounted() {
@@ -187,6 +146,8 @@ export default {
     },
     fetchInfo() {
       return indexInfo().then(resp => {
+        if (!resp.data || resp.data.code !== 200) throw new Error('load failed')
+        this.dataStatus.info = ''
         const d = (resp && resp.data && resp.data.data) || {}
         this.info = {
           net_count: d.net_count || 0,
@@ -196,16 +157,20 @@ export default {
           total_count: d.total_count || 0,
           asset_type_counts: Array.isArray(d.asset_type_counts) ? d.asset_type_counts : []
         }
-      }).catch(() => {})
+      }).catch(() => { this.dataStatus.info = 'error' })
     },
     fetchAlarms() {
       return indexTrigger().then(resp => {
+        if (!resp.data || resp.data.code !== 200) throw new Error('load failed')
+        this.dataStatus.alarms = ''
         const items = resp && resp.data && resp.data.data && resp.data.data.items
         this.triggerList = Array.isArray(items) ? items : []
-      }).catch(() => {})
+      }).catch(() => { this.dataStatus.alarms = 'error' })
     },
     fetchEgress() {
       return indexEgress().then(resp => {
+        if (!resp.data || resp.data.code !== 200) throw new Error('load failed')
+        this.dataStatus.egress = ''
         const d = resp && resp.data && resp.data.data
         if (Array.isArray(d)) {
           this.egressData = d.filter(Boolean).map(item => ({
@@ -221,7 +186,7 @@ export default {
         } else {
           this.egressData = []
         }
-      }).catch(() => {})
+      }).catch(() => { this.dataStatus.egress = 'error' })
     },
     onSessionRestored() {
       this.sessionExpired = false
@@ -231,18 +196,19 @@ export default {
     },
     fetchTop() {
       const parse = resp => {
+        if (!resp.data || resp.data.code !== 200) throw new Error('load failed')
         const arr = resp && resp.data && resp.data.data
         return Array.isArray(arr) ? arr.filter(Boolean) : []
       }
       return Promise.allSettled([
         indexRestop({ host_type: 'VM_LIN', metrics_type: 'CPU', top_num: '10' })
-          .then(r => { this.linCpuTop = parse(r) }).catch(() => { this.linCpuTop = [] }),
+          .then(r => { this.linCpuTop = parse(r); this.dataStatus.linCpuTop = '' }).catch(() => { this.dataStatus.linCpuTop = 'error' }),
         indexRestop({ host_type: 'VM_LIN', metrics_type: 'MEM', top_num: '10' })
-          .then(r => { this.linMemTop = parse(r) }).catch(() => { this.linMemTop = [] }),
+          .then(r => { this.linMemTop = parse(r); this.dataStatus.linMemTop = '' }).catch(() => { this.dataStatus.linMemTop = 'error' }),
         indexRestop({ host_type: 'VM_WIN', metrics_type: 'CPU', top_num: '10' })
-          .then(r => { this.winCpuTop = parse(r) }).catch(() => { this.winCpuTop = [] }),
+          .then(r => { this.winCpuTop = parse(r); this.dataStatus.winCpuTop = '' }).catch(() => { this.dataStatus.winCpuTop = 'error' }),
         indexRestop({ host_type: 'VM_WIN', metrics_type: 'MEM', top_num: '10' })
-          .then(r => { this.winMemTop = parse(r) }).catch(() => { this.winMemTop = [] })
+          .then(r => { this.winMemTop = parse(r); this.dataStatus.winMemTop = '' }).catch(() => { this.dataStatus.winMemTop = 'error' })
       ])
     }
   }

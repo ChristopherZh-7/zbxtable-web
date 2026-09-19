@@ -13,13 +13,6 @@
       </a-form-model-item>
     </a-form-model>
 
-    <a-alert
-      :message="`${resourceLabel}数据源由服务端按当前租户主机组重验；个人${resourceLabel}仅创建者可见。`"
-      type="info"
-      show-icon
-      style="margin-bottom: 16px"
-    />
-
     <a-table
       :loading="loading"
       :columns="columns"

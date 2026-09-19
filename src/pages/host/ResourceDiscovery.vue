@@ -4,15 +4,9 @@
       <div class="content-page-header">
         <div>
           <h2>五类资源发现</h2>
-          <p>实时识别当前租户已由监控中心纳管的主机，所有分类均有可核对的链接模板证据。</p>
         </div>
         <a-button :loading="loading" @click="loadOverview"><a-icon type="reload" /> 刷新发现结果</a-button>
       </div>
-
-      <a-alert
-        message="首期范围：网络设备 Cisco IOS、服务器 Linux、虚拟化 VMware、数据库 MySQL、中间件 Nginx。页面只读，不扫描凭据、不自动创建主机。"
-        type="info" show-icon class="section-alert"
-      />
 
       <a-row :gutter="16" class="profile-grid">
         <a-col v-for="profile in profiles" :key="profile.code" :xs="24" :sm="12" :lg="8" :xl="profile.code === 'middleware' ? 4 : 5">
@@ -60,7 +54,7 @@
         </a-table>
       </section>
 
-      <div class="summary-line">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配首期代表模板。未采集的监控侧资产信息属性保持空值，不伪造。</div>
+      <div class="summary-line">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配资源模板。</div>
     </div>
   </page-layout>
 </template>
@@ -120,7 +114,6 @@ export default {
 .content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
 .content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
 .content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
-.section-alert { margin-bottom: 16px; }
 .profile-grid { margin-bottom: 18px; }
 .profile-grid .ant-col { margin-bottom: 12px; }
 .profile-card { height: 154px; border: 1px solid #edf0f5; }

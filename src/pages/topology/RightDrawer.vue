@@ -8,9 +8,6 @@
           <a-form-model-item :label="$t('label_topology_name')">
             <a-input v-model="form.name" :placeholder="$t('placeholder_enter_topology_name')" />
           </a-form-model-item>
-          <a-form-model-item label="">
-            <a-alert :message="$t('alert_click_blank_to_close')" type="info" show-icon />
-          </a-form-model-item>
         </a-form-model>
       </div>
     </div>

@@ -40,6 +40,7 @@ export default {
   methods: {
     push() {
       const arr = this.data || []
+      if (!arr.length) { this.history = []; this.render(); return }
       let inSum = 0
       let outSum = 0
       arr.forEach(d => {

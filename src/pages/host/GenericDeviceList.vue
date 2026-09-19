@@ -56,13 +56,6 @@
         @saved="onFieldsSaved"
       />
 
-      <a-alert
-        message="监控侧资产字段只读；历史自定义属性仅供查看，不属于 CMDB。请在资产配置中心维护正式资产信息，本页仍可编辑标准监控标签。"
-        type="info"
-        show-icon
-        style="margin-bottom: 12px;"
-      />
-
       <!-- 设备列表 -->
       <a-table
         class="smartops-data-panel"
@@ -151,7 +144,6 @@
         @ok="saveTags"
         @cancel="closeTagEditor"
       >
-        <a-alert message="tenant 由平台强制为当前租户，非标准监控中心标签会保留。" type="info" show-icon style="margin-bottom: 16px" />
         <a-form-model layout="vertical">
           <a-form-model-item label="租户">
             <a-input :value="currentTenant.code || ''" disabled />
