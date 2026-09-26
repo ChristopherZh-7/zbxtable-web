@@ -55,6 +55,9 @@ const routerMap = {
 	dynamicBaselines: {
 		component: () => import('@/pages/dashboard/baseline'),
 	},
+	domainMonitoring: {
+		component: () => import('@/pages/dashboard/domains'),
+	},
 	// host/net/server 父容器保留：仅用于挂载各设备详情路由（列表已并入“资产管理”）
 	host: {
 		component: view.blank,

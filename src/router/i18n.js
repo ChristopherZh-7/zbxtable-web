@@ -5,6 +5,8 @@ module.exports = {
       dashboard: {
         name: '监控',
         workplace: {name: '面板'},
+        domains: {name: '域名监控'},
+        domainMonitoring: {name: '域名监控'},
         inventory: {name: '资产管理'},
         overview: {name: '状态总览'}
       },

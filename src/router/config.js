@@ -80,6 +80,11 @@ const options = {
               name: "动态基线",
               component: () => import("@/pages/dashboard/baseline"),
             },
+            {
+              path: "domains",
+              name: "域名监控",
+              component: () => import("@/pages/dashboard/domains"),
+            },
           ],
         },
         {
