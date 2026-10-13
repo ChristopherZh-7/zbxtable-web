@@ -19,8 +19,8 @@ test('seven operations widgets persist independently of item-bound legacy charts
   }
 })
 test('operations calculations preserve fixed-screen semantics and genuine zeros', () => {
-  assert.deepEqual(operationsKpi(), {total:0, alarms:0, critical:0, online:0})
-  assert.deepEqual(operationsKpi({asset_type_counts:[{count:4},{count:6}]}, [{severity:'5'}, {severity:'2'}]), {total:10, alarms:2, critical:1, online:90})
+  assert.deepEqual(operationsKpi(), {total:0, alarms:0, critical:0, online:null})
+  assert.deepEqual(operationsKpi({online_rate:90, asset_type_counts:[{count:4},{count:6}]}, [{severity:'5'}, {severity:'2'}]), {total:10, alarms:2, critical:1, online:90})
   assert.equal(operationsKpi({lin_count:3, net_count:2}).total, 5)
 })
 test('editor and public projection mount exactly the shared fixed-screen widget', () => {

@@ -2,6 +2,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
+const root = path.resolve(process.env.TARGET_ROOT || path.join(__dirname, '../..'))
 
 const {
   filterGroupRows,
@@ -11,9 +12,9 @@ const {
   formatDeviation,
   proxyPricingBasis,
   readBusinessSnapshot,
-} = require('../../src/pages/system/proxy-management/model')
+} = require(path.join(root, 'src/pages/system/proxy-management/model'))
 
-const source = (relative) => fs.readFileSync(path.join(__dirname, '../..', relative), 'utf8')
+const source = (relative) => fs.readFileSync(path.join(root, relative), 'utf8')
 const snapshot = {
   generated_at: '2026-08-22T00:00:00Z',
   summary: {instance_count: 2, proxy_count: 2},
@@ -84,4 +85,270 @@ test('proxy page is read-only, retains data on refresh errors, and polls every 1
   assert.match(service, /\/v1\/zabbix\/proxy-management.*METHOD\.GET/)
   assert.doesNotMatch(service, /proxy-management[^\n]*METHOD\.(POST|PUT|DELETE)/)
   assert.doesNotMatch(page, /删除代理|启停代理|新建代理/)
+})
+
+
+// Production reload/computed/helper logic, not live HTTP or browser acceptance.
+const pricingVm = require('node:vm')
+const pricingModel = require(path.join(root, 'src/pages/system/proxy-management/model'))
+const pricingInlineInputs = {
+  "schema": "issue061-proxy-pricing-fixed-inputs-v1",
+  "failed_response": {
+    "data": {
+      "code": 403,
+      "message": "无权执行该操作"
+    }
+  },
+  "known_two_snapshot": {
+    "generated_at": "2026-10-09T21:31:24Z",
+    "summary": {
+      "instance_count": 1,
+      "available_instance_count": 1,
+      "group_count": 1,
+      "proxy_count": 2,
+      "online_proxy_count": 0,
+      "offline_proxy_count": 0
+    },
+    "instances": [
+      {
+        "zid": 1,
+        "instance": "f03-local",
+        "name": "F03 Local Zabbix",
+        "version": "7.0.29",
+        "supported": true,
+        "available": true,
+        "warnings": [],
+        "groups": [
+          {
+            "proxy_groupid": "5",
+            "name": "f10n-b60af8ea1593-Billing Group",
+            "state": 1,
+            "state_name": "offline",
+            "failover_delay": "1m",
+            "minimum_online": "1",
+            "online_proxies": 0,
+            "proxy_count": 2,
+            "assigned_hosts": 0,
+            "average_assigned_hosts": 0
+          }
+        ],
+        "proxies": [
+          {
+            "proxyid": "8",
+            "name": "f10n-b60af8ea1593-proxy-a",
+            "proxy_groupid": "5",
+            "proxy_group_name": "f10n-b60af8ea1593-Billing Group",
+            "operating_mode": 0,
+            "operating_mode_name": "active",
+            "state": 0,
+            "state_name": "unknown",
+            "last_access": 0,
+            "version": 0,
+            "version_name": "unknown",
+            "compatibility": 0,
+            "compatibility_name": "undefined",
+            "assigned_host_count": 0,
+            "monitored_host_count": 0,
+            "group_average_assigned": 0,
+            "load_deviation": 0
+          },
+          {
+            "proxyid": "9",
+            "name": "f10n-b60af8ea1593-proxy-b",
+            "proxy_groupid": "5",
+            "proxy_group_name": "f10n-b60af8ea1593-Billing Group",
+            "operating_mode": 0,
+            "operating_mode_name": "active",
+            "state": 0,
+            "state_name": "unknown",
+            "last_access": 0,
+            "version": 0,
+            "version_name": "unknown",
+            "compatibility": 0,
+            "compatibility_name": "undefined",
+            "assigned_host_count": 0,
+            "monitored_host_count": 0,
+            "group_average_assigned": 0,
+            "load_deviation": 0
+          }
+        ]
+      }
+    ]
+  },
+  "successful_zero_snapshot": {
+    "generated_at": "2026-10-09T21:31:24Z",
+    "summary": {
+      "instance_count": 1,
+      "available_instance_count": 1,
+      "group_count": 0,
+      "proxy_count": 0,
+      "online_proxy_count": 0,
+      "offline_proxy_count": 0
+    },
+    "instances": [
+      {
+        "zid": 1,
+        "instance": "f03-local",
+        "name": "F03 Local Zabbix",
+        "version": "7.0.29",
+        "supported": true,
+        "available": true,
+        "warnings": [],
+        "groups": [],
+        "proxies": []
+      }
+    ]
+  },
+  "partial_instance_snapshot": {
+    "generated_at": "2026-10-09T21:31:24Z",
+    "summary": {
+      "instance_count": 2,
+      "available_instance_count": 1,
+      "group_count": 1,
+      "proxy_count": 1,
+      "online_proxy_count": 0,
+      "offline_proxy_count": 0
+    },
+    "instances": [
+      {
+        "zid": 1,
+        "instance": "f03-local",
+        "name": "F03 Local Zabbix",
+        "version": "7.0.29",
+        "supported": true,
+        "available": true,
+        "warnings": [],
+        "groups": [
+          {
+            "proxy_groupid": "5",
+            "name": "f10n-b60af8ea1593-Billing Group",
+            "state": 1,
+            "state_name": "offline",
+            "failover_delay": "1m",
+            "minimum_online": "1",
+            "online_proxies": 0,
+            "proxy_count": 2,
+            "assigned_hosts": 0,
+            "average_assigned_hosts": 0
+          }
+        ],
+        "proxies": [
+          {
+            "proxyid": "8",
+            "name": "f10n-b60af8ea1593-proxy-a",
+            "proxy_groupid": "5",
+            "proxy_group_name": "f10n-b60af8ea1593-Billing Group",
+            "operating_mode": 0,
+            "operating_mode_name": "active",
+            "state": 0,
+            "state_name": "unknown",
+            "last_access": 0,
+            "version": 0,
+            "version_name": "unknown",
+            "compatibility": 0,
+            "compatibility_name": "undefined",
+            "assigned_host_count": 0,
+            "monitored_host_count": 0,
+            "group_average_assigned": 0,
+            "load_deviation": 0
+          }
+        ]
+      },
+      {
+        "zid": 2,
+        "instance": "fixture-unavailable",
+        "name": "Unavailable fixture",
+        "version": "7.0.29",
+        "supported": true,
+        "available": false,
+        "warnings": [],
+        "groups": [],
+        "proxies": [],
+        "error": "unreachable"
+      }
+    ]
+  },
+  "expected_unknown_display": "--",
+  "expected_two_display": "2",
+  "expected_zero_display": "0"
+}
+const pricingInputs = process.env.FIXED_INPUT ? JSON.parse(fs.readFileSync(process.env.FIXED_INPUT, 'utf8')) : pricingInlineInputs
+assert.deepEqual(pricingInputs, pricingInlineInputs, 'identical fixed inputs for BASELINE/MODIFIED/ROLLBACK/REAPPLY')
+const pricingPage = source('src/pages/system/proxy-management/index.vue')
+const pricingMethod = /pricingBasis\(\)\s*\{([\s\S]*?)\},/.exec(pricingPage)[1]
+const pricingReloadMethod = /async reload\(\)\s*\{([\s\S]*?)\r?\n    \},/.exec(pricingPage)[1]
+const pricingLastSuccessMethod = /generatedAtLabel\(\)\s*\{([\s\S]*?)\},/.exec(pricingPage)[1]
+const actualPricing = pricingVm.runInNewContext('(function(){'+pricingMethod+'})', {proxyPricingBasis: pricingModel.proxyPricingBasis})
+const actualLastSuccess = pricingVm.runInNewContext('(function(){'+pricingLastSuccessMethod+'})')
+function pricingState(snapshot = pricingModel.emptySnapshot()) {
+  return {snapshot, loading: false, globalError: '', $t: () => 'never', formatTime: value => value}
+}
+async function actualPricingReload(state, response) {
+  const reload = pricingVm.runInNewContext('(async function(){'+pricingReloadMethod+'})', {
+    getProxyManagement: async () => structuredClone(response), readBusinessSnapshot: pricingModel.readBusinessSnapshot,
+  })
+  await reload.call(state)
+}
+
+test('first failed load must not publish numeric billable zero', async () => {
+  const state = pricingState()
+  await actualPricingReload(state, pricingInputs.failed_response)
+  assert.equal(state.globalError, '无权执行该操作')
+  assert.equal(state.loading, false)
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_unknown_display)
+  assert.equal(actualPricing.call(state).complete, false)
+})
+
+test('failed refresh must invalidate price value while preserving diagnostic snapshot', async () => {
+  const preserved = structuredClone(pricingInputs.known_two_snapshot), state = pricingState(preserved)
+  const lastSuccess = actualLastSuccess.call(state)
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_two_display)
+  await actualPricingReload(state, pricingInputs.failed_response)
+  assert.equal(state.snapshot, preserved)
+  assert.deepEqual(state.snapshot, pricingInputs.known_two_snapshot)
+  assert.equal(actualLastSuccess.call(state), lastSuccess)
+  assert.equal(state.globalError, '无权执行该操作')
+  assert.equal(state.loading, false)
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_unknown_display)
+  assert.equal(actualPricing.call(state).count, 2, 'diagnostic count retained, not used as a confirmed price')
+})
+
+test('successful generated snapshot can publish genuine billable zero', async () => {
+  const state = pricingState()
+  await actualPricingReload(state, {data: {code: 200, data: pricingInputs.successful_zero_snapshot}})
+  assert.equal(state.globalError, '')
+  assert.equal(state.snapshot.generated_at, pricingInputs.successful_zero_snapshot.generated_at)
+  assert.equal(actualPricing.call(state).complete, true)
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_zero_display)
+  assert.equal(pricingModel.proxyPricingBasis(state.snapshot).complete, true, 'optional flag defaults to successful request')
+})
+
+test('unrequested snapshot remains unconfirmed without a generation timestamp', () => {
+  const state = pricingState()
+  assert.equal(state.snapshot.generated_at, '')
+  assert.equal(state.globalError, '')
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_unknown_display)
+  assert.equal(pricingModel.proxyPricingBasis(state.snapshot).complete, false)
+})
+
+test('successful refresh clears the request failure and restores the current price value', async () => {
+  const state = pricingState(structuredClone(pricingInputs.successful_zero_snapshot))
+  state.globalError = '无权执行该操作'
+  await actualPricingReload(state, {data: {code: 200, data: pricingInputs.known_two_snapshot}})
+  assert.equal(state.globalError, '')
+  assert.equal(state.loading, false)
+  assert.equal(state.snapshot.generated_at, pricingInputs.known_two_snapshot.generated_at)
+  assert.equal(actualPricing.call(state).complete, true)
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_two_display)
+})
+
+test('partial instance snapshots remain unconfirmed while retaining diagnostic rows', async () => {
+  const state = pricingState()
+  await actualPricingReload(state, {data: {code: 200, data: pricingInputs.partial_instance_snapshot}})
+  assert.equal(state.globalError, '')
+  assert.equal(state.snapshot.instances.length, 2)
+  assert.equal(state.snapshot.instances[0].proxies.length, 1)
+  assert.equal(state.snapshot.instances[1].error, 'unreachable')
+  assert.equal(actualPricing.call(state).display, pricingInputs.expected_unknown_display)
+  assert.equal(actualPricing.call(state).complete, false)
 })

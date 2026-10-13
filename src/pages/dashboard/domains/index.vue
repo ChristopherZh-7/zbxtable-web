@@ -64,7 +64,7 @@
           <span slot="latency" slot-scope="r">{{ r.status_code > 0 ? r.response_ms.toFixed(1) : '—' }}</span>
         </a-table>
       </a-spin>
-      <a-button @click="$router.push('/alarm/query')">查看集中告警</a-button>
+      <a-button @click="$router.push('/alarm/list')">查看集中告警</a-button>
     </a-drawer>
   </page-layout>
 </template>

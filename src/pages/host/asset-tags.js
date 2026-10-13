@@ -16,8 +16,9 @@ const APP_PATTERN = /^[a-z][a-z0-9_-]{1,63}$/
 function standardTagValues(tags) {
   return (Array.isArray(tags) ? tags : []).reduce((values, item) => {
     const name = String(item && item.tag || '').trim().toLowerCase()
-    if (['tenant', 'env', 'app', 'level'].includes(name) && values[name] === undefined) {
-      values[name] = String(item.value || '').trim()
+    if (['tenant', 'env', 'app', 'level'].includes(name)) {
+      // Repeated standard dimensions have no unique display or edit value.
+      values[name] = values[name] === undefined ? String(item.value || '').trim() : ''
     }
     return values
   }, {})

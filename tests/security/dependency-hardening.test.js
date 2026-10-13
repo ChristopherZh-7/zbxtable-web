@@ -41,3 +41,21 @@ test('Excel export loads the integrity-pinned official SheetJS build lazily', ()
   assert.equal(entry.resolved, 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz')
   assert.match(entry.integrity, /^sha512-/)
 })
+
+test('new advisories have exact compatible fixes in every resolved production copy', () => {
+  const pkg = JSON.parse(read('package.json'))
+  const lock = JSON.parse(read('package-lock.json'))
+  assert.equal(pkg.dependencies.dompurify, '3.4.16')
+  assert.equal(pkg.devDependencies.moment, '2.31.0')
+  assert.equal(pkg.overrides['source-map-js'], '1.2.2')
+  assert.equal(pkg.dependencies.vue, '2.7.16')
+  assert.equal(pkg.dependencies['ant-design-vue'], '1.7.8')
+  for (const [name, version] of Object.entries({ dompurify: '3.4.16', moment: '2.31.0', 'source-map-js': '1.2.2' })) {
+    const entries = Object.entries(lock.packages).filter(([key]) => key === 'node_modules/' + name || key.endsWith('/node_modules/' + name))
+    assert.ok(entries.length > 0, name + ' is missing')
+    for (const [, entry] of entries) {
+      assert.equal(entry.version, version)
+      assert.match(entry.integrity, /^sha512-/)
+    }
+  }
+})

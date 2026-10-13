@@ -30,3 +30,14 @@ test('F42 uses normal numerals and responsive three-two column geometry', () => 
   assert.doesNotMatch(page, /transform:\s*translateY\(-4px\)/)
   assert.doesNotMatch(page, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/)
 })
+
+test('ISSUE051 keeps full device names and counts within compact two-column cards', () => {
+  assert.match(page, /class="device-name"\s+:title="item\.name"/)
+  const nameRules = page.match(/\.device-name\s*\{([^}]+)\}/)[1]
+  assert.match(nameRules, /white-space:\s*normal/)
+  assert.match(nameRules, /overflow-wrap:\s*anywhere/)
+  assert.doesNotMatch(nameRules, /text-overflow:\s*ellipsis/)
+  assert.match(page, /\.device-stat-value\s*\{\s*display:\s*flex;\s*flex-wrap:\s*wrap;/)
+  assert.match(page, /@media\s*\(max-width:\s*720px\)[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)[\s\S]*?\.device-stat-card\s*\{\s*flex-direction:\s*column;/)
+  assert.match(page, /class="device-count">\{\{ item\.count \}\}/)
+})

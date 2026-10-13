@@ -6,13 +6,14 @@
         <a-input v-model.trim="name" :placeholder="$t('rule_name_placeholder')" />
       </a-form-model-item>
       <a-form-model-item>
-        <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
+        <a-button type="primary" @click="queryRules">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
         <a-button v-if="$can('platform.rules', 'create')" style="margin-left: 10px;" type="primary" @click="addRecord">{{ $t('btn_add') }}</a-button>
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
-      <a-table :loading="loading" :columns="columns" :data-source="list" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
+      <a-alert v-if="userlistError" :message="userlistError" type="error" show-icon style="margin-bottom: 12px" />
+      <a-table :loading="loading" :columns="columns" :data-source="list" :scroll="{ x: true }" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <div slot="instance_tag" slot-scope="text">
           <a-tag :color="themeColor">{{ getInstanceNames(text) || $t('status_not_selected') }}</a-tag>
         </div>
@@ -106,7 +107,8 @@
 
         <a-card :title="$t('card_title_receiver_object')" :bordered="false" size="small" style="margin-top: 12px;">
           <a-form-model-item :label="$t('form_label_receiver')">
-            <a-select v-model="editRule.user_ids" mode="multiple" style="width: 100%" :placeholder="$t('form_placeholder_receiver')">
+            <a-alert v-if="userlistError" :message="userlistError" type="error" show-icon style="margin-bottom: 8px" />
+            <a-select v-model="editRule.user_ids" mode="multiple" :loading="userlistLoading" :disabled="userlistLoading || !!userlistError" style="width: 100%" :placeholder="$t('form_placeholder_receiver')">
               <a-select-option v-for="(item, index) in userlist" :key="index" :value="item.id.toString()" :label="item.username" :title="item.username">
                 {{ item.username }}
               </a-select-option>
@@ -185,6 +187,9 @@ export default {
       instanceList: [],
       grouplist: [],
       userlist: [],
+      userlistLoading: false,
+      userlistError: "",
+      recipientLoadGeneration: 0,
       list: [],
       pagination: {
         total: 0,
@@ -354,10 +359,69 @@ export default {
         status: true,
       }
     },
+    queryRules() {
+      this.page = 1;
+      this.pagination.current = 1;
+      this.init();
+    },
+    async loadRecipients() {
+      const generation = ++this.recipientLoadGeneration;
+      this.userlist = [];
+      this.userlistLoading = true;
+      this.userlistError = "";
+      const limit = 200;
+      const recipients = [];
+      const seen = new Set();
+      let total = null;
+      try {
+        for (let page = 1; ; page++) {
+          const response = await userList({ page, limit });
+          if (generation !== this.recipientLoadGeneration) return;
+          const result = response && response.data;
+          if (!result || result.code !== 200) {
+            throw new Error(result && result.message || "接收人加载失败，请重试");
+          }
+          const data = result.data;
+          if (!data || !Array.isArray(data.items) || !Number.isSafeInteger(data.total) || data.total < 0 || data.items.length > limit) {
+            throw new Error("接收人列表响应格式异常，请重试");
+          }
+          if (total === null) total = data.total;
+          if (data.total !== total) throw new Error("接收人列表已变化，请重试");
+          const previousCount = recipients.length;
+          for (const item of data.items) {
+            if (!item || !["number", "string"].includes(typeof item.id) || !/^[1-9]\d*$/.test(String(item.id)) || typeof item.username !== "string" || !item.username.trim()) {
+              throw new Error("接收人列表响应格式异常，请重试");
+            }
+            const id = String(item.id);
+            if (!seen.has(id)) {
+              seen.add(id);
+              recipients.push(item);
+            }
+          }
+          if (recipients.length > total) throw new Error("接收人列表总数异常，请重试");
+          if (recipients.length === total) {
+            // Publish only a complete response; never expose a successful first page as the full list.
+            this.userlist = recipients;
+            return;
+          }
+          if (data.items.length !== limit || recipients.length === previousCount || page * limit >= total) {
+            throw new Error("接收人列表未完整加载，请重试");
+          }
+        }
+      } catch (error) {
+        if (generation === this.recipientLoadGeneration) {
+          this.userlistError = error && error.message || "接收人加载失败，请重试";
+          this.$message.error(this.userlistError);
+        }
+      } finally {
+        if (generation === this.recipientLoadGeneration) this.userlistLoading = false;
+      }
+    },
     init() {
       this.loading = true;
       let req = {
         page: this.page, limit: this.pageSize,
+        name: this.name,
         hosts: this.hosts,
         status: this.status, level: this.level
       };
@@ -383,16 +447,7 @@ export default {
           this.instanceList = res.data || []
         }
       })
-      //user get
-      userList({
-        page: 1,
-        limit: 1000,
-      }).then((resp) => {
-        let res = resp.data;
-        if (res.code == 200) {
-          this.userlist = res.data.items || [];
-        }
-      })
+      this.loadRecipients();
       //group get
       groupList({
         page: 1,
@@ -492,12 +547,13 @@ export default {
       }
     },
     resetData() {
+      this.name = "";
       this.hosts = "";
       this.tenantid = "";
       this.tenantid = "";
       this.status = "";
       this.level = "";
-      this.init();
+      this.queryRules();
     },
     closeModal() {
       this.modalVisible = false

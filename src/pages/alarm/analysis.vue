@@ -144,15 +144,23 @@ export default {
     anayexport() {
       const params = { 
         begin: this.beginTime, 
-        end: this.endTime
+        end: this.endTime,
+        analysis: true
       };
       if (this.selectedInstance) {
         params.zid = this.selectedInstance;
       }
-      alarmExport(
+      return alarmExport(
         params,
         { responseType: "arraybuffer", }
       ).then((resp) => {
+        if (/\bjson\b/i.test(resp.headers["content-type"] || "")) {
+          const error = JSON.parse(new TextDecoder("utf-8").decode(resp.data));
+          this.$message.error(error && typeof error.message === "string" && error.message.trim()
+            ? error.message
+            : this.$t('msg_export_failed'));
+          return;
+        }
         const disposition = resp.headers["content-disposition"] || 'attachment; filename=alarm_list.xlsx';
         let filename = disposition
           .split(";")

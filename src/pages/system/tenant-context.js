@@ -4,14 +4,14 @@ function normalizeTenantItems(response) {
   return Array.isArray(items) ? items.filter((item) => item && Number(item.status) === 0) : []
 }
 
-function selectInitialTenant(tenants, storedTenant) {
+function selectInitialTenant(tenants, storedTenant, allowAutoSelect = true) {
   const items = Array.isArray(tenants) ? tenants : []
   const storedID = storedTenant && Number(storedTenant.id)
   if (storedID) {
     const matched = items.find((tenant) => Number(tenant.id) === storedID)
     if (matched) return matched
   }
-  return items.length === 1 ? items[0] : null
+  return allowAutoSelect && items.length === 1 ? items[0] : null
 }
 
 function validateTenantDraft(draft) {

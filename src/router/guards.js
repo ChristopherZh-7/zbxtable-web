@@ -1,6 +1,8 @@
 import {hasAuthority} from '@/utils/authority-utils'
 import {loginIgnore} from '@/router/index'
-import {checkAuthorization} from '@/utils/request'
+import {checkAuthorization, getTenantContext} from '@/utils/request'
+import {consumeLoginChunkRecovery} from '@/utils/chunkRecovery'
+import {selectInitialTenant} from '@/pages/system/tenant-context'
 import {getInstallStatus} from '@/services/install'
 import NProgress from 'nprogress'
 
@@ -104,6 +106,22 @@ const loginGuard = (to, from, next, options) => {
     message.warning('登录已失效，请重新登录')
     next({path: '/login'})
   } else {
+    if (to.path === '/login' && checkAuthorization() && consumeLoginChunkRecovery(options.router)) {
+      const {store, router} = options
+      const account = store.state.account
+      // These arrays are committed only after bootstrap refreshes server access.
+      if (Array.isArray(account.permissions) && Array.isArray(account.roles) && Array.isArray(account.routesConfig)) {
+        const user = store.getters['account/user']
+        const tenants = store.getters['account/tenants'] || []
+        const tenant = selectInitialTenant(tenants, getTenantContext(), Boolean(user && user.role !== 'admin'))
+        const path = tenant ? '/dashboard/workplace' : user && user.role === 'admin' && tenants.length === 0 ? '/system/tenants' : '/tenant-select'
+        const route = router.resolve(path).route
+        if (route.matched.length > 0 && hasAuthority(route, account.permissions, account.roles)) {
+          next({path, replace: true})
+          return
+        }
+      }
+    }
     next()
   }
 }

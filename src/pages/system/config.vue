@@ -321,6 +321,7 @@
 
 <script>
 import PageLayout from '@/layouts/PageLayout'
+import axios from 'axios'
 import { parseTimeFun } from '@/utils/formatter'
 import { configGetList, configUpdate, configUpdateGroup } from '@/services/admin'
 import {
@@ -889,7 +890,6 @@ export default {
       
       this.testingEmail = true
       try {
-        const axios = require('axios')
         const response = await axios.post('/v1/system/test-email', {
           test_email: this.testEmailAddress
         })
@@ -920,7 +920,6 @@ export default {
       
       this.testingWechat = true
       try {
-        const axios = require('axios')
         const response = await axios.post('/v1/system/test-wechat', {
           test_user_id: this.testWechatUserId
         })
@@ -940,7 +939,6 @@ export default {
     async handleTestDingTalk() {
       this.testingDingTalk = true
       try {
-        const axios = require('axios')
         const response = await axios.post('/v1/system/test-dingtalk', {})
         if (response.data.code === 200) {
           this.$message.success(this.$t('testDingTalkSuccess'))

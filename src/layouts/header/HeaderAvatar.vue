@@ -72,15 +72,14 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('account', ['user']),
+    ...mapGetters('account', ['user', 'roles']),
     displayName() {
       return this.user && (this.user.name || this.user.username) ? (this.user.name || this.user.username) : '用户'
     },
     normalizedRole() {
-      const role = this.user && this.user.role ? String(this.user.role).toLowerCase() : ''
-      const roles = this.user && Array.isArray(this.user.roles) ? this.user.roles : []
-      const roleIDs = roles.map(item => String(item && (item.id || item.name || item)).toLowerCase())
-      return role || roleIDs[0] || ''
+      const roles = Array.isArray(this.roles) ? this.roles : []
+      const role = roles[0] && roles[0].id
+      return ['platform_admin', 'tenant_admin', 'viewer'].includes(role) ? role : ''
     },
     roleLabel() {
       if (['admin', 'platform_admin'].includes(this.normalizedRole)) {

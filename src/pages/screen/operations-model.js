@@ -15,7 +15,7 @@ function operationsKpi(info = {}, triggers = []) {
     : ['net_count', 'srv_count', 'win_count', 'lin_count'].reduce((sum, key) => sum + (Number(info[key]) || 0), 0)
   const alarms = triggers.length
   const critical = triggers.filter(t => Number(t && t.severity) >= 4).length
-  const online = total > 0 ? Math.max(0, Math.round(((total - critical) / total) * 1000) / 10) : 0
+  const online = resourcePercentage(info.online_rate)
   return {total, alarms, critical, online}
 }
 const OPERATIONS_PRESET = Object.freeze({
@@ -30,4 +30,11 @@ const OPERATIONS_PRESET = Object.freeze({
     {chart_type: 'ops-windows', title: 'Windows 内存 排行', position: {x: 1488, y: 587}, size: {width: 414, height: 479}},
   ],
 })
-module.exports = {OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType, operationsKpi}
+function resourcePercentage(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (typeof value === 'string' && !value.trim()) return null
+  const number = Number(value)
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? number : null
+}
+
+module.exports = { resourcePercentage,OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType, operationsKpi}

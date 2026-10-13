@@ -48,3 +48,20 @@ test('F36 route registries both load the redesigned overview', () => {
   assert.match(routeConfig, /dashboard\/overview-redesign/)
   assert.match(asyncMap, /dashboard\/overview-redesign/)
 })
+
+test('ISSUE045 keeps compact tenant and account controls in a flowing header', () => {
+  const header = source('src/layouts/header/index.less')
+  const layout = source('src/layouts/AdminLayout.vue')
+  assert.match(header, /\.admin-header-wide\s*\{\s*display:\s*flex;\s*align-items:\s*center;\s*min-width:\s*0;/)
+  assert.doesNotMatch(header, /float:\s*right/)
+  assert.match(header, /@media\s*\(max-width:\s*900px\)[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?\.admin-header-right\s*\{[\s\S]*?flex-basis:\s*100%;[\s\S]*?height:\s*auto;/)
+  assert.match(layout, /@media\s*\(max-width:\s*900px\)[\s\S]*?\.admin-header\s*\{[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*visible;/)
+  assert.match(layout, /\.virtual-header\s*\{\s*display:\s*none;/)
+})
+
+test('ISSUE046 lets native host buttons activate the same popover by keyboard click', () => {
+  const overview = source('src/pages/dashboard/overview-redesign.vue')
+  assert.match(overview, /<a-popover[\s\S]*?:trigger="\['hover', 'click'\]"[\s\S]*?<button\s+type="button"[\s\S]*?class="host-node"/)
+  assert.match(overview, /:aria-label="[^"\n]*getStatusLabel\(item\)/)
+  assert.doesNotMatch(overview, /@keydown[^\n]*prevent/)
+})

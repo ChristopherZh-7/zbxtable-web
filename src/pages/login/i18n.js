@@ -41,3 +41,8 @@ module.exports = {
     }
   }
 }
+
+const messages = module.exports.messages
+messages['zh-CN'] = messages.CN
+messages['zh-TW'] = messages.HK
+messages['en-US'] = messages.US

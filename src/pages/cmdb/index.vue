@@ -346,6 +346,9 @@
               <a-select v-else-if="field.kind === 'location'" v-model="assetForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
                 <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
               </a-select>
+              <a-select v-else-if="field.kind === 'virtualHost'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择当前组织的宿主机">
+                <a-select-option v-for="option in cmdbReferences.virtual_hosts" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+              </a-select>
               <a-select v-else-if="field.kind === 'networkType'" v-model="assetForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
                 <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
               </a-select>
@@ -508,6 +511,9 @@
                     <a-date-picker v-else-if="field.kind === 'date'" v-model="admissionForm[field.key]" value-format="YYYY-MM-DD" style="width: 100%" />
                     <a-select v-else-if="field.kind === 'location'" v-model="admissionForm[field.key]" allow-clear show-search option-filter-prop="children" placeholder="未设置">
                       <a-select-option v-for="option in cmdbReferences.locations" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
+                    </a-select>
+                    <a-select v-else-if="field.kind === 'virtualHost'" v-model="admissionForm[field.key]" data-testid="cmdb-admission-virtual-host" show-search option-filter-prop="children" placeholder="选择当前组织的宿主机">
+                      <a-select-option v-for="option in cmdbReferences.virtual_hosts" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
                     </a-select>
                     <a-select v-else-if="field.kind === 'networkType'" v-model="admissionForm[field.key]" show-search option-filter-prop="children" placeholder="选择网络设备类型">
                       <a-select-option v-for="option in cmdbReferences.network_device_types" :key="option.id" :value="option.id">{{ option.name }}</a-select-option>
@@ -845,7 +851,7 @@ const emptyMonitoring = () => ({
     enabled_item_count: 0, supported_item_count: 0, fresh_item_count: 0, stale_item_count: 0,
   },
 })
-const emptyReferences = () => ({locations: [], network_device_types: [], teams: [], people: [], applications: []})
+const emptyReferences = () => ({locations: [], network_device_types: [], teams: [], people: [], applications: [], virtual_hosts: []})
 const emptyMappingTransitionForm = () => ({target_organization_id: undefined, confirmation: '', reason: ''})
 
 function newIdempotencyKey() {
@@ -1692,6 +1698,7 @@ export default {
         teams: Array.isArray(data.teams) ? data.teams : [],
         people: Array.isArray(data.people) ? data.people : [],
         applications: Array.isArray(data.applications) ? data.applications : [],
+        virtual_hosts: Array.isArray(data.virtual_hosts) ? data.virtual_hosts : [],
       }
       this.referencesContextKey = contextKey
     },

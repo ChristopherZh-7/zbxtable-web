@@ -36,12 +36,12 @@
           <a-form-model-item>
             <a-button type="primary" @click="onQuery">查询</a-button>
             <a-button style="margin-left: 10px" @click="resetSearch">重置</a-button>
-            <a-button type="primary" style="margin-left: 10px" @click="handleExport">导出</a-button>
+            <a-button v-if="$can('tenant.assets', 'export')" type="primary" style="margin-left: 10px" @click="handleExport">导出</a-button>
           </a-form-model-item>
         </a-form-model>
         <!-- 字段设置按钮（有 typeId 时才显示） -->
         <a-button
-          v-if="typeId"
+          v-if="typeId && $can('platform.assets', 'update')"
           icon="setting"
           class="field-config-btn"
           @click="fieldDrawerVisible = true"
@@ -50,6 +50,7 @@
 
       <!-- 字段配置抽屉 -->
       <asset-type-field-drawer
+        v-if="$can('platform.assets', 'update')"
         :visible="fieldDrawerVisible"
         :asset-type="typeId ? { id: typeId, name: typeName } : null"
         @close="fieldDrawerVisible = false"
@@ -521,18 +522,38 @@ export default {
       }).finally(() => { this.tagSaving = false })
     },
     handleExport() {
-      hostExport(
+      if (!this.$can('tenant.assets', 'export')) {
+        this.$message.warning('当前账号无权导出设备')
+        return
+      }
+      return hostExport(
         { hosttype: monitoringHostTypeFilter(this.effectiveTypeCode), hosts: this.hosts, ip: this.interfaces, available: this.available },
         { responseType: 'arraybuffer' }
       ).then((resp) => {
-        const cd = resp.headers['content-disposition'] || ''
-        let filename = (cd.split(';').find((n) => n.includes('filename=')) || '')
+        const headers = resp.headers || {}
+        if (!(resp.data instanceof ArrayBuffer) || resp.status >= 400) {
+          this.$message.error('导出失败')
+          return
+        }
+        const prefix = new TextDecoder('utf-8').decode(resp.data.slice(0, 32)).trimStart()
+        if (/\bjson\b/i.test(headers['content-type'] || '') || prefix.startsWith('{') || prefix.startsWith('[')) {
+          const error = JSON.parse(new TextDecoder('utf-8').decode(resp.data))
+          this.$message.error((error && typeof error.message === 'string' && error.message.trim()) || '导出失败')
+          return
+        }
+        const cd = headers['content-disposition'] || ''
+        const filename = (cd.split(';').find((n) => n.includes('filename=')) || '')
           .replace('filename=', '').trim() || `${this.typeName || this.effectiveTypeCode}.xlsx`
         const url = window.URL.createObjectURL(new Blob([resp.data]))
         const link = document.createElement('a')
-        link.href = url; link.setAttribute('download', filename)
-        document.body.appendChild(link); link.click(); link.remove()
-      })
+        try {
+          link.href = url; link.setAttribute('download', filename)
+          document.body.appendChild(link); link.click()
+        } finally {
+          link.remove()
+          window.URL.revokeObjectURL(url)
+        }
+      }).catch(() => this.$message.error('导出失败'))
     },
     // 查看图形：弹窗展示该主机的监控图表（复用原列表页“查看图形”）
     seeGraph(record) {

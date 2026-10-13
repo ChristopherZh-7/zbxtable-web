@@ -27,6 +27,7 @@ const CLASS_FIELDS = {
     {key: 'end_of_warranty', label: '保修到期', kind: 'date'},
   ],
   VirtualMachine: [
+    {key: 'virtualhost_id', label: '宿主机', kind: 'virtualHost', required: true},
     {key: 'managementip', label: '管理 IP', kind: 'ip'},
     {key: 'cpu', label: 'CPU', kind: 'string'},
     {key: 'ram', label: '内存', kind: 'string'},
@@ -74,6 +75,7 @@ const DETAIL_FIELDS = [
   ['smartops_backup_owner_name', '备份负责人'],
   ['managementip', '管理 IP'],
   ['location_name', '位置'],
+  ['virtualhost_name', '宿主机'],
   ['serialnumber', '序列号'],
   ['asset_number', '资产编号'],
   ['brand_name', '品牌'],
@@ -108,7 +110,7 @@ const ADMISSION_STATE_META = {
   conflict: {status: 'error', label: '身份冲突', tone: 'conflict', step: 2},
 }
 
-const REFERENCE_FIELD_KINDS = new Set(['location', 'networkType', 'team', 'person'])
+const REFERENCE_FIELD_KINDS = new Set(['location', 'networkType', 'team', 'person', 'virtualHost'])
 
 function classMeta(assetClass) {
   return CLASS_META[assetClass] || {label: assetClass || '未知类型', icon: 'database', color: 'default'}
@@ -378,6 +380,8 @@ function validateAssetForm(assetClass, form) {
   if (assetClass !== 'ApplicationSolution' && !(Number(form && form.smartops_operations_team_id) > 0)) return '请选择运维团队'
   if (assetClass !== 'ApplicationSolution' && String(form && form.status || '') === 'production' && !(Number(form && form.smartops_primary_owner_id) > 0)) return '生产/在用资产必须选择主负责人'
   if (Number(form && form.smartops_primary_owner_id) > 0 && Number(form && form.smartops_primary_owner_id) === Number(form && form.smartops_backup_owner_id)) return '备份负责人不能与主负责人相同'
+  if (assetClass === 'VirtualMachine' && !Number.isInteger(Number(form && form.virtualhost_id))) return '请选择宿主机'
+  if (assetClass === 'VirtualMachine' && !(Number(form && form.virtualhost_id) > 0)) return '请选择宿主机'
   if (assetClass === 'NetworkDevice' && !(Number(form && form.networkdevicetype_id) > 0)) return '请选择网络设备类型'
   return ''
 }

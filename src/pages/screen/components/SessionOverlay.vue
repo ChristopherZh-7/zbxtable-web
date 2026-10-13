@@ -42,8 +42,12 @@
 </template>
 
 <script>
-import { login } from '@/services/user'
-import { setAuthorization } from '@/utils/request'
+import { login, getPermissionContext, getRoutesConfig } from '@/services/user'
+import { listTenantContexts, getCurrentTenant } from '@/services/tenant'
+import { setAuthorization, removeAuthorization, getTenantContext, setTenantContext } from '@/utils/request'
+import { normalizeTenantItems } from '@/pages/system/tenant-context'
+import { businessPayload, normalizePermissionContext, canPerform } from '@/utils/permission-policy'
+import { loadRoutes } from '@/utils/routerUtil'
 
 export default {
   name: 'SessionOverlay',
@@ -56,7 +60,18 @@ export default {
       username: '',
       password: '',
       loading: false,
-      error: ''
+      error: '',
+      restoreHint: null
+    }
+  },
+  created() {
+    // This component stays mounted before the parent's 401 overlay is shown.
+    // Cached identity is a restoration hint only; the new token must revalidate it.
+    const tenant = getTenantContext()
+    const user = this.$store.getters['account/user']
+    if (tenant && user && Number.isInteger(Number(tenant.id)) && Number(tenant.id) > 0 &&
+        Number.isInteger(Number(user.id)) && Number(user.id) > 0 && typeof user.name === 'string' && user.name) {
+      this.restoreHint = { tenantID: Number(tenant.id), userID: Number(user.id), username: user.name }
     }
   },
   watch: {
@@ -69,6 +84,17 @@ export default {
     }
   },
   methods: {
+    resetAccountContext(user = null) {
+      for (const [key, value] of Object.entries({
+        setUser: user, setRoles: [], setPermissions: [], setTenants: [],
+        setCurrentTenant: null, setRoutesConfig: []
+      })) this.$store.commit(`account/${key}`, value)
+    },
+    async returnToLogin() {
+      removeAuthorization()
+      this.resetAccountContext()
+      await this.$router.replace('/login')
+    },
     async submit() {
       if (!this.username || !this.password) {
         this.error = '请输入用户名和密码'
@@ -76,17 +102,53 @@ export default {
       }
       this.loading = true
       this.error = ''
+      let authenticated = false
       try {
         const res = await login(this.username, this.password)
-        const token = res && res.data && res.data.token
-        if (token) {
-          setAuthorization({ token })
-          this.$emit('success')
-        } else {
-          this.error = '登录失败，请检查用户名或密码'
+        const business = businessPayload(res)
+        const token = business && business.data && business.data.token
+        const user = business && business.data && business.data.user
+        if (!business || Number(business.code) !== 200 || typeof token !== 'string' || !token.trim() ||
+            !user || !Number.isInteger(Number(user.id)) || Number(user.id) < 1 || typeof user.name !== 'string' || !user.name) {
+          throw new Error('Invalid login envelope')
         }
+        authenticated = true
+        const hint = this.restoreHint
+        if (!hint || Number(user.id) !== hint.userID || user.name !== hint.username) {
+          throw new Error('Original account cannot be restored')
+        }
+        setAuthorization({ token })
+        this.resetAccountContext(user)
+        const tenantResponse = await listTenantContexts()
+        const tenantBusiness = businessPayload(tenantResponse)
+        if (!tenantBusiness || Number(tenantBusiness.code) !== 200) throw new Error('Tenant list rejected')
+        const tenants = normalizeTenantItems(tenantResponse)
+        const tenant = tenants.find(item => Number(item.id) === hint.tenantID)
+        if (!tenant) throw new Error('Original tenant is no longer accessible')
+        this.$store.commit('account/setTenants', tenants)
+        setTenantContext(tenant)
+        const current = businessPayload(await getCurrentTenant())
+        if (!current || Number(current.code) !== 200 || !current.data || !current.data.tenant ||
+            Number(current.data.tenant.id) !== hint.tenantID || Number(current.data.tenant.status) !== 0) {
+          throw new Error('Original tenant confirmation rejected')
+        }
+        const permissionResponse = await getPermissionContext()
+        const permissionBusiness = businessPayload(permissionResponse)
+        const access = normalizePermissionContext(permissionResponse)
+        if (!permissionBusiness || Number(permissionBusiness.code) !== 200 || access.tenantID !== hint.tenantID ||
+            !canPerform(access.permissions, 'tenant.dashboard', 'read')) {
+          throw new Error('Original tenant dashboard permission rejected')
+        }
+        const routes = businessPayload(await getRoutesConfig())
+        if (!routes || Number(routes.code) !== 200 || !Array.isArray(routes.data)) throw new Error('Fresh routes rejected')
+        this.$store.commit('account/setCurrentTenant', current.data.tenant)
+        this.$store.commit('account/setRoles', access.roles)
+        this.$store.commit('account/setPermissions', access.permissions)
+        loadRoutes(routes.data)
+        this.$emit('success')
       } catch (e) {
-        this.error = '登录失败，请检查用户名或密码'
+        this.error = authenticated ? '无法恢复原租户，请重新登录并选择租户' : '登录失败，请检查用户名或密码'
+        await this.returnToLogin()
       } finally {
         this.loading = false
       }

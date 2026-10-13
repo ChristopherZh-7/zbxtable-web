@@ -65,6 +65,7 @@
                   :key="`${section.type_code}-${index}`"
                   :title="$t('title_device_info')"
                   placement="top"
+                  :trigger="['hover', 'click']"
                 >
                   <template slot="content">
                     <div class="popover-content">

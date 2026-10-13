@@ -12,8 +12,8 @@
       <a-icon class="kpi-icon" type="check-circle" />
       <div class="kpi-label">{{ $t('kpi_host_online') }}</div>
       <div>
-        <span class="kpi-value">{{ animated.online }}</span>
-        <span class="kpi-unit">{{ $t('kpi_unit_percent') }}</span>
+        <span class="kpi-value">{{ animated.online === null ? '—' : animated.online }}</span>
+        <span v-if="animated.online !== null" class="kpi-unit">{{ $t('kpi_unit_percent') }}</span>
       </div>
     </div>
     <div class="kpi-card">
@@ -39,13 +39,13 @@ export default {
   i18n: require('../i18n'),
   props: {
     total: { type: Number, default: 0 },
-    online: { type: Number, default: 0 },
+    online: { type: Number, default: null },
     alarms: { type: Number, default: 0 },
     critical: { type: Number, default: 0 }
   },
   data() {
     return {
-      animated: { total: 0, online: 0, alarms: 0, critical: 0 },
+      animated: { total: 0, online: null, alarms: 0, critical: 0 },
       raf: null
     }
   },
@@ -72,7 +72,7 @@ export default {
         const ease = 1 - Math.pow(1 - p, 3)
         this.animated = {
           total: Math.round(start.total + (target.total - start.total) * ease),
-          online: Math.round((start.online + (target.online - start.online) * ease) * 10) / 10,
+          online: target.online === null ? null : start.online === null ? target.online : Math.round((start.online + (target.online - start.online) * ease) * 10) / 10,
           alarms: Math.round(start.alarms + (target.alarms - start.alarms) * ease),
           critical: Math.round(start.critical + (target.critical - start.critical) * ease)
         }

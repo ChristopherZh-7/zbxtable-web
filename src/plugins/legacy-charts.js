@@ -197,7 +197,7 @@ const LegacyChart = {
   }
 }
 
-const Stub = (name) => ({name, functional: true, render: () => null})
+const Stub = (name) => ({name, render: () => null})
 
 export default {
   install(Vue) {

@@ -42,7 +42,7 @@
           :ranges="timeRanges" @change="changeCreationTime" :getCalendarContainer="triggerNode=>{return triggerNode.parentNode || document.body}" />
       </a-form-model-item>
       <a-form-model-item>
-        <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
+        <a-button type="primary" @click="queryData">{{ $t('btn_query') }}</a-button>
         <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
 		<a-button v-auth="'export'" style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
 		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openPipeline">{{ $t('pipeline_config') }}</a-button>
@@ -54,7 +54,7 @@
       <a-table :loading="loading" :columns="columns" :data-source="list" :expanded-row-keys="expandedAlarmKeys" @expand="getEvent" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <!-- 主表格的插槽 -->
         <div slot="instance_name" slot-scope="record">
-          <a-tag :color="themeColor">{{getInstanceName(record.zid)}}</a-tag>
+          <a-tag :color="themeColor">{{getInstanceName(record)}}</a-tag>
         </div>
         <div slot="status" slot-scope="record">
           <a-tag v-if="record.status==0" color="#2f6f62">{{ $t('alarm_type_recovery') }}</a-tag>
@@ -164,14 +164,14 @@
               :loading="handlingSubmitting"
               @click="claimHandling">{{ $t('handling_claim') }}</a-button>
             <template v-else-if="handlingDetail.handling_status === 'processing'">
-              <a-textarea v-model.trim="handlingNote" :maxLength="2000" :rows="4" :placeholder="$t('handling_note_placeholder')" />
+              <a-textarea v-model.trim="handlingNote" :rows="4" :placeholder="$t('handling_note_placeholder')" />
               <div class="handling-action-buttons">
                 <a-button :loading="handlingSubmitting" @click="submitHandling('note')">{{ $t('handling_add_note') }}</a-button>
                 <a-button type="primary" :loading="handlingSubmitting" @click="submitHandling('resolve')">{{ $t('handling_resolve') }}</a-button>
               </div>
             </template>
             <template v-else-if="handlingDetail.handling_status === 'resolved'">
-              <a-textarea v-model.trim="handlingNote" :maxLength="2000" :rows="4" :placeholder="$t('handling_close_placeholder')" />
+              <a-textarea v-model.trim="handlingNote" :rows="4" :placeholder="$t('handling_close_placeholder')" />
               <div class="handling-action-buttons">
                 <a-button type="primary" :loading="handlingSubmitting" @click="submitHandling('close')">{{ $t('handling_close') }}</a-button>
               </div>
@@ -249,7 +249,7 @@
           </a-row>
           <a-row :gutter="12" class="pipeline-time-row">
             <a-col :span="8"><a-input v-model="shift.start_time" type="time" :addon-before="$t('pipeline_start')" /></a-col>
-            <a-col :span="8"><a-input v-model="shift.end_time" type="time" :addon-before="$t('pipeline_end')" /></a-col>
+            <a-col :span="8"><a-input v-model="shift.end_time" type="text" placeholder="HH:mm" :addon-before="$t('pipeline_end')" /></a-col>
             <a-col :span="8"><a-button type="danger" ghost icon="delete" @click="removePipelineShift(index)">{{ $t('btn_delete') }}</a-button></a-col>
           </a-row>
         </a-card>
@@ -624,9 +624,15 @@ export default {
         console.error(this.$t('msg_load_instances_failed'), err)
       })
     },
-    getInstanceName(zid) {
-      if (!zid) return this.$t('msg_unknown')
-      return this.instanceMap[zid] || this.$t('msg_unknown')
+    getInstanceName(record) {
+      if (!record || typeof record !== 'object') return this.$t('msg_unknown')
+      if (Object.prototype.hasOwnProperty.call(record, 'instance_name')) {
+        const name = record.instance_name
+        return typeof name === 'string' && name.trim() ? name : this.$t('msg_unknown')
+      }
+      // Only legacy responses may use the currently authorized administrator cache.
+      if (!this.$can('platform.zabbix', 'read') || !record.zid) return this.$t('msg_unknown')
+      return this.instanceMap[record.zid] || this.$t('msg_unknown')
     },
     formatChannel(channel) {
       const key = String(channel || '').trim().toLowerCase()
@@ -640,6 +646,10 @@ export default {
       return channelMap[key] || channel || this.$t('msg_unknown')
     },
     loadAlarmAnalysisPrompt() {
+      if (!this.$can('platform.system', 'read')) {
+        this.alarmAnalysisPrompt = ''
+        return
+      }
       configGetList().then((resp) => {
         const res = resp.data
         if (res.code === 200) {
@@ -688,6 +698,11 @@ export default {
       const usedVars = this.extractPromptVariables(template)
       const supported = this.getSupportedPromptVariables()
       return usedVars.filter(v => !supported.includes(v))
+    },
+    queryData() {
+      this.page = 1;
+      this.pagination.current = 1;
+      this.init();
     },
     init() {
       const sequence = ++this.listSequence, tenant = this.sourceTenantKey
@@ -928,12 +943,17 @@ export default {
     submitHandling(action) {
       if (!this.handlingRecord || this.handlingSubmitting || !canHandleProblem(this.handlingRecord) || !this.$can('tenant.alarms', 'operate')) return
       const sequence = this.handlingSequence, tenant = this.sourceTenantKey
-      if (!this.handlingNote) {
+      const note = (this.handlingNote || '').trim()
+      if (!note) {
         this.$message.warning(this.$t('handling_note_required'))
         return
       }
+      if (Array.from(note).length > 2000) {
+        this.$message.warning(this.$t('handling_note_too_long'))
+        return
+      }
       this.handlingSubmitting = true
-      handleAlarm(this.handlingRecord.id, action, this.handlingNote).then(resp => {
+      handleAlarm(this.handlingRecord.id, action, note).then(resp => {
         if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.finishHandlingAction(resp, 'handling_action_success')
       }).catch(() => {
         if (sequence === this.handlingSequence && tenant === this.sourceTenantKey) this.$message.error(this.$t('handling_action_failed'))
@@ -994,6 +1014,8 @@ export default {
       this.applyTimeRange(e || [])
     },
     resetData() {
+      this.page = 1;
+      this.pagination.current = 1;
       this.hosts = "";
       this.status = "";
       this.level = "";

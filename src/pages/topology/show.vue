@@ -233,6 +233,7 @@ export default {
       minHeight: window.innerHeight,
       canvasHeight: window.innerHeight - 80, // 减去标题栏高度
       graph: '',
+      resizeObserver: null,
       type: 'grid',
       selectCell: null,
       connectEdgeType: {  //连线方式
@@ -285,11 +286,21 @@ export default {
     this.$nextTick(() => {
       // 先初始化画布，再建立 WebSocket，避免消息早于 this.graph 到达导致渲染异常
       this.initX6()
+      window.addEventListener('resize', this.resizeCanvas)
+      if (window.ResizeObserver) {
+        this.resizeObserver = new window.ResizeObserver(this.resizeCanvas)
+        this.resizeObserver.observe(document.getElementById('containerChart').parentElement)
+      }
       this.initWebSocket(this.id)
     })
   },
   beforeDestroy() {
     this.wsManualClose = true
+    window.removeEventListener('resize', this.resizeCanvas)
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
+    }
     if (this.wsReconnectTimer) {
       clearTimeout(this.wsReconnectTimer)
       this.wsReconnectTimer = null
@@ -298,6 +309,10 @@ export default {
       this.websock.onclose = null // 避免主动关闭触发重连
       this.websock.close()
       this.websock = null
+    }
+    if (this.graph) {
+      this.graph.dispose()
+      this.graph = null
     }
   },
   methods: {
@@ -316,12 +331,28 @@ export default {
         newG.toString(16).padStart(2, '0') + 
         newB.toString(16).padStart(2, '0')
     },
+    fitCanvas() {
+      if (!this.graph || this.wsManualClose) return
+      const { width, height } = this.graph.options
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return
+      this.graph.zoomToFit({ padding: Math.min(100, width / 4, height / 4), maxScale: 1 })
+    },
+    resizeCanvas() {
+      this.$nextTick(() => {
+        if (!this.graph || this.wsManualClose) return
+        const container = document.getElementById('containerChart')
+        const width = container.parentElement.clientWidth
+        const height = window.innerHeight - 80
+        if (width <= 0 || height <= 0) return
+        this.canvasHeight = height
+        this.graph.resize(width, height)
+        this.fitCanvas()
+      })
+    },
     initX6() {
       var _that = this
       this.graph = new Graph({
         container: document.getElementById('containerChart'),
-        width: '100%',
-        height: '100%',
         background: _that.backgroundOptions,
         grid: _that.grid,
         resizing: { // 调整节点宽高
@@ -751,7 +782,7 @@ export default {
       this.showPorts(ports, false)
         // 保持居中和缩放，使用较大的padding确保文本不被裁剪
         this.graph.centerContent()
-        this.graph.zoomToFit({ padding: 100, maxScale: 1 })
+        this.fitCanvas()
       })
     },
     tuopuDetail() {
@@ -831,7 +862,7 @@ export default {
               })
               // 居中并自动缩放以适应画布，使用较大的padding确保文本不被裁剪
               this.graph.centerContent()
-              this.graph.zoomToFit({ padding: 100, maxScale: 1 })
+              this.fitCanvas()
             })
           } else {
             this.$message.error(res.message || this.$t('msg_load_topology_failed'))

@@ -166,7 +166,7 @@ export default {
         {key: 'offline', label: this.$t('offline'), value: value.offline_proxy_count, tone: value.offline_proxy_count ? 'danger' : ''},
       ]
     },
-    pricingBasis() { return proxyPricingBasis(this.snapshot) },
+    pricingBasis() { return proxyPricingBasis(this.snapshot, Boolean(this.globalError)) },
     instanceOptions() { return this.snapshot.instances },
     groupOptions() { return flattenGroups(this.snapshot).filter((group) => !this.filters.zid || Number(group.zid) === Number(this.filters.zid)) },
     instanceProblems() { return this.snapshot.instances.filter((instance) => instance.error || instance.warnings.length) },

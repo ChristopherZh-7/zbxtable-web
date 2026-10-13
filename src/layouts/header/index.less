@@ -22,6 +22,9 @@
     }
   }
   .admin-header-wide{
+    display: flex;
+    align-items: center;
+    min-width: 0;
     // padding-left: 24px;
     padding-left: 0;
     &.head.fixed{
@@ -85,8 +88,10 @@
       display: inline-block;
     }
     .admin-header-right{
-      float: right;
       display: flex;
+      flex: 1;
+      min-width: 0;
+      justify-content: flex-end;
       height: 64px;
       color: inherit;
       .header-item{
@@ -109,6 +114,24 @@
           }
         }
       })
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-header .admin-header-wide {
+    flex-wrap: wrap;
+    padding-right: 8px;
+
+    .admin-header-right {
+      flex-basis: 100%;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      height: auto;
+      padding-bottom: 8px;
+
+      .header-item { padding-right: 6px; padding-left: 6px; }
+      .tenant-selector { flex: 1 1 120px; min-width: 120px; max-width: 100%; margin-right: 0; }
     }
   }
 }

@@ -77,7 +77,7 @@
                   >
                     <span class="device-stat-icon" aria-hidden="true"><a-icon :type="item.icon" /></span>
                     <div class="device-stat-content">
-                      <span class="device-name">{{ item.name }}</span>
+                      <span class="device-name" :title="item.name">{{ item.name }}</span>
                       <div class="device-stat-value">
                         <strong class="device-count">{{ item.count }}</strong>
                         <span class="device-stat-unit">台</span>
@@ -144,21 +144,21 @@
                   </div>
                   <template v-if="linSortBy === 'CPU'">
                     <div class="col-metric">
-                      <legent :rate="v.cpu" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
                     </div>
                     <div class="col-metric">
-                      <legent :rate="v.mem" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.mem)}}</span>
                     </div>
                   </template>
                   <template v-else>
                     <div class="col-metric">
-                      <legent :rate="v.mem" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.mem)}}</span>
                     </div>
                     <div class="col-metric">
-                      <legent :rate="v.cpu" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
                     </div>
                   </template>
@@ -210,21 +210,21 @@
                   </div>
                   <template v-if="winSortBy === 'CPU'">
                     <div class="col-metric">
-                      <legent :rate="v.cpu" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
                     </div>
                     <div class="col-metric">
-                      <legent :rate="v.mem" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.mem)}}</span>
                     </div>
                   </template>
                   <template v-else>
                     <div class="col-metric">
-                      <legent :rate="v.mem" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.mem)}}</span>
                     </div>
                     <div class="col-metric">
-                      <legent :rate="v.cpu" :height="20"></legent>
+                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
                       <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
                     </div>
                   </template>
@@ -439,7 +439,10 @@ export default {
       return v ? (v.displayScore || 0) : 0
     },
     fmtPercent(v) {
-      return (v || 0) + '%'
+      if (typeof v !== 'number' && typeof v !== 'string') return '—'
+      if (typeof v === 'string' && !v.trim()) return '—'
+      const number = Number(v)
+      return Number.isFinite(number) && number >= 0 && number <= 100 ? number + '%' : '—'
     },
     onWinSortChange(e) {
       this.winSortBy = e.target.value
@@ -1015,17 +1018,21 @@ export default {
   font-size: 13px;
   font-weight: 600;
   line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .device-stat-value {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: baseline;
   gap: 4px;
   margin-top: 5px;
   color: #0a1f44;
 }
 .device-count {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
   font-variant-numeric: tabular-nums;
   font-size: 24px;
@@ -1044,7 +1051,15 @@ export default {
   }
 
   .device-stat-card {
-    padding: 11px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .device-stat-content {
+    flex: none;
+    width: 100%;
   }
 }
 </style>

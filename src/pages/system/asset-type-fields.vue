@@ -15,14 +15,14 @@
         :columns="tableColumns"
       >
         <span slot="visible" slot-scope="text, record">
-          <a-checkbox :checked="record.visible" @change="record.visible = !record.visible" />
+          <a-checkbox :disabled="!canConfigureFields" :checked="record.visible" @change="record.visible = !record.visible" />
         </span>
         <span slot="label" slot-scope="text, record">
           <template v-if="record.custom">
             <span>{{ record.label || record.key }}</span>
             <a-tag color="orange" class="legacy-tag">历史只读 · 非 CMDB</a-tag>
           </template>
-          <a-input v-else v-model.trim="record.label" size="small" style="width: 140px;" />
+          <a-input v-else :disabled="!canConfigureFields" v-model.trim="record.label" size="small" style="width: 140px;" />
         </span>
         <span slot="fieldType" slot-scope="text, record">
           <a-tag v-if="record.custom">{{ fieldTypeLabel(record.field_type) }}</a-tag>
@@ -37,6 +37,7 @@
         <span slot="width" slot-scope="text, record">
           <a-input-number
             v-model="record.width"
+            :disabled="!canConfigureFields"
             :min="0"
             :max="2000"
             :step="10"
@@ -48,6 +49,7 @@
           <a-select
             v-if="!record.custom"
             v-model="record.render"
+            :disabled="!canConfigureFields"
             size="small"
             style="width: 100px;"
           >
@@ -65,14 +67,14 @@
           <a-button
             icon="up"
             size="small"
-            :disabled="index === 0"
+            :disabled="!canConfigureFields || index === 0"
             @click="moveUp(index)"
             style="margin-right: 4px;"
           />
           <a-button
             icon="down"
             size="small"
-            :disabled="index === fields.length - 1"
+            :disabled="!canConfigureFields || index === fields.length - 1"
             @click="moveDown(index)"
           />
         </span>
@@ -81,7 +83,7 @@
 
     <div class="drawer-footer">
       <a-button style="margin-right: 8px;" @click="$emit('close')">取消</a-button>
-      <a-button type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
+      <a-button v-if="canConfigureFields" type="primary" :loading="saving" @click="handleSave">保存配置</a-button>
     </div>
   </a-drawer>
 </template>
@@ -154,6 +156,11 @@ export default {
       ],
     };
   },
+  computed: {
+    canConfigureFields() {
+      return this.$can('platform.assets', 'update');
+    },
+  },
   watch: {
     visible(val) {
       if (val && this.assetType) this.loadFields();
@@ -218,6 +225,10 @@ export default {
       this.fields = arr;
     },
     async handleSave() {
+      if (!this.canConfigureFields) {
+        this.$message.warning('仅平台管理员可配置全局字段');
+        return;
+      }
       const invalid = this.fields.find((field) => !field.custom && !field.label);
       if (invalid) {
         this.$message.warning('请填写内置字段的显示名称');

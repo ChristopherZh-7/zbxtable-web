@@ -31,11 +31,15 @@ function validateAuditRange(range) {
 function buildAuditQuery(filters, page, limit) {
   const rangeError = validateAuditRange(filters.range)
   if (rangeError) throw new Error(rangeError)
+  const start = new Date(filters.range[0].valueOf())
+  const end = new Date(filters.range[1].valueOf())
+  start.setUTCMilliseconds(0)
+  end.setUTCMilliseconds(0)
   const params = {
     page,
     limit,
-    start_time: filters.range[0].toISOString(),
-    end_time: filters.range[1].toISOString(),
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
   }
   ;['actor', 'tenant_id', 'resource', 'action', 'result'].forEach((key) => {
     if (filters[key] !== '' && filters[key] !== undefined && filters[key] !== null) {

@@ -164,7 +164,7 @@ export default {
       const response = await listTenantContexts()
       const tenants = normalizeTenantItems(response)
       this.setTenants(tenants)
-      const selected = selectInitialTenant(tenants, getTenantContext())
+      const selected = selectInitialTenant(tenants, getTenantContext(), Boolean(user && user.role !== 'admin'))
       if (selected) {
         setTenantContext(selected)
         this.setCurrentTenant(selected)

@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import {formatRoutes} from '@/utils/routerUtil'
+import {installChunkRecovery} from '@/utils/chunkRecovery'
 
 Vue.use(Router)
 
@@ -26,6 +27,8 @@ const loginIgnore = {
 function initRouter(isAsync) {
   const options = isAsync ? require('./async/config.async').default : require('./config').default
   formatRoutes(options.routes)
-  return new Router(options)
+  const router = new Router(options)
+  installChunkRecovery(router, typeof window === 'undefined' ? null : window)
+  return router
 }
 export {loginIgnore, initRouter}

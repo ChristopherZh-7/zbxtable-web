@@ -129,3 +129,202 @@ test('designer exposes numeric layout controls beside the data editor', () => {
   assert.match(designer, /applyLayout/)
   assert.match(designer, /套用模板/)
 })
+
+// ISSUE-035: saved precision applies only to display; retain the raw runtime series.
+const issue035Inputs = {
+  "pie_saved": {
+    "data": {
+      "chart_type": "pie",
+      "title": "F31 饼图 磁盘",
+      "data_source": {
+        "host_name": "f31n-ed7b8ec0a28c-host-a",
+        "item_name": "f31n-ed7b8ec0a28c-disk",
+        "units": "%"
+      },
+      "style": {
+        "color": "#722ed1",
+        "background": "#ffffff",
+        "precision": 4
+      },
+      "series": [
+        {
+          "clock": "1791457576",
+          "value": 61
+        },
+        {
+          "clock": "1791482776",
+          "value": 62
+        },
+        {
+          "clock": "1791511576",
+          "value": 64
+        },
+        {
+          "clock": "1791540356",
+          "value": 65.4321
+        }
+      ]
+    },
+    "expected_remainder": "剩余\n34.5679%"
+  },
+  "gauge_saved": {
+    "data": {
+      "chart_type": "gauge",
+      "title": "F31 仪表盘 零值",
+      "data_source": {
+        "host_name": "f31n-ed7b8ec0a28c-host-a",
+        "item_name": "f31n-ed7b8ec0a28c-load",
+        "units": ""
+      },
+      "style": {
+        "color": "#fa8c16",
+        "background": "#fffbe6",
+        "precision": 0
+      },
+      "series": [
+        {
+          "clock": "1791457576",
+          "value": 0.5
+        },
+        {
+          "clock": "1791482776",
+          "value": 1.2
+        },
+        {
+          "clock": "1791511576",
+          "value": 2.1
+        },
+        {
+          "clock": "1791540356",
+          "value": 0
+        },
+        {
+          "clock": "1791540922",
+          "value": 2.71828
+        }
+      ]
+    },
+    "expected_detail": "3"
+  },
+  "precision_boundaries": [
+    {
+      "precision": 0,
+      "value": 2.71828,
+      "units": "%",
+      "expected_latest": "3%",
+      "expected_remainder": "97%"
+    },
+    {
+      "precision": 0,
+      "value": 0,
+      "units": "%",
+      "expected_latest": "0%",
+      "expected_remainder": "100%"
+    },
+    {
+      "precision": 4,
+      "value": 12.3,
+      "units": "%",
+      "expected_latest": "12.3000%",
+      "expected_remainder": "87.7000%"
+    },
+    {
+      "precision": 4,
+      "value": 0,
+      "units": "%",
+      "expected_latest": "0.0000%",
+      "expected_remainder": "100.0000%"
+    }
+  ],
+  "fallbacks": {
+    "precision_inputs": [
+      {
+        "precision": -1
+      },
+      {
+        "precision": 5
+      },
+      {
+        "precision": 1.5
+      },
+      {
+        "precision": "invalid"
+      },
+      {}
+    ],
+    "value": "12.345678",
+    "units": "ms",
+    "expected_latest": "12.35ms",
+    "expected_remainder": "0.00ms"
+  }
+}
+
+function issue035Label(option, index = 0) {
+  const item = option.series[0].data[index]
+  const formatter = option.series[0].label.formatter
+  return typeof formatter === 'function' ? formatter({name: item.name, value: item.value}) : formatter.replace('{b}', item.name).replace('{c}', String(item.value))
+}
+
+function issue035Detail(option) {
+  const value = option.series[0].data[0].value
+  const formatter = option.series[0].detail.formatter
+  return typeof formatter === 'function' ? formatter(value) : formatter.replace('{value}', String(value))
+}
+
+function issue035Check(data, latest, remainder) {
+  const pristine = structuredClone(data)
+  const raw = Number(data.series[data.series.length - 1].value)
+  const option = chartOption(data)
+  assert.equal(option.series[0].data[0].value, raw, 'option retains the unrounded monitoring value')
+  if (data.chart_type === 'pie') {
+    const max = data.data_source.units === '%' ? 100 : Math.max(raw, 1)
+    assert.equal(option.series[0].data[1].value, Math.max(0, max - raw), 'remainder arithmetic stays raw')
+    if (latest !== undefined) assert.equal(issue035Label(option), `${option.series[0].data[0].name}\n${latest}`)
+    if (remainder !== undefined) assert.equal(issue035Label(option, 1), `${option.series[0].data[1].name}\n${remainder}`)
+  } else {
+    assert.equal(issue035Detail(option), latest)
+  }
+  assert.deepEqual(data, pristine, 'formatting must not mutate persisted style/source or raw series')
+  assert.equal(option.series[0].data[0].value, raw, 'formatter must not round the numeric series')
+}
+
+test('ISSUE035 pie remainder uses saved precision four', () => {
+  const data = structuredClone(issue035Inputs.pie_saved.data)
+  const pristine = structuredClone(data)
+  const option = chartOption(data)
+  assert.equal(option.series[0].data[0].value, 65.4321)
+  assert.equal(option.series[0].data[1].value, 100 - 65.4321)
+  assert.equal(issue035Label(option, 1), issue035Inputs.pie_saved.expected_remainder)
+  assert.deepEqual(data, pristine)
+  assert.equal(option.series[0].data[1].value, 100 - 65.4321)
+})
+
+test('ISSUE035 gauge detail uses saved precision zero', () => {
+  issue035Check(structuredClone(issue035Inputs.gauge_saved.data), issue035Inputs.gauge_saved.expected_detail)
+})
+
+test('ISSUE035 both formatters honor precision endpoints zero values and units', () => {
+  for (const saved of issue035Inputs.precision_boundaries) {
+    for (const type of ['pie', 'gauge']) {
+      const data = defaultNodeData(type)
+      data.style.precision = saved.precision
+      data.data_source = {item_name: '真实值', units: saved.units}
+      data.series = [{clock: '1', value: saved.value}]
+      issue035Check(data, saved.expected_latest, saved.expected_remainder)
+    }
+  }
+})
+
+test('ISSUE035 formatters preserve existing fallback and unrounded source series', () => {
+  const saved = issue035Inputs.fallbacks
+  for (const input of saved.precision_inputs) {
+    for (const type of ['pie', 'gauge']) {
+      const data = defaultNodeData(type)
+      if (Object.prototype.hasOwnProperty.call(input, 'precision')) data.style.precision = input.precision
+      else delete data.style.precision
+      data.data_source = {item_name: '真实值', units: saved.units}
+      data.series = [{clock: '1', value: saved.value}]
+      issue035Check(data, saved.expected_latest, saved.expected_remainder)
+    }
+  }
+})

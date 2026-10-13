@@ -78,7 +78,8 @@ export async function getHostAssetAttributes(id, zid) {
 	return request(HOST_LIST + '/' + id + '/attributes', METHOD.GET, params)
 }
 export async function hostGraph(id, params) {
-	return request(HOST_LIST + '/graph/' + id, METHOD.POST, params)
+	const { zid, ...range } = params || {}
+	return request(HOST_LIST + '/graph/' + id, METHOD.POST, zid ? range : params, zid ? { params: { zid } } : undefined)
 }
 export async function hostMock(id) {
 	return request(HOST_MOCK + '/' + id, METHOD.GET)

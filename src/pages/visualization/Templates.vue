@@ -16,10 +16,12 @@
         </a-radio-group>
       </div>
 
+      <div v-if="loadErrorLabels.length" class="load-error" role="alert">数据加载失败：{{ loadErrorLabels.join('、') }}。请重试刷新。</div>
+
       <section class="view-shell">
         <div class="view-title">
           <div><h3>{{ activeTemplate.name }}模板</h3><p>{{ activeTemplate.subtitle }}</p></div>
-          <span>最近刷新：{{ updatedAt || '尚未刷新' }}</span>
+          <span>最近成功刷新：{{ updatedAt || '尚未刷新' }}</span>
         </div>
 
         <a-row :gutter="16" class="metric-grid">
@@ -30,15 +32,19 @@
 
         <div v-if="active === 'network'" class="data-section">
           <h4>网络资源与出口</h4>
+          <div v-if="loadErrors.discovery" class="empty-state">网络资源加载失败</div>
+          <template v-else>
           <a-table :columns="networkColumns" :data-source="networkRows" row-key="host_id" :pagination="false" size="small">
             <span slot="address" slot-scope="record">{{ record.address || '未采集' }}</span>
           </a-table>
           <div v-if="!networkRows.length" class="empty-state">暂无网络资源发现数据</div>
+          </template>
         </div>
 
         <div v-else-if="active === 'system'" class="data-section">
           <h4>资产类型分布</h4>
-          <div v-if="assetCounts.length" class="bar-list">
+          <div v-if="loadErrors.info" class="empty-state">系统资产加载失败</div>
+          <div v-else-if="assetCounts.length" class="bar-list">
             <div v-for="item in assetCounts" :key="item.type_code"><span>{{ item.name }}</span><b>{{ item.count || 0 }}</b></div>
           </div>
           <div v-else class="empty-state">暂无系统资产数据</div>
@@ -46,22 +52,26 @@
 
         <div v-else-if="active === 'application'" class="data-section">
           <h4>应用活动告警</h4>
+          <div v-if="loadErrors.alarms" class="empty-state">活动告警加载失败</div>
+          <template v-else>
           <a-table :columns="alarmColumns" :data-source="alarmRows" :row-key="alarmKey" :pagination="false" size="small" />
           <div v-if="!alarmRows.length" class="empty-state">暂无活动告警</div>
+          </template>
         </div>
 
         <div v-else-if="active === 'business'" class="data-section business-section">
           <h4>业务健康口径</h4>
-          <div class="health-score"><strong>{{ businessHealth }}</strong><span>/ 100</span></div>
+          <div class="health-score"><strong>{{ loadErrors.alarms ? '—' : businessHealth }}</strong><span>/ 100</span></div>
           <p>评分：100 − 活动告警数×2 − 严重告警数×8，最低为 0。</p>
-          <div class="severity-list"><a-tag v-for="item in severityRows" :key="item.name" color="orange">{{ item.name }} {{ item.value }}</a-tag></div>
+          <div v-if="loadErrors.analysis" class="empty-state">告警分析加载失败</div>
+          <div v-else class="severity-list"><a-tag v-for="item in severityRows" :key="item.name" color="orange">{{ item.name }} {{ item.value }}</a-tag></div>
         </div>
 
         <div v-else class="data-section comprehensive-grid">
-          <div><h4>资源总览</h4><strong>{{ totalAssets }}</strong><span> 台当前租户资产</span></div>
-          <div><h4>活动告警</h4><strong>{{ activeAlarms }}</strong><span> 条</span></div>
-          <div><h4>业务健康</h4><strong>{{ businessHealth }}</strong><span> 分</span></div>
-          <div><h4>已发现类别</h4><strong>{{ discoveredCategories }}</strong><span> / 5</span></div>
+          <div><h4>资源总览</h4><strong>{{ loadErrors.info ? '—' : totalAssets }}</strong><span> 台当前租户资产</span></div>
+          <div><h4>活动告警</h4><strong>{{ loadErrors.alarms ? '—' : activeAlarms }}</strong><span> 条</span></div>
+          <div><h4>业务健康</h4><strong>{{ loadErrors.alarms ? '—' : businessHealth }}</strong><span> 分</span></div>
+          <div><h4>已发现类别</h4><strong>{{ loadErrors.discovery ? '—' : discoveredCategories }}</strong><span> / 5</span></div>
         </div>
       </section>
     </div>
@@ -85,7 +95,7 @@ export default {
   components: {PageLayout},
   data() {
     return {
-      active: 'network', loading: false, updatedAt: '', templates: TEMPLATES,
+      active: 'network', loading: false, updatedAt: '', loadErrors: {}, templates: TEMPLATES,
       info: {}, discovery: {profiles: [], resources: [], unmatched_host_count: 0},
       alarms: [], analysis: {level_count: [], host: [], host_count: []}, egress: [],
       networkColumns: [
@@ -95,14 +105,18 @@ export default {
         {title: '模板证据', dataIndex: 'template_name'},
       ],
       alarmColumns: [
-        {title: '告警对象', dataIndex: 'hostname'},
-        {title: '告警内容', dataIndex: 'name'},
+        {title: '告警对象', dataIndex: 'name'},
+        {title: '告警内容', dataIndex: 'lasteventname'},
         {title: '级别', dataIndex: 'severity'},
         {title: '实例', dataIndex: 'instance_name'},
       ],
     }
   },
   computed: {
+    loadErrorLabels() {
+      const labels = {info: '系统资产', discovery: '资源发现', alarms: '活动告警', analysis: '告警分析', egress: '出口流量'}
+      return Object.keys(this.loadErrors).map(key => labels[key])
+    },
     activeTemplate() { return this.templates.find(item => item.code === this.active) || this.templates[0] },
     assetCounts() { return Array.isArray(this.info.asset_type_counts) ? this.info.asset_type_counts : [] },
     totalAssets() {
@@ -150,25 +164,46 @@ export default {
           {label: '发现类别', value: this.discoveredCategories, unit: '类'},
         ],
       }
-      return metrics[this.active] || []
+      const sources = {
+        network: ['discovery', 'egress', 'discovery', null],
+        system: ['info', 'info', 'info', 'info'],
+        application: ['alarms', 'alarms', 'alarms', null],
+        business: ['alarms', 'alarms', 'alarms', null],
+        comprehensive: ['info', 'alarms', 'alarms', 'discovery'],
+      }
+      return (metrics[this.active] || []).map((metric, index) => ({
+        ...metric, value: this.loadErrors[sources[this.active][index]] ? '—' : metric.value,
+      }))
     },
   },
   created() { this.loadAll() },
   methods: {
-    unwrap(response, fallback) { const payload = response && response.data; return payload && payload.code === 200 ? (payload.data || fallback) : fallback },
+    unwrap(response, fallback) {
+      const payload = response && response.data
+      if (!payload || payload.code !== 200) throw new Error('数据加载失败')
+      return payload.data || fallback
+    },
     async loadAll() {
       this.loading = true
-      const results = await Promise.allSettled([indexInfo(), resourceDiscoveryOverview(), indexTrigger(), alarmAnalysis({}), indexEgress()])
-      const value = index => results[index].status === 'fulfilled' ? results[index].value : null
-      this.info = this.unwrap(value(0), {})
-      this.discovery = this.unwrap(value(1), {profiles: [], resources: [], unmatched_host_count: 0})
-      const triggerData = this.unwrap(value(2), {items: []})
-      this.alarms = Array.isArray(triggerData.items) ? triggerData.items : []
-      this.analysis = this.unwrap(value(3), {level_count: [], host: [], host_count: []})
-      const egress = this.unwrap(value(4), [])
-      this.egress = Array.isArray(egress) ? egress : (egress && typeof egress === 'object' ? [egress] : [])
-      this.updatedAt = new Date().toLocaleString('zh-CN', {hour12: false})
-      this.loading = false
+      try {
+        const results = await Promise.allSettled([
+          () => indexInfo(), () => resourceDiscoveryOverview(), () => indexTrigger(), () => alarmAnalysis({}), () => indexEgress(),
+        ].map(request => Promise.resolve().then(request)))
+        const errors = {}
+        const update = (index, key, fallback, apply) => {
+          try {
+            if (results[index].status !== 'fulfilled') throw new Error('数据加载失败')
+            apply(this.unwrap(results[index].value, fallback))
+          } catch (error) { errors[key] = true }
+        }
+        update(0, 'info', {}, data => { this.info = data })
+        update(1, 'discovery', {profiles: [], resources: [], unmatched_host_count: 0}, data => { this.discovery = data })
+        update(2, 'alarms', {items: []}, data => { this.alarms = Array.isArray(data.items) ? data.items : [] })
+        update(3, 'analysis', {level_count: [], host: [], host_count: []}, data => { this.analysis = data })
+        update(4, 'egress', [], data => { this.egress = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []) })
+        this.loadErrors = errors
+        if (!Object.keys(errors).length) this.updatedAt = new Date().toLocaleString('zh-CN', {hour12: false})
+      } finally { this.loading = false }
     },
     alarmKey(record, index) { return String(record.eventid || record.triggerid || index) },
   },
@@ -182,6 +217,7 @@ export default {
 .content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
 .content-page-header p, .view-title p, .view-title span { color: rgba(0,0,0,.45); }
 .template-tabs { margin-bottom: 16px; }
+.load-error { margin-bottom: 16px; padding: 12px; color: #a8071a; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 4px; }
 .template-tabs { overflow-x: auto; white-space: nowrap; }
 .view-shell { min-height: 560px; padding: 22px; border: 1px solid #e8edf5; border-radius: 10px; background: linear-gradient(145deg,#fff,#f6f9ff); }
 .view-title h3 { margin: 0; font-size: 22px; }

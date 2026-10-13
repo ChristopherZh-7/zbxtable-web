@@ -12,8 +12,6 @@ import locales from '@/locales'
  * @returns {VueI18n}
  */
 function initI18n(locale, fallback) {
-  Vue.use(VueI18n)
-  
   // 语言映射：CN -> zh-CN, HK -> zh-TW, US -> en-US
   const localeMap = {
     'CN': 'zh-CN',
@@ -21,6 +19,23 @@ function initI18n(locale, fallback) {
     'US': 'en-US'
   }
   
+  // Normalize component-local messages before VueI18n creates each local instance.
+  Vue.mixin({
+    beforeCreate() {
+      const localOptions = this.$options.i18n
+      if (!localOptions || localOptions instanceof VueI18n || !localOptions.messages) return
+      const messages = localOptions.messages
+      Object.keys(localeMap).forEach(legacy => {
+        const canonical = localeMap[legacy]
+        if (Object.prototype.hasOwnProperty.call(messages, legacy) &&
+            !Object.prototype.hasOwnProperty.call(messages, canonical)) {
+          messages[canonical] = messages[legacy]
+        }
+      })
+    }
+  })
+  Vue.use(VueI18n)
+
   const actualLocale = localeMap[locale] || locale
   const actualFallback = localeMap[fallback] || fallback
   

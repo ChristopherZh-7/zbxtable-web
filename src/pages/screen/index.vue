@@ -50,7 +50,17 @@ import SessionOverlay from './components/SessionOverlay'
 import { startTokenRefresher } from '@/utils/tokenRefresher'
 import { indexInfo, indexTrigger, indexRestop, indexEgress } from '@/services/admin'
 import { parseTimeFun } from '@/utils/formatter'
+import { getTenantContext } from '@/utils/request'
 import './style.less'
+
+const REFRESH_INTERVALS = [10, 30, 60, 300, 600]
+function refreshIntervalKey(store) {
+  const user = store && store.getters && store.getters['account/user'], tenant = getTenantContext()
+  return user && tenant && Number.isInteger(Number(user.id)) && Number(user.id) > 0 && Number.isInteger(Number(tenant.id)) && Number(tenant.id) > 0 ? `smartops.screen.refresh:${Number(user.id)}:${Number(tenant.id)}` : null
+}
+function readRefreshInterval(store) {
+  try { const key = refreshIntervalKey(store), value = key && sessionStorage.getItem(key); return REFRESH_INTERVALS.find(seconds => String(seconds) === value) || 30 } catch (_) { return 30 }
+}
 
 export default {
   name: 'ScreenDashboard',
@@ -71,7 +81,7 @@ export default {
       linMetric: 'cpu',
       winMetric: 'mem',
       lastUpdated: '',
-      refreshInterval: 30,
+      refreshInterval: readRefreshInterval(this.$store),
       timers: [],
       sessionExpired: false,
       currentUser: '',
@@ -132,6 +142,7 @@ export default {
     },
     onIntervalChange(val) {
       this.refreshInterval = val
+      try { const key = refreshIntervalKey(this.$store); if (key && REFRESH_INTERVALS.includes(val)) sessionStorage.setItem(key, String(val)) } catch (_) {}
       this.fetchAll()
       this.startTimers()
     },

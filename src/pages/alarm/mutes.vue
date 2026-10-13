@@ -12,16 +12,18 @@
       </a-form-model-item>
     </a-form-model>
     <div>
-      <a-table :loading="loading" :columns="columns" :data-source="list" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
+      <a-table :scroll="{ x: 'max-content' }" :loading="loading" :columns="columns" :data-source="list" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <div slot="instance_name" slot-scope="text">
           <a-tag :color="themeColor">{{ getInstanceNames(text) || '-' }}</a-tag>
         </div>
         <span slot="status" slot-scope="text, record">
           <a-switch :checked="record.status == '0' ? true : false" :checked-children="$t('status_enabled')" :un-checked-children="$t('status_disabled')" @change="onStatusChange($event, record)" />
         </span>
-        <span slot="s_time" slot-scope="text">{{ text | parsetime }}</span>
-        <span slot="e_time" slot-scope="text">{{ text | parsetime }}</span>
+        <span slot="s_time" slot-scope="text">{{ formatRuleTime(text) }}</span>
+        <span slot="e_time" slot-scope="text">{{ formatRuleTime(text) }}</span>
         <span slot="created" slot-scope="text">{{ text | parsetime }}</span>
+        <span slot="expires_at" slot-scope="text, record">{{ record.time_mode === 'absolute' ? formatServerTimestamp(text) : '-' }}</span>
+        <span slot="validity" slot-scope="text, record" :title="$t('mutes_server_reference_hint')">{{ expiryLabel(record) }}</span>
         <span slot="operation" slot-scope="text, record">
           <!-- <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeDetail(record)">详细信息</a-button> -->
           <a-button class="pd20 paddingleft0" type="link" size="small" @click="seeEdit(record)">{{ $t('btn_edit') }}</a-button>
@@ -30,6 +32,7 @@
           </a-popconfirm>
         </span>
       </a-table>
+      <p class="mute-time-hint">{{ $t('mutes_server_reference_hint') }}</p>
     </div>
     <a-modal :title="$t('mutes_modal_title_add')" :visible="visible" :confirm-loading="confirmLoading" @ok="createRule" @cancel="handleCancel" width="1000px">
       <template>
@@ -78,32 +81,41 @@
             </a-row>
           </a-card>
           <a-card class="card" :title="$t('mutes_form_time_card_title')" :bordered="false">
-            <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
-              <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
-                <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
-              </a-select>
+            <a-form-model-item :label="$t('mutes_time_mode')" :labelCol="{span: 4}" :wrapperCol="{span: 18}" :required="true">
+              <a-radio-group v-model="timeMode" data-testid="mute-time-mode" @change="changeTimeMode($event.target.value)">
+                <a-radio value="absolute">{{ $t('mutes_time_absolute') }}</a-radio>
+                <a-radio value="permanent">{{ $t('mutes_time_permanent') }}</a-radio>
+                <a-radio value="weekly">{{ $t('mutes_time_weekly') }}</a-radio>
+              </a-radio-group>
             </a-form-model-item>
-            <a-row>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 8}" :wrapperCol="{span: 14}" :required="true">
-                  <a-time-picker v-model="rule.s_time" format="HH:mm" @change="changeStime" />
-                </a-form-model-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_duration')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-select v-model="duration" @change="changeDuration">
-                    <a-select-option v-for="(item, index) in tOptions" :key="index" :value="item.value" :label="item.label" :title="item.label">
-                      {{ item.label }}
-                    </a-select-option>
-                  </a-select>
-                </a-form-model-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-time-picker v-model="rule.e_time" format="HH:mm" @change="changeEtime" />
-                </a-form-model-item>
-              </a-col>
-            </a-row>
+            <template v-if="timeMode === 'absolute'">
+              <a-form-model-item :label="$t('mutes_form_duration')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
+                <a-select v-model="absoluteDuration" data-testid="mute-absolute-duration" style="width: 100%">
+                  <a-select-option v-for="item in absoluteDurationOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+                </a-select>
+              </a-form-model-item>
+              <p class="mute-time-hint">{{ $t('mutes_absolute_create_hint') }}</p>
+            </template>
+            <template v-else>
+              <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
+                <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
+                  <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+                </a-select>
+              </a-form-model-item>
+              <a-row>
+                <a-col :span="12">
+                  <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 6}" :wrapperCol="{span: 16}" :required="true">
+                    <a-time-picker v-model="rule.s_time" format="HH:mm" :disabled="timeMode === 'permanent'" @change="changeStime" />
+                  </a-form-model-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 6}" :wrapperCol="{span: 16}" :required="true">
+                    <a-time-picker v-model="rule.e_time" format="HH:mm" :disabled="timeMode === 'permanent'" @change="changeEtime" />
+                  </a-form-model-item>
+                </a-col>
+              </a-row>
+              <p class="mute-time-hint">{{ $t('mutes_weekly_hint') }}</p>
+            </template>
             <a-row>
               <a-col :span="16">
                 <a-form-model-item :label="$t('mutes_form_mute_channels')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
@@ -170,32 +182,35 @@
             </a-row>
           </a-card>
           <a-card class="card" :title="$t('mutes_form_time_card_title')" :bordered="false">
-            <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
-              <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
-                <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
-              </a-select>
-            </a-form-model-item>
-            <a-row>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-time-picker v-model="rule.s_time" format="HH:mm" @change="changeStime" />
-                </a-form-model-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_duration')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-select @change="changeDuration">
-                    <a-select-option v-for="(item, index) in tOptions" :key="index" :value="item.value" :label="item.label" :title="item.label">
-                      {{ item.label }}
-                    </a-select-option>
-                  </a-select>
-                </a-form-model-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 8}" :wrapperCol="{span: 16}" :required="true">
-                  <a-time-picker v-model="rule.e_time" format="HH:mm" @change="changeEtime" />
-                </a-form-model-item>
-              </a-col>
-            </a-row>
+            <div v-if="rule.time_mode === 'absolute'" data-testid="mute-expiry-readback">
+              <p>{{ $t('mutes_time_mode') }}: {{ $t('mutes_time_absolute') }}</p>
+              <p>{{ $t('mutes_server_created') }}: {{ formatServerTimestamp(rule.created) }}</p>
+              <p>{{ $t('mutes_expires_at') }}: {{ formatServerTimestamp(rule.expires_at) }}</p>
+              <p>{{ $t('mutes_validity_server') }}: {{ expiryLabel(rule) }}</p>
+              <p>{{ $t('mutes_server_now') }}: {{ formatServerTimestamp(rule.server_now) }}</p>
+              <p class="mute-time-hint">{{ $t('mutes_expiry_edit_hint') }}</p>
+            </div>
+            <template v-else-if="isLegacyTimeMode(rule)">
+              <p class="mute-time-hint">{{ $t('mutes_weekly_hint') }}</p>
+              <a-form-model-item :label="$t('form_label_week')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
+                <a-select v-model="rule.s_week" mode="multiple" style="width: 100%">
+                  <a-select-option v-for="item in rWeekOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+                </a-select>
+              </a-form-model-item>
+              <a-row>
+                <a-col :span="12">
+                  <a-form-model-item :label="$t('mutes_form_start_time')" :labelCol="{span: 6}" :wrapperCol="{span: 16}" :required="true">
+                    <a-time-picker v-model="rule.s_time" format="HH:mm" @change="changeStime" />
+                  </a-form-model-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-model-item :label="$t('mutes_form_end_time')" :labelCol="{span: 6}" :wrapperCol="{span: 16}" :required="true">
+                    <a-time-picker v-model="rule.e_time" format="HH:mm" @change="changeEtime" />
+                  </a-form-model-item>
+                </a-col>
+              </a-row>
+            </template>
+            <p v-else>{{ $t('mutes_expiry_invalid') }}</p>
             <a-row>
               <a-col :span="16">
                 <a-form-model-item :label="$t('mutes_form_mute_channels')" :labelCol="{span: 4}" :wrapperCol="{span: 16}" :required="true">
@@ -227,9 +242,14 @@ import { parseTimeFun } from "@/utils/formatter";
 import moment from "moment";
 import "moment/locale/zh-cn";
 import themeMixin from '@/mixins/themeMixin'
+const alarmMessages = require('./i18n').messages
 export default {
   name: "LinuxList",
-  i18n: require('./i18n'),
+  i18n: { messages: {
+    CN: { ...alarmMessages.CN, mutes_col_window: '每日生效窗口（含起止分钟）', mutes_invalid_condition: '条件格式无效' },
+    US: { ...alarmMessages.US, mutes_col_window: 'Daily window (inclusive minutes)', mutes_invalid_condition: 'Invalid condition format' },
+    HK: { ...alarmMessages.HK, mutes_col_window: '每日生效窗口（含起止分鐘）', mutes_invalid_condition: '條件格式無效' },
+  } },
   mixins: [themeMixin],
   computed: {
     ...mapGetters('account', ['user']),
@@ -268,6 +288,9 @@ export default {
       rWeekOptions: [],
       columns: [],
       tOptions: [],
+      absoluteDurationOptions: [],
+      timeMode: 'weekly',
+      absoluteDuration: 3600,
       tenantlist: [],
       list: [],
       pagination: {
@@ -314,6 +337,8 @@ export default {
         m_type: "3",
         status: "0"
       }
+      this.timeMode = 'absolute'
+      this.absoluteDuration = 3600
       this.visible = true
     }
   },
@@ -374,43 +399,99 @@ export default {
         { value: "86400", label: this.$t('mutes_duration_forever') },
       ];
       
+      // New temporary rules use seconds; legacy hour/sentinel adapter stays separate.
+      this.absoluteDurationOptions = [
+        [3600, '1h'], [7200, '2h'], [18000, '5h'], [28800, '8h'], [43200, '12h'],
+        [86400, '1d'], [172800, '2d'], [432000, '5d'], [604800, '7d'],
+        [1209600, '14d'], [2592000, '30d'], [5184000, '60d'], [7776000, '90d'],
+      ].map(([value, key]) => ({ value, label: this.$t('mutes_duration_' + key) }))
+
       // 初始化表格列
       this.columns = [
         { title: this.$t('mutes_col_id'), dataIndex: "id", align: "center" },
         { title: this.$t('mutes_col_policy_name'), dataIndex: "name", align: "left" },
         { title: this.$t('mutes_col_instance'), dataIndex: "z_ids", key: "instance_name", align: "left", scopedSlots: { customRender: "instance_name" } },
-        { title: this.$t('mutes_col_mute_condition'), dataIndex: "conditions", align: "left", },
+        { title: this.$t('mutes_col_mute_condition'), dataIndex: "conditions", align: "left", customRender: value => this.ruleConditionSummary(value) },
         {
-          title: this.$t('mutes_col_mute_duration'), dataIndex: "duration", key: "duration", align: "left", customRender: (value, row) => {
-            var dateBegin = new Date(row.s_time);
-            var dateEnd = new Date(row.e_time);
-            var dateDiff = dateEnd.getTime() - dateBegin.getTime(); //时间差的毫秒数
-            var dayDiff = Math.floor(dateDiff / (24 * 3600 * 1000)); //计算出相差天数
-            var leave1 = dateDiff % (24 * 3600 * 1000); //计算天数后剩余的毫秒数
-            var hours = Math.floor(leave1 / (3600 * 1000)); //计算出小时数
-            //计算相差分钟数
-            var leave2 = leave1 % (3600 * 1000); //计算小时数后剩余的毫秒数
-            var minutes = Math.floor(leave2 / (60 * 1000)); //计算相差分钟数
-            //计算相差秒数
-            var leave3 = leave2 % (60 * 1000); //计算分钟数后剩余的毫秒数
-            var seconds = Math.round(leave3 / 1000);
-            let duration = dayDiff + this.$t('duration_day') + hours + this.$t('duration_hour') + minutes + this.$t('duration_minute') + seconds + this.$t('duration_second')
-            const obj = {
-              children: duration,
-              attrs: {},
-            };
-            return obj;
-          },
+          title: this.$t('mutes_col_window'), dataIndex: "duration", key: "duration", align: "left",
+          customRender: (value, row) => this.ruleWindowDuration(row),
         },
         { title: this.$t('mutes_col_start_time'), dataIndex: "s_time", key: "s_time", align: "left", scopedSlots: { customRender: "s_time" }, },
         { title: this.$t('mutes_col_end_time'), dataIndex: "e_time", key: "e_time", align: "left", scopedSlots: { customRender: "e_time" }, },
         { title: this.$t('mutes_col_add_time'), dataIndex: "created", key: "created", align: "left", scopedSlots: { customRender: "created" }, },
+        { title: this.$t('mutes_time_mode'), dataIndex: 'time_mode', customRender: (value, row) => this.$t(row.time_mode === 'absolute' ? 'mutes_time_absolute' : this.isLegacyTimeMode(row) ? 'mutes_time_weekly' : 'mutes_expiry_invalid') },
+        { title: this.$t('mutes_expires_at'), dataIndex: 'expires_at', scopedSlots: { customRender: 'expires_at' } },
+        { title: this.$t('mutes_validity_server'), key: 'validity', scopedSlots: { customRender: 'validity' } },
         { title: this.$t('mutes_col_policy_status'), dataIndex: "status", key: "status", align: "left", scopedSlots: { customRender: "status" }, },
         { title: this.$t('mutes_col_operation'), dataIndex: "operation", key: "operation", align: "left", scopedSlots: { customRender: "operation" } },
       ];
       
       // 更新分页文本
       this.pagination["show-total"] = (total) => this.$t('mutes_pagination_total', { total });
+    },
+    isLegacyTimeMode(row) {
+      return !!row && (row.time_mode == null || row.time_mode === '' || row.time_mode === 'weekly') && (row.expires_at == null || row.expires_at === '')
+    },
+    serverInstant(value) {
+      if (typeof value !== 'string' || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null
+      const parsed = moment.parseZone(value, moment.ISO_8601, true)
+      return parsed.isValid() ? parsed : null
+    },
+    formatServerTimestamp(value) {
+      const parsed = this.serverInstant(value)
+      return parsed ? parsed.format('YYYY-MM-DD HH:mm:ss Z') : '-'
+    },
+    expiryState(row) {
+      if (this.isLegacyTimeMode(row)) return 'weekly'
+      if (!row || row.time_mode !== 'absolute') return 'invalid'
+      const hasWeek = Array.isArray(row.s_week) ? row.s_week.length > 0 : !!row.s_week
+      if (hasWeek || row.s_time || row.e_time) return 'invalid'
+      const created = this.serverInstant(row.created)
+      const expires = this.serverInstant(row.expires_at)
+      if (!created || !expires || expires.valueOf() <= created.valueOf()) return 'invalid'
+      // Only a server readback snapshot is authoritative here. Never use browser Date.now.
+      const serverNow = this.serverInstant(row.server_now)
+      if (!serverNow) return 'unconfirmed'
+      if (serverNow.valueOf() < created.valueOf()) return 'pending'
+      return serverNow.valueOf() >= expires.valueOf() ? 'expired' : 'active'
+    },
+    expiryLabel(row) {
+      return this.$t('mutes_expiry_' + this.expiryState(row))
+    },
+    changeTimeMode(value) {
+      if (this.rule.id || !['absolute', 'permanent', 'weekly'].includes(value)) return
+      this.timeMode = value
+      if (value === 'permanent') this.changeDuration('86400')
+    },
+    formatRuleTime(value) {
+      return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : '-'
+    },
+    ruleWindowDuration(row) {
+      if (!row || this.formatRuleTime(row.s_time) === '-' || this.formatRuleTime(row.e_time) === '-') return '-'
+      const toMinutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3))
+      // F16 matches occurrence minutes inclusively, including across midnight.
+      const minutes = (toMinutes(row.e_time) - toMinutes(row.s_time) + 1440) % 1440 + 1
+      const hours = Math.floor(minutes / 60)
+      const remainder = minutes % 60
+      return (hours ? hours + this.$t('duration_hour') : '') + (remainder ? remainder + this.$t('duration_minute') : '')
+    },
+    ruleConditionSummary(raw) {
+      if (raw == null || raw === '') return '-'
+      let conditions = raw
+      if (typeof raw === 'string') {
+        try { conditions = JSON.parse(raw) } catch (error) { return this.$t('mutes_invalid_condition') }
+      }
+      if (!Array.isArray(conditions)) return this.$t('mutes_invalid_condition')
+      if (!conditions.length) return '-'
+      const labels = []
+      for (const item of conditions) {
+        if (!item || typeof item.r_type !== 'string' || typeof item.r_func !== 'string' ||
+          (typeof item.r_value !== 'string' && typeof item.r_value !== 'number')) return this.$t('mutes_invalid_condition')
+        const field = this.rTypeOptions.find(option => option.value === item.r_type)
+        const operator = this.rFuncOptions.find(option => option.value === item.r_func)
+        labels.push(`${field ? field.label : item.r_type} ${operator ? operator.label : item.r_func} ${item.r_value}`)
+      }
+      return labels.join(' AND ')
     },
     init() {
       this.loading = true;
@@ -474,6 +555,8 @@ export default {
       this.rule.channel = val;
     },
     showModal() {
+      this.timeMode = 'absolute';
+      this.absoluteDuration = 3600;
       this.visible = true;
       this.rule = {
         name: "",
@@ -512,20 +595,31 @@ export default {
 
       this.rule = {
         id: record.id,
+        time_mode: record.time_mode,
+        created: record.created,
+        expires_at: record.expires_at,
+        server_now: record.server_now,
         name: record.name,
         zid: lten,
         channel: lchan,
         conditions: parsedConditions,
         s_week: record.s_week ? String(record.s_week).split(",") : [],
-        s_time: moment(record.s_time || "00:00", "HH:mm"),
-        e_time: moment(record.e_time || "23:59", "HH:mm"),
+        s_time: this.formatRuleTime(record.s_time) === '-' ? null : moment(record.s_time, "HH:mm", true),
+        e_time: this.formatRuleTime(record.e_time) === '-' ? null : moment(record.e_time, "HH:mm", true),
         note: record.note,
         m_type: "3",
-        status: "0"
+        status: record.status == null ? "" : String(record.status)
       }
     },
     changeDuration(value) {
+      if (typeof value !== 'string' || !this.tOptions.some(option => option.value === value)) return
       this.duration = value;
+      if (value === '86400') {
+        if (!this.rule.id) this.timeMode = 'permanent'
+        this.rule.s_time = moment('00:00', 'HH:mm', true)
+        this.rule.e_time = moment('23:59', 'HH:mm', true)
+        return
+      }
       this.rule.s_time = moment()
       this.rule.e_time = moment().add(Number(value), 'hour')
     },
@@ -536,7 +630,11 @@ export default {
       this.rule.e_time = value
     },
     buildRulePayload() {
-      return {
+      if (!this.rule.id && !['absolute', 'permanent', 'weekly'].includes(this.timeMode)) {
+        this.$message.error(this.$t('mutes_expiry_invalid'))
+        return null
+      }
+      const payload = {
         ...this.rule,
         z_ids: Array.isArray(this.rule.zid) ? this.rule.zid.join(",") : String(this.rule.zid || ""),
         conditions: JSON.stringify(this.rule.conditions || []),
@@ -549,9 +647,24 @@ export default {
         status: String(this.rule.status == null ? "0" : this.rule.status),
         m_type: "3",
       }
+      // Read-only temporal output must never be echoed by normal edit/create requests.
+      for (const key of ['time_mode', 'duration_seconds', 'created', 'expires_at', 'server_now', 'duration']) delete payload[key]
+      if (!this.rule.id && this.timeMode === 'absolute') {
+        if (!Number.isInteger(this.absoluteDuration) || !this.absoluteDurationOptions.some(option => option.value === this.absoluteDuration)) {
+          this.$message.error(this.$t('mutes_invalid_duration'))
+          return null
+        }
+        payload.time_mode = 'absolute'
+        payload.duration_seconds = this.absoluteDuration
+        payload.s_week = ''
+        payload.s_time = ''
+        payload.e_time = ''
+      }
+      return payload
     },
     updateRule() {
       const payload = this.buildRulePayload()
+      if (!payload) return
       rulePut(this.rule.id, payload).then((resp) => {
         let res = resp.data
         if (res.code == 200) {
@@ -571,6 +684,7 @@ export default {
     },
     createRule() {
       const payload = this.buildRulePayload()
+      if (!payload) return
       ruleAdd(payload).then((resp) => {
         let res = resp.data
         if (res.code == 200) {
@@ -677,6 +791,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.mute-time-hint { color: #607080; margin: 8px 0; }
 .card-avatar {
   width: 48px;
   height: 48px;

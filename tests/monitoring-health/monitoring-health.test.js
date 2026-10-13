@@ -125,3 +125,47 @@ test('CMDB, device list and overview consume the shared server verdict', () => {
   for (const page of detailPages) assert.doesNotMatch(page, />正常<\/a-tag>/)
   assert.doesNotMatch(overview, /available\s*==\s*1\s*&&/)
 })
+
+
+const monitoringTagBindings = () => {
+  const bindings = [...source('src/components/MonitoringHealthCard.vue').matchAll(/<a-tag\s+:color="([^"]+)"/g)].map(match => match[1])
+  assert.equal(bindings.length, 2)
+  return bindings
+}
+
+const assertRealMonitoringTag = (family, state, expectedColor) => {
+  const Tag = require('ant-design-vue/lib/tag/Tag').default
+  const healthMeta = monitoringHealthMeta({state: family === 'collection' ? state : 'unknown'})
+  const configurationMeta = monitoringConfigurationMeta({state: family === 'configuration' ? state : 'unknown'})
+  const meta = family === 'collection' ? healthMeta : configurationMeta
+  const expression = monitoringTagBindings()[family === 'collection' ? 0 : 1]
+  const color = new Function('healthMeta', 'configurationMeta', `return (${expression})`)(healthMeta, configurationMeta)
+  assert.equal(color, expectedColor)
+  const vm = {$props: {color}}
+  vm.isPresetColor = Tag.methods.isPresetColor.bind(vm)
+  const classes = Tag.methods.getTagClassName.call(vm, 'ant-tag')
+  assert.equal(classes['ant-tag'], true)
+  assert.equal(Boolean(classes['ant-tag-has-color']), false)
+  assert.equal(Tag.methods.getTagStyle.call(vm).backgroundColor, undefined)
+  if (expectedColor) assert.equal(classes[`ant-tag-${expectedColor}`], true)
+  else {
+    assert.equal(meta.color, 'default')
+    assert.equal(meta.status, 'default')
+  }
+  return meta
+}
+
+test('ISSUE048 collection tags keep the real neutral and preset Ant Tag branches', () => {
+  assert.equal(assertRealMonitoringTag('collection', 'unknown', undefined).label, '健康未知')
+  assert.equal(assertRealMonitoringTag('collection', 'disabled', undefined).label, '已停用')
+  for (const [state, color] of Object.entries({waiting_first_data: 'blue', healthy: 'green', degraded: 'orange', unavailable: 'red'})) {
+    assertRealMonitoringTag('collection', state, color)
+  }
+})
+
+test('ISSUE048 configuration tags keep the real neutral and preset Ant Tag branches', () => {
+  assert.equal(assertRealMonitoringTag('configuration', 'unknown', undefined).label, '配置状态未知')
+  for (const [state, color] of Object.entries({ready: 'green', not_applied: 'orange', drifted: 'red', unbound: 'orange'})) {
+    assertRealMonitoringTag('configuration', state, color)
+  }
+})

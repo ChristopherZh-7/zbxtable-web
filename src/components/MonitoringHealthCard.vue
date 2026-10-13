@@ -2,10 +2,10 @@
   <a-card title="监控状态" :body-style="{ padding: '12px' }" class="monitoring-health-card">
     <a-descriptions bordered size="small" :column="{ xxl: 3, xl: 3, lg: 3, md: 1, sm: 1 }">
       <a-descriptions-item label="采集健康">
-        <a-tag :color="healthMeta.color">{{ normalizedHealth.label }}</a-tag>
+        <a-tag :color="healthMeta.color === 'default' ? undefined : healthMeta.color">{{ normalizedHealth.label }}</a-tag>
       </a-descriptions-item>
       <a-descriptions-item label="配置状态">
-        <a-tag :color="configurationMeta.color">{{ configuration.label }}</a-tag>
+        <a-tag :color="configurationMeta.color === 'default' ? undefined : configurationMeta.color">{{ configuration.label }}</a-tag>
       </a-descriptions-item>
       <a-descriptions-item label="判定依据">
         {{ normalizedHealth.summary }}

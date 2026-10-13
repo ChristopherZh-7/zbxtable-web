@@ -76,14 +76,14 @@ function chartOption(data) {
   }
   if (data.chart_type === 'gauge') {
     const max = units === '%' ? 100 : Math.max(100, Math.ceil(latest * 1.2))
-    return {...common, series: [{type: 'gauge', min: 0, max, axisLabel: {color: textColor}, detail: {color: textColor, formatter: `{value}${units}`}, data: [{value: latest, name: source.item_name || ''}]}]}
+    return {...common, series: [{type: 'gauge', min: 0, max, axisLabel: {color: textColor}, detail: {color: textColor, formatter: (value) => formatDashboardValue(value, data)}, data: [{value: latest, name: source.item_name || ''}]}]}
   }
   if (data.chart_type === 'pie') {
     const max = units === '%' ? 100 : Math.max(latest, 1)
     return {...common, series: [{type: 'pie', radius: ['38%', '68%'], data: [
       {name: source.item_name || '最新值', value: latest},
       {name: '剩余', value: Math.max(0, max - latest), itemStyle: {color: '#e8edf5'}},
-    ], label: {color: textColor, formatter: `{b}\n{c}${units}`}}]}
+    ], label: {color: textColor, formatter: (params) => `${params.name}\n${formatDashboardValue(params.value, data)}`}}]}
   }
   return {
     ...common,

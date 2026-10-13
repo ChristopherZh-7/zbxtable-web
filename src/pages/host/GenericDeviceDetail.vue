@@ -138,6 +138,8 @@ export default {
       typeId: null,
       loading: false,
       detail: {},
+      detailRequest: 0,
+      graphRequest: 0,
       fieldConfigs: [],
       graphLoading: false,
       pngData: [],
@@ -157,14 +159,29 @@ export default {
         .sort((a, b) => a.order - b.order)
     },
   },
+  watch: {
+    $route(to, from) {
+      if (to.query.id !== from.query.id || to.query.zid !== from.query.zid ||
+          (to.query.typeCode || (to.meta && to.meta.type_code)) !== (from.query.typeCode || (from.meta && from.meta.type_code))) {
+        this.loadRoute()
+      }
+    },
+  },
   created() {
-    this.id = this.$route.query.id || ''
-    this.zid = this.$route.query.zid || ''
-    this.typeCode = this.$route.query.typeCode || (this.$route.meta && this.$route.meta.type_code) || ''
-    this.resetGraphRange()
-    this.init()
+    this.loadRoute()
+  },
+  beforeDestroy() {
+    this.detailRequest += 1
+    this.graphRequest += 1
   },
   methods: {
+    loadRoute() {
+      this.id = this.$route.query.id || ''
+      this.zid = this.$route.query.zid || ''
+      this.typeCode = this.$route.query.typeCode || (this.$route.meta && this.$route.meta.type_code) || ''
+      this.resetGraphRange()
+      return this.init()
+    },
     displayFieldValue(value) {
       return value === null || value === undefined || value === '' ? '--' : value
     },
@@ -181,32 +198,46 @@ export default {
       }
     },
     async init() {
-      this.loading = true
+      const request = ++this.detailRequest
+      const {id, zid, typeCode} = this
+      this.detail = {}
+      this.fieldConfigs = []
+      this.typeId = null
+      this.typeName = ''
+      this.sortedPngData = []
+      this.graphRequest += 1
+      this.graphLoading = false
+      this.loading = !!id
+      if (!id) return
       try {
-        // 并行加载：类型配置 + 设备详情
         const typesRes = await getAssetTypes()
+        if (request !== this.detailRequest) return
         const types = (typesRes.data && typesRes.data.data) || []
-        const typeInfo = types.find((t) => t.type_code === this.typeCode)
+        const typeInfo = types.find((t) => t.type_code === typeCode)
         if (typeInfo) {
           this.typeName = typeInfo.name
           this.typeId = typeInfo.id
           const fieldsRes = await getAssetTypeFields(typeInfo.id)
+          if (request !== this.detailRequest) return
           this.fieldConfigs = (fieldsRes.data && fieldsRes.data.data) || []
-        } else if (this.typeCode === ALL_DEVICE_TYPE) {
-          this.typeName = '监控设备'
+        } else if (typeCode === ALL_DEVICE_TYPE) {
+          this.typeName = '全部设备'
           this.fieldConfigs = allMonitoringDeviceFields()
         }
-        const detailRes = await hostDetail(this.id, this.zid)
+        const detailRes = await hostDetail(id, zid)
+        if (request !== this.detailRequest) return
         const biz = detailRes.data
         if (biz && biz.code === 200) {
           this.detail = biz.data || {}
+          this.fetchGraph()
+        } else {
+          this.$message.error((biz && biz.message) || '加载设备信息失败')
         }
       } catch {
-        this.$message.error('加载设备信息失败')
+        if (request === this.detailRequest) this.$message.error('加载设备信息失败')
       } finally {
-        this.loading = false
+        if (request === this.detailRequest) this.loading = false
       }
-      this.fetchGraph()
     },
 
     fieldConfig(key) {
@@ -260,20 +291,20 @@ export default {
       }
     },
     fetchGraph() {
-      if (!this.id) return
+      if (!this.id || !this.detail.hostid) return
+      const request = ++this.graphRequest
       this.graphLoading = true
-      hostGraph(this.id, { start: this.beginTime, end: this.endTime })
+      return hostGraph(this.id, {start: this.beginTime, end: this.endTime, zid: this.zid})
         .then((resp) => {
+          if (request !== this.graphRequest) return
           const res = resp.data
           if (res.code === 200) {
             const items = (res.data && res.data.items) || []
             this.sortedPngData = [...items].sort((a, b) => a.name.localeCompare(b.name))
-          } else {
-            this.sortedPngData = []
-          }
+          } else { this.sortedPngData = [] }
         })
-        .catch(() => { this.sortedPngData = [] })
-        .finally(() => { this.graphLoading = false })
+        .catch(() => { if (request === this.graphRequest) this.sortedPngData = [] })
+        .finally(() => { if (request === this.graphRequest) this.graphLoading = false })
     },
   },
 }

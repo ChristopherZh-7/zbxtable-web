@@ -40,6 +40,8 @@
 
 <script>
 import {mapState} from 'vuex'
+import VueRouter from 'vue-router'
+import {checkAuthorization} from '@/utils/request'
 export default {
   name: 'Exp404',
   computed: {
@@ -50,7 +52,11 @@ export default {
   },
   methods: {
     backHome() {
-      this.$router.push('/dashboard/workplace')
+      const path = checkAuthorization() ? '/dashboard/workplace' : '/login'
+      if (this.$route.path === path) return
+      return this.$router.push(path).catch((error) => {
+        if (!VueRouter.isNavigationFailure(error)) throw error
+      })
     },
     backPrevious() {
       if (typeof window !== 'undefined' && window.history.length > 1) {

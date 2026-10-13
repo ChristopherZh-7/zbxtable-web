@@ -269,4 +269,17 @@ export default {
       box-shadow: -2px 0 8px @shadow-color;
     }
   }
+// The compact header remains in layout flow, including fixed-header mode.
+@media (max-width: 900px) {
+  .admin-layout .admin-layout-main {
+    .admin-header {
+      position: sticky !important;
+      top: 0;
+      height: auto;
+      min-height: 64px;
+      overflow: visible;
+    }
+    .virtual-header { display: none; }
+  }
+}
 </style>

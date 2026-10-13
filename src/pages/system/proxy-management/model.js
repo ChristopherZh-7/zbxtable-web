@@ -51,10 +51,13 @@ function flattenProxies(snapshot) {
   })))
 }
 
-function proxyPricingBasis(value) {
+function proxyPricingBasis(value, requestFailed = false) {
   const snapshot = normalizeSnapshot(value)
   const reasons = []
   const keys = new Set()
+
+  if (requestFailed) reasons.push('request_failed')
+  if (!snapshot.generated_at) reasons.push('missing_generated_at')
 
   if (Number(snapshot.summary.instance_count) !== snapshot.instances.length) {
     reasons.push('instance_count_mismatch')

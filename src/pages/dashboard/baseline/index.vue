@@ -24,9 +24,10 @@
         <span slot="severity" slot-scope="record">
           <a-tag :color="severityMeta(record.severity).color">{{ severityMeta(record.severity).label }}</a-tag>
         </span>
-        <span slot="status" slot-scope="record">
-          <a-badge :status="record.problem ? 'error' : (record.enabled ? 'success' : 'default')" :text="record.problem ? '已偏离' : (record.enabled ? '正常监控' : '已停用')" />
-        </span>
+        <div slot="status" slot-scope="record">
+          <a-badge :status="record.enabled ? 'success' : 'default'" :text="record.enabled ? '已启用' : '已停用'" />
+          <div class="muted">最后问题：{{ record.problem ? '已偏离' : '未偏离' }}</div>
+        </div>
         <span slot="operation" slot-scope="record">
           <a-button type="link" size="small" @click="openDetail(record)">查看曲线</a-button>
           <a-button v-auth="'update'" type="link" size="small" @click="openEdit(record)">编辑</a-button>
@@ -54,7 +55,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-model-item label="数值趋势监控项">
-              <a-select v-model="form.itemid" show-search option-filter-prop="children" :loading="itemsLoading" :disabled="!selectedHostKey" placeholder="选择监控项">
+              <a-select v-model="form.itemid" show-search option-filter-prop="children" :loading="itemsLoading" :disabled="!selectedHostKey || itemsLoading" placeholder="选择监控项">
                 <a-select-option v-for="item in items" :key="item.itemid" :value="String(item.itemid)">
                   {{ item.name }}{{ item.units ? `（${item.units}）` : '' }}
                 </a-select-option>
@@ -107,6 +108,8 @@
             <a-descriptions-item label="数据周期">1 小时</a-descriptions-item>
             <a-descriptions-item label="数据源">{{ selectedRule.host_name }} / {{ selectedRule.item_name }}</a-descriptions-item>
             <a-descriptions-item label="判定">{{ selectedRule.seasons }} 个{{ selectedRule.season_unit === 'w' ? '周' : '日' }}同期，超过 {{ selectedRule.deviation }}σ</a-descriptions-item>
+            <a-descriptions-item label="实际偏离度">{{ formatDeviation(latestPreviewPoint && latestPreviewPoint.deviation) }}</a-descriptions-item>
+            <a-descriptions-item label="样本时间">{{ latestPreviewPoint ? formatClock(latestPreviewPoint.clock) : '--' }}</a-descriptions-item>
           </a-descriptions>
           <a-alert v-if="preview.message" :message="preview.message" type="warning" show-icon style="margin-top: 16px" />
           <div ref="chart" class="baseline-chart"></div>
@@ -129,7 +132,7 @@ import {
   baselineRuleEvents, baselineRuleList, baselineRulePreview, createBaselineRule,
   deleteBaselineRule, hostList, itemList, updateBaselineRule,
 } from '@/services/admin'
-import {SEVERITIES, baselineChartOption, defaultBaselineForm, numericTrendItems, severityMeta, validateBaselineForm} from './baseline-view'
+import {SEVERITIES, baselineChartOption, defaultBaselineForm, formatDeviation, latestBaselinePoint, numericTrendItems, severityMeta, validateBaselineForm} from './baseline-view'
 
 export default {
   name: 'DynamicBaselines',
@@ -139,6 +142,7 @@ export default {
       loading: false, saving: false, itemsLoading: false, detailLoading: false,
       rules: [], hosts: [], items: [], modalVisible: false, drawerVisible: false,
       editing: null, selectedRule: null, selectedHostKey: '', form: defaultBaselineForm(),
+      itemsRequest: 0, itemsHostKey: '',
       preview: {points: [], complete: false, message: ''}, events: [], chart: null,
       severities: SEVERITIES,
       columns: [
@@ -157,15 +161,20 @@ export default {
       ],
     }
   },
+  computed: {
+    latestPreviewPoint() { return latestBaselinePoint(this.preview.points) },
+  },
   created() {
     this.load()
     this.loadHosts()
   },
   beforeDestroy() {
+    this.invalidateItems()
     if (this.chart) this.chart.dispose()
   },
   methods: {
     severityMeta,
+    formatDeviation,
     unwrap(response) {
       const result = response.data
       if (!result || result.code !== 200) throw new Error(result && result.message || '请求失败')
@@ -187,34 +196,51 @@ export default {
       } catch (error) { this.$message.error(error.message || '主机加载失败') }
     },
     hostKey(host) { return `${host.zid}:${host.hostid}` },
-    async selectHost(key) {
-      const host = this.hosts.find(candidate => this.hostKey(candidate) === key)
+    invalidateItems() {
+      this.itemsRequest += 1
       this.items = []
       this.form.itemid = ''
-      if (!host) return
+      this.itemsHostKey = ''
+      this.itemsLoading = false
+    },
+    async selectHost(key) {
+      const host = this.hosts.find(candidate => this.hostKey(candidate) === key)
+      this.invalidateItems()
+      if (!host) { this.selectedHostKey = ''; this.form.zid = 0; return }
+      this.selectedHostKey = this.hostKey(host)
       this.form.zid = Number(host.zid)
       await this.loadItems(host.zid, host.hostid)
     },
     async loadItems(zid, hostid, retainItemID) {
+      this.invalidateItems()
+      const request = this.itemsRequest
+      const key = `${zid}:${hostid}`
+      const isCurrent = () => request === this.itemsRequest && this.modalVisible &&
+        this.selectedHostKey === key && Number(this.form.zid) === Number(zid)
+      if (!isCurrent()) return
       this.itemsLoading = true
       try {
-        const data = this.unwrap(await itemList({zid, hostid}))
+        const response = await itemList({zid, hostid})
+        if (!isCurrent()) return
+        const data = this.unwrap(response)
         this.items = numericTrendItems(data && data.items || [])
+        this.itemsHostKey = key
         if (retainItemID && this.items.some(item => String(item.itemid) === String(retainItemID))) this.form.itemid = String(retainItemID)
-      } catch (error) { this.$message.error(error.message || '监控项加载失败')
-      } finally { this.itemsLoading = false }
+      } catch (error) {
+        if (isCurrent()) this.$message.error(error.message || '监控项加载失败')
+      } finally { if (isCurrent()) this.itemsLoading = false }
     },
     openCreate() {
       this.editing = null
       this.form = defaultBaselineForm()
       this.selectedHostKey = ''
-      this.items = []
+      this.invalidateItems()
       this.modalVisible = true
     },
     openEdit(rule) {
       this.editing = rule
       this.form = {
-        zid: Number(rule.zid), itemid: String(rule.itemid), name: rule.name,
+        zid: Number(rule.zid), itemid: '', name: rule.name,
         season_unit: rule.season_unit, seasons: Number(rule.seasons), deviation: Number(rule.deviation),
         severity: Number(rule.severity), enabled: Boolean(rule.enabled),
       }
@@ -222,16 +248,22 @@ export default {
       this.modalVisible = true
       this.loadItems(rule.zid, rule.hostid, rule.itemid)
     },
-    closeModal() { this.modalVisible = false },
+    closeModal() { this.modalVisible = false; this.invalidateItems() },
     async save() {
       const validation = validateBaselineForm(this.form)
       if (validation) { this.$message.warning(validation); return }
+      if (!this.modalVisible || this.itemsLoading || this.itemsHostKey !== this.selectedHostKey ||
+          !this.selectedHostKey.startsWith(`${this.form.zid}:`) ||
+          !numericTrendItems(this.items).some(item => String(item.itemid) === String(this.form.itemid))) {
+        this.$message.warning(this.itemsLoading ? '监控项加载中，请稍后再保存' : '请选择当前主机可用的数值趋势监控项')
+        return
+      }
       this.saving = true
       try {
         if (this.editing) this.unwrap(await updateBaselineRule(this.editing.triggerid, this.editing.zid, this.form))
         else this.unwrap(await createBaselineRule(this.form))
         this.$message.success(this.editing ? '基线已更新' : '基线已创建')
-        this.modalVisible = false
+        this.closeModal()
         await this.load()
       } catch (error) { this.$message.error(error.message || '保存失败')
       } finally { this.saving = false }
