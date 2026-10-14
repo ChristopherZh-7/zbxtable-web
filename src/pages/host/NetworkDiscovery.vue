@@ -1,19 +1,20 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="network-discovery">
-      <div class="content-page-header">
+    <div class="network-discovery smartops-management-page">
+      <div class="content-page-header smartops-page-heading">
         <div>
-          <h2>网络发现</h2>
+          <h1>网络发现</h1>
+          <p>管理扫描规则，查看当前租户的网络发现结果。</p>
         </div>
-        <div>
+        <div class="smartops-heading-actions">
           <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新结果</a-button>
           <a-button v-if="canManage" type="primary" class="header-action" @click="openCreate"><a-icon type="plus" /> 新建扫描规则</a-button>
         </div>
       </div>
 
-      <section class="section-card">
-        <div class="section-title">
-          <div><strong>扫描规则</strong><span>监控中心每 1 分钟周期执行</span></div>
+      <section class="smartops-content-panel">
+        <div class="section-title smartops-panel-heading">
+          <div><strong class="smartops-section-label">扫描规则</strong><span>监控中心每 1 分钟周期执行</span></div>
           <a-tag color="blue">{{ rules.length }} 条</a-tag>
         </div>
         <a-table :loading="loading" :columns="ruleColumns" :data-source="rules" :row-key="record => record.id" :pagination="false" :scroll="{x: 1050}">
@@ -34,9 +35,9 @@
         </a-table>
       </section>
 
-      <section class="section-card">
-        <div class="section-title">
-          <div><strong>发现结果</strong><span>只展示当前租户规则中状态为在线 的服务</span></div>
+      <section class="smartops-content-panel">
+        <div class="section-title smartops-panel-heading">
+          <div><strong class="smartops-section-label">发现结果</strong><span>只展示当前租户规则中状态为在线 的服务</span></div>
           <a-tag :color="results.length ? 'green' : undefined">{{ results.length }} 台存活设备</a-tag>
         </div>
         <a-table :loading="loading" :columns="resultColumns" :data-source="results" :row-key="record => `${record.rule_id}:${record.ip}`" :pagination="{pageSize: 10}" :scroll="{x: 900}">
@@ -48,7 +49,7 @@
       </section>
     </div>
 
-    <a-modal :visible="createVisible" title="新建网络发现规则" :confirm-loading="saving" width="620px" ok-text="创建并启用" @ok="saveRule" @cancel="closeCreate">
+    <a-modal wrap-class-name="smartops-management-dialog" :visible="createVisible" title="新建网络发现规则" :confirm-loading="saving" width="620px" ok-text="创建并启用" @ok="saveRule" @cancel="closeCreate">
       <a-form-model layout="vertical">
         <a-form-model-item label="规则名称"><a-input v-model.trim="form.name" maxlength="100" placeholder="例如：办公网 C 段基础发现" /></a-form-model-item>
         <a-form-model-item label="监控源">
@@ -156,17 +157,10 @@ export default {
 </script>
 
 <style scoped>
-.network-discovery { padding: 0 4px; }
-.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.content-page-header p, .muted, .field-tip { color: rgba(0, 0, 0, .45); }
-.header-action { margin-left: 8px; }
-.section-card { padding: 18px 20px; margin-bottom: 18px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
-.section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.section-title strong { font-size: 16px; }
-.section-title span { margin-left: 10px; color: rgba(0, 0, 0, .45); }
+
+.section-title > div:first-child > span { margin-left: 10px; color: var(--smartops-muted); font-size: 12px; }
+.muted, .field-tip { color: var(--smartops-muted); }
 .error-text { max-width: 160px; margin-top: 4px; color: #f5222d; font-size: 12px; }
 .field-tip { display: block; margin-top: 4px; font-size: 12px; }
 code { padding: 2px 5px; color: #1d39c4; background: #f0f5ff; border-radius: 3px; }
-@media (max-width: 768px) { .content-page-header { display: block; } .content-page-header > div:last-child { margin-top: 12px; } }
 </style>

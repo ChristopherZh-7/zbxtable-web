@@ -1,9 +1,9 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="domain-page">
-      <div class="heading">
-        <div><h2>域名监控</h2><p>共 {{ rows.filter(r => !r.removed).length }} 个域名 · 连续两次失败触发告警，恢复后自动解除</p></div>
-        <div><a-button :loading="loading" @click="load">刷新</a-button>
+      <div class="smartops-page-heading">
+        <div><h1>域名监控</h1><p>共 {{ rows.filter(r => !r.removed).length }} 个域名 · 连续两次失败触发告警，恢复后自动解除</p></div>
+        <div class="smartops-heading-actions"><a-button :loading="loading" @click="load">刷新</a-button>
           <a-button v-auth="'create'" type="primary" @click="edit(null)">新增域名</a-button></div>
       </div>
       <a-alert v-if="error" :message="error" type="error" show-icon />
@@ -26,7 +26,7 @@
       </a-table>
       <p class="muted">仅监控部署准入清单内的域名与网段。检测时间取决于采集周期及连续失败次数，不能等同于告警传输时间。</p>
     </div>
-    <a-modal :visible="visible" :title="editing ? '编辑域名' : '新增域名'" :confirm-loading="saving" width="720px" @ok="save" @cancel="visible = false">
+    <a-modal wrap-class-name="smartops-management-dialog" :visible="visible" :title="editing ? '编辑域名' : '新增域名'" :confirm-loading="saving" width="720px" @ok="save" @cancel="visible = false">
       <a-form-model layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12"><a-form-model-item label="监控名称"><a-input v-model="form.name" aria-label="监控名称" :max-length="100" /></a-form-model-item></a-col>
@@ -55,7 +55,7 @@
         <a-form-model-item label="启用监控"><a-switch v-model="form.enabled" /></a-form-model-item>
       </a-form-model>
     </a-modal>
-    <a-drawer :visible="drawer" :title="selected ? selected.domain + ' · 最近24小时采样' : '采样历史'" width="800" @close="closeHistory">
+    <a-drawer wrap-class-name="smartops-management-dialog" :visible="drawer" :title="selected ? selected.domain + ' · 最近24小时采样' : '采样历史'" width="800" @close="closeHistory">
       <a-alert v-if="historyError" :message="historyError" type="error" />
       <a-spin :spinning="historyLoading"><div ref="chart" class="chart"></div>
         <a-table :columns="historyColumns" :data-source="samples" :row-key="(r, i) => r.clock + ':' + i" :pagination="{pageSize: 10}">
@@ -155,8 +155,7 @@ export default {
 }
 </script>
 <style scoped>
-.domain-page {padding:24px;background:#fff;border-radius:8px}
-.heading {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px}
-.heading h2 {margin-bottom:8px}.heading p,.muted {color:#6b7280}
-.heading button {margin-left:8px}.chart {height:260px;margin:20px 0}
+.domain-page {min-width:0}
+.muted {color:var(--smartops-muted)}
+.chart {height:260px;margin:20px 0}
 </style>

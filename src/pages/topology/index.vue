@@ -1,13 +1,14 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="拓扑维护" content-description="管理拓扑视图，查看设备关系与运行状态。">
+    <template slot="headingActions"><a-button icon="plus" v-auth="'create'" type="primary" @click="newPage">{{ $t('btn_new_topology') }}</a-button></template>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('label_search')">
         <a-input v-model.trim="topology" :placeholder="$t('placeholder_topology_name')" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-		<a-button v-auth="'create'" type="primary" style="margin-left: 10px;" @click="newPage">{{ $t('btn_new_topology') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">

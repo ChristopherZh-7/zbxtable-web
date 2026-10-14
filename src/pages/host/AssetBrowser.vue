@@ -1,8 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="smartops-page-heading asset-heading">
       <div>
-        <p class="asset-kicker">统一台账</p>
         <h1>资产管理</h1>
         <p>查看全部监控设备，或按已有分类浏览；资产档案在资产配置中心维护。</p>
       </div>
@@ -392,17 +391,6 @@ export default {
   padding: 10px 12px 2px;
 }
 
-.asset-heading {
-  margin-bottom: 14px;
-}
-
-.asset-kicker {
-  margin: 0 0 4px !important;
-  color: #1b5a96 !important;
-  font-size: 11px !important;
-  font-weight: 700;
-  letter-spacing: .24em;
-}
 
 .asset-browser {
   height: calc(100vh - 230px);

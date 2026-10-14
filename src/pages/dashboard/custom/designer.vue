@@ -1,7 +1,7 @@
 <template>
   <page-layout :noTitle="true" :class="{'custom-dashboard-presentation-page': presenting}">
     <div ref="designer" class="custom-dashboard-designer" :class="{'is-presenting': presenting, 'has-screen-heading': canvasHeading}">
-      <div v-show="!presenting" class="custom-dashboard-designer__header">
+      <div v-show="!presenting" class="custom-dashboard-designer__header smartops-management-page smartops-editor-heading">
         <div class="custom-dashboard-designer__identity">
           <h2>{{ dashboardId ? (isReadonly ? `查看${resourceLabel}` : `编辑${resourceLabel}`) : `新建${resourceLabel}` }}</h2>
           <a-input v-model.trim="form.name" :disabled="isReadonly" :placeholder="`${resourceLabel}名称`" class="designer-name" />
@@ -10,7 +10,7 @@
             <a-select-option value="tenant">租户可见</a-select-option>
           </a-select>
         </div>
-        <div class="custom-dashboard-designer__actions">
+        <div class="custom-dashboard-designer__actions smartops-heading-actions">
           <a-button :loading="refreshing" @click="refreshAll"><a-icon type="sync" /> 刷新数据</a-button>
           <a-button
             v-if="dashboardId && !isReadonly"
@@ -279,7 +279,7 @@
         </aside>
       </div>
 
-      <a-modal v-model="shareVisible" title="只读分享链接" :footer="null" width="640px">
+      <a-modal wrap-class-name="smartops-management-dialog" v-model="shareVisible" title="只读分享链接" :footer="null" width="640px">
         <a-alert
           message="此链接无需登录，会公开所选组件的当前租户汇总或最近 24 小时监控数据，请仅提供给可信接收者。重新生成后旧链接立即失效。"
           type="warning"
@@ -1047,7 +1047,7 @@ export default {
 .designer-context .ant-tag { margin: 0; }
 .designer-layout-badge { padding: 2px 8px; color: #526b83; border-radius: 3px; background: #eaf0f6; font-size: 12px; }
 .designer-flow-hint { margin-left: auto; color: #73869a; font-size: 12px; }
-.custom-dashboard-designer__actions .ant-btn { height: 34px; margin: 0; border-radius: 4px; }
+.custom-dashboard-designer__actions .ant-btn { margin: 0; }
 .custom-dashboard-designer__actions .clear-canvas-btn { color: #a45555; }
 .palette-heading {
   display: flex;

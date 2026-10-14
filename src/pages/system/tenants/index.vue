@@ -1,8 +1,6 @@
 <template>
-  <page-layout :noTitle="true">
-    <div class="tenant-toolbar">
-	  <a-button v-auth="'create'" type="primary" icon="plus" @click="openCreate">新增租户</a-button>
-    </div>
+  <page-layout :noTitle="true" content-title="租户管理" content-description="管理租户信息、监控范围与配置组织关联。">
+    <template slot="headingActions"><a-button v-auth="'create'" type="primary" icon="plus" @click="openCreate">新增租户</a-button></template>
 
     <a-table :loading="loading" :columns="columns" :data-source="tenants" :row-key="record => record.id">
       <template slot="technicalCode" slot-scope="record">
@@ -31,7 +29,7 @@
       </template>
     </a-table>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :title="editingID ? '编辑租户' : '新增租户'"
       :visible="visible"
       :confirm-loading="saving"

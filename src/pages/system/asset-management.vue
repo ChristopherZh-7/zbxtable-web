@@ -1,11 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="设备配置" content-description="维护设备分组、类型与显示字段。">
     <div class="asset-management-page">
       <a-card :bordered="false">
-        <div slot="title" class="asset-management-page__title">
-          <a-icon type="appstore" />
-          <span>设备配置</span>
-        </div>
 
         <a-tabs :activeKey="activeTab" @change="handleTabChange">
           <a-tab-pane key="group" tab="设备分组">

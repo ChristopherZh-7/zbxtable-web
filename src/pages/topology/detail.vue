@@ -1,18 +1,18 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="topology-header">
-      <div class="header-row">
+      <div class="header-row smartops-editor-heading">
         <div class="topology-info">
           <h2>{{ isReading ? $t('title_view_topology') : (id ? $t('title_edit_topology') : $t('title_new_topology')) }}</h2>
-          <a-input 
-            v-model="form.name" 
-            :placeholder="$t('placeholder_enter_topology_name')" 
+          <a-input
+            v-model="form.name"
+            :placeholder="$t('placeholder_enter_topology_name')"
             style="width: 300px;"
             :disabled="isReading"
           />
-          <a-select 
-            v-model="canvasSizePreset" 
-            :placeholder="$t('label_canvas_size')" 
+          <a-select
+            v-model="canvasSizePreset"
+            :placeholder="$t('label_canvas_size')"
             style="width: 200px;"
             :disabled="isReading"
             @change="handleCanvasSizeChange"
@@ -24,16 +24,16 @@
             <a-select-option value="4096x2160">4096x2160 (4K DCI)</a-select-option>
             <a-select-option value="custom">{{ $t('canvas_size_custom') }}</a-select-option>
           </a-select>
-          <a-button 
-            v-if="!isReading" 
-            type="link" 
+          <a-button
+            v-if="!isReading"
+            type="link"
             @click="showCanvasSizeModal"
             style="padding: 0 8px;"
           >
             <a-icon type="setting" /> {{ $t('btn_custom') }}
           </a-button>
         </div>
-        <div class="topology-actions">
+        <div class="topology-actions smartops-heading-actions">
 		  <a-button v-if="isReading" v-auth="'update'" type="primary" @click="editNode">
             <a-icon type="edit" /> {{ $t('btn_edit') }}
           </a-button>
@@ -45,7 +45,7 @@
           </a-button>
         </div>
       </div>
-      
+
       <!-- 工具栏 - 横向布局 -->
       <div class="toolbar-container" v-if="!isReading">
         <div class="toolbar-section">
@@ -88,9 +88,9 @@
           </a-tooltip>
           </div>
         </div>
-        
+
         <div class="toolbar-divider"></div>
-        
+
         <div class="toolbar-section">
           <div class="section-label">{{ $t('label_text_tools') }}</div>
           <div class="tool-buttons">
@@ -103,9 +103,9 @@
             </a-tooltip>
           </div>
         </div>
-        
+
         <div class="toolbar-divider"></div>
-        
+
         <div class="toolbar-section">
           <div class="section-label">{{ $t('label_background') }}</div>
           <div class="tool-buttons">
@@ -118,18 +118,18 @@
             </a-tooltip>
           </div>
         </div>
-        
+
         <div class="toolbar-divider"></div>
-        
+
         <div class="toolbar-section">
           <div class="section-label">{{ $t('label_operations') }}</div>
           <div class="tool-buttons">
             <a-tooltip placement="bottom">
               <template slot="title">{{ $t('tool_delete_selected') }}</template>
-              <a-popconfirm 
-                :title="$t('confirm_delete_elements')" 
-                :ok-text="$t('confirm_yes')" 
-                :cancel-text="$t('confirm_no')" 
+              <a-popconfirm
+                :title="$t('confirm_delete_elements')"
+                :ok-text="$t('confirm_yes')"
+                :cancel-text="$t('confirm_no')"
                 @confirm="deleteNode()"
               >
                 <div class="tool-btn">
@@ -144,7 +144,7 @@
     </div>
 
     <!-- 画布尺寸设置弹窗 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       v-model="canvasSizeModalVisible"
       :title="$t('modal_custom_canvas_size')"
       :width="500"
@@ -153,20 +153,20 @@
     >
       <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
         <a-form-item :label="$t('label_canvas_width')">
-          <a-input-number 
-            v-model="customCanvasWidth" 
-            :min="800" 
-            :max="10000" 
+          <a-input-number
+            v-model="customCanvasWidth"
+            :min="800"
+            :max="10000"
             :step="100"
             style="width: 100%;"
           />
           <span style="color: #999; font-size: 12px;">{{ $t('unit_pixels_range', { min: 800, max: 10000 }) }}</span>
         </a-form-item>
         <a-form-item :label="$t('label_canvas_height')">
-          <a-input-number 
-            v-model="customCanvasHeight" 
-            :min="600" 
-            :max="10000" 
+          <a-input-number
+            v-model="customCanvasHeight"
+            :min="600"
+            :max="10000"
             :step="100"
             style="width: 100%;"
           />
@@ -176,7 +176,7 @@
     </a-modal>
 
     <!-- 背景图设置弹窗 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       v-model="backgroundModalVisible"
       :title="$t('modal_set_background')"
       :width="600"
@@ -211,7 +211,7 @@
             </div>
           </div>
         </a-form-item>
-        
+
         <a-form-item :label="$t('label_background_size')">
           <a-radio-group v-model="backgroundSize">
             <a-radio value="cover">{{ $t('bg_size_cover') }}</a-radio>
@@ -219,7 +219,7 @@
             <a-radio value="auto">{{ $t('bg_size_auto') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        
+
         <a-form-item :label="$t('label_background_position')">
           <a-radio-group v-model="backgroundPosition">
             <a-radio value="center">{{ $t('bg_pos_center') }}</a-radio>
@@ -227,7 +227,7 @@
             <a-radio value="bottom">{{ $t('bg_pos_bottom') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        
+
         <a-form-item :label="$t('label_background_repeat')">
           <a-radio-group v-model="backgroundRepeat">
             <a-radio value="no-repeat">{{ $t('bg_repeat_no') }}</a-radio>
@@ -236,12 +236,12 @@
             <a-radio value="repeat-y">{{ $t('bg_repeat_y') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        
+
         <a-form-item :label="$t('label_background_opacity')">
           <a-slider v-model="backgroundOpacity" :min="0" :max="100" :step="5" />
-          <span style="margin-left: 10px;">{{ backgroundOpacity }}%</span>
+          <span style="margin-left: 8px;">{{ backgroundOpacity }}%</span>
         </a-form-item>
-        
+
         <a-form-item label="">
           <a-button type="danger" ghost @click="removeBackground">
             <a-icon type="delete" /> {{ $t('btn_remove_background') }}
@@ -253,14 +253,14 @@
     <div class="tuopu" :style="`height: ${minHeight}px;`">
       <div id="containerChart" :style="`height: ${minHeight}px;`"></div>
       <div class="mini-map-container" id="minimapContainer"></div>
-      
-      <RightDrawer 
-        v-if="!isReading && type !== 'grid'" 
-        class="right_drawer" 
-        :drawerType="type" 
-        :selectCell="selectCell" 
-        :form="form" 
-        :graph="graph" 
+
+      <RightDrawer
+        v-if="!isReading && type !== 'grid'"
+        class="right_drawer"
+        :drawerType="type"
+        :selectCell="selectCell"
+        :form="form"
+        :graph="graph"
         @deleteNode="deleteNode"
       />
     </div>

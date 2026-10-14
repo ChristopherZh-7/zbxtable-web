@@ -1,5 +1,5 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="版本信息" content-description="查看软件版本、构建信息与升级说明。">
     <a-card :headStyle="$cardHeadStyle" size="small">
       <a-descriptions bordered>
         <a-descriptions-item :label="$t('smartops_version')" :span="3">{{ UIVersion }}</a-descriptions-item>

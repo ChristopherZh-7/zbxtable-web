@@ -1,15 +1,16 @@
 <template>
-  <page-layout :noTitle="true">
-    
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="主机报表" content-description="管理报表任务，查看和导出主机监控报告。">
+    <template slot="headingActions"><a-button icon="plus" type="primary" @click="showFormModal">{{ $t('add_report_btn') }}</a-button></template>
+
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('task')">
         <a-input v-model.trim="name" :placeholder="$t('task')" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('search_btn') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('clear_filter_btn') }}</a-button>
-        <a-button style="margin-left: 10px;" icon="reload" @click="init">{{ $t('refresh_btn') }}</a-button>
-        <a-button type="primary" style="margin-left: 10px;" @click="showFormModal">{{ $t('add_report_btn') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('clear_filter_btn') }}</a-button>
+        <a-button style="margin-left: 8px;" icon="reload" @click="init">{{ $t('refresh_btn') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -54,7 +55,7 @@
         </div>
       </a-table>
     </div>
-    <a-modal :title="$t('label_report_log')" :visible="visible" :confirm-loading="confirmLoading" @ok="handleCancel" @cancel="handleCancel" width="1400px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('label_report_log')" :visible="visible" :confirm-loading="confirmLoading" @ok="handleCancel" @cancel="handleCancel" width="1400px">
       <template>
         <a-table :columns="macolumns" :data-source="malist" :loading="loading1" @change="machangePage" :pagination="mapagination" :rowKey="(record) => { return record.id}">
           <span slot="id" slot-scope="record">{{record.id}}</span>
@@ -89,7 +90,7 @@
     </a-modal>
 
     <!-- Add/Edit Host Report Modal -->
-    <a-modal :title="formModalTitle" :visible="formModalVisible" :width="1000" :confirm-loading="formModalLoading" @ok="handleFormSubmit" @cancel="handleFormCancel">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="formModalTitle" :visible="formModalVisible" :width="1000" :confirm-loading="formModalLoading" @ok="handleFormSubmit" @cancel="handleFormCancel">
       <a-form-model ref="formModal" :rules="formRules" :model="formData" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
         <a-form-model-item :label="$t('host_report_name')" prop="name">
           <a-input v-model="formData.name" />

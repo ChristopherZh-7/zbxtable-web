@@ -12,7 +12,8 @@ test('F40 moves the complete brand from the dark story into the white login work
   const workbench = login.match(/<main class="smartops-login-workbench"[\s\S]*?<\/main>/)[0]
 
   assert.doesNotMatch(story, /smartops-login-brand-image/)
-  assert.match(story, /智能运维运行中枢/)
+  assert.match(story, /smartops-login-context[\s\S]*?\{\{\s*systemName\s*\}\}/)
+  assert.match(workbench, /<h2>\{\{\s*systemName\s*\}\}<\/h2>/)
   assert.match(workbench, /smartops-login-brand-image/)
   assert.match(workbench, /奇安信 新一代网络安全领军者/)
   assert.match(login, /\.smartops-login-workbench\s*\{[\s\S]*?background:\s*#fff;/)

@@ -1,5 +1,5 @@
 <template>
-  <a-drawer
+  <a-drawer wrap-class-name="smartops-management-dialog"
     :title="`配置显示字段 — ${assetType ? assetType.name : ''}`"
     :visible="visible"
     :width="980"

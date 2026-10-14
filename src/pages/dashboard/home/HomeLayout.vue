@@ -64,7 +64,7 @@
         <a-button @click="restoreDefault">恢复默认布局</a-button>
       </a-empty>
     </div>
-    <a-drawer title="添加主页组件" :visible="catalogOpen" width="min(360px, 100vw)" @close="catalogOpen = false">
+    <a-drawer wrap-class-name="smartops-management-dialog" title="添加主页组件" :visible="catalogOpen" width="min(360px, 100vw)" @close="catalogOpen = false">
       <p class="home-catalog-description">与主页共用原版组件与真实数据。添加后可调整大小和顺序。</p>
       <div v-for="widget in catalog" :key="widget.type" class="home-catalog-item">
         <span class="home-catalog-icon"><a-icon :type="widget.icon" /></span>

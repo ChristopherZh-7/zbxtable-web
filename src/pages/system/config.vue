@@ -1,5 +1,5 @@
 <template>
-  <page-layout>
+  <page-layout :noTitle="true" content-title="参数配置" content-description="维护系统信息、通知渠道和后台任务设置。">
     <div class="config-container">
       <a-card :bordered="false">
         <a-tabs v-model="activeTab" type="card">
@@ -8,7 +8,7 @@
             <a-form-model ref="systemForm" :model="systemForm" :label-col="{ span: 6 }" :wrapper-col="{ span: 14 }">
               <!-- 外观配置部分 -->
               <a-divider orientation="left">{{$t('appearanceConfig')}}</a-divider>
-              
+
               <a-form-model-item :label="$t('systemName')">
                 <a-input v-model="systemForm.system_name" :placeholder="$t('systemNamePlaceholder')" />
                 <div class="config-hint">{{$t('systemNameHint')}}</div>
@@ -18,7 +18,7 @@
                 <a-input v-model="systemForm.system_subtitle" :placeholder="$t('systemSubtitlePlaceholder')" />
                 <div class="config-hint">{{$t('systemSubtitleHint')}}</div>
               </a-form-model-item>
-              
+
               <a-form-model-item :label="$t('systemLogo')">
                 <div class="logo-upload-container">
                   <div class="logo-preview">
@@ -44,10 +44,10 @@
                   </div>
                 </div>
               </a-form-model-item>
-              
+
               <!-- 系统配置部分 -->
               <a-divider orientation="left">{{$t('systemSettings')}}</a-divider>
-              
+
               <a-form-model-item v-for="item in systemOnlyConfigs" :key="item.id" :label="item.name">
                 <a-select v-if="isBooleanConfig(item.config_key)" v-model="systemForm[item.config_key]" :placeholder="item.comment" style="width: 100%">
                   <a-select-option v-for="opt in getBooleanOptions(item.config_key)" :key="opt.value" :value="opt.value">
@@ -63,7 +63,7 @@
                 <a-input v-else v-model="systemForm[item.config_key]" :placeholder="item.comment" />
                 <div class="config-hint">{{ item.comment }}</div>
               </a-form-model-item>
-              
+
               <a-form-model-item :wrapper-col="{ span: 14, offset: 6 }">
                 <a-button type="primary" @click="saveCategory('system')" :loading="saveLoading">{{$t('save')}}</a-button>
               </a-form-model-item>
@@ -288,7 +288,7 @@
     </div>
 
     <!-- 测试邮件对话框 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :title="$t('testEmailTitle')"
       :visible="testEmailVisible"
       :confirm-loading="testingEmail"
@@ -303,7 +303,7 @@
     </a-modal>
 
     <!-- 测试企业微信对话框 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :title="$t('testWechatTitle')"
       :visible="testWechatVisible"
       :confirm-loading="testingWechat"

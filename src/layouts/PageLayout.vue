@@ -1,5 +1,5 @@
 <template>
-  <div class="page-layout">
+  <div class="page-layout" :class="{'smartops-management-page': contentTitle}">
     <page-header ref="pageHeader" :style="`margin-top: ${multiPage ? 0 : -24}px`" :noTitle="noTitle" :breadcrumb="breadcrumb" :title="pageTitle" :logo="logo" :avatar="avatar">
       <slot name="action"  slot="action"></slot>
       <slot slot="content" name="headerContent"></slot>
@@ -14,6 +14,15 @@
       <slot v-if="this.$slots.extra" slot="extra" name="extra"></slot>
     </page-header>
     <div ref="page" :class="['page-content', layout, pageWidth]" >
+      <header v-if="contentTitle" class="smartops-page-heading">
+        <div>
+          <h1>{{ contentTitle }}</h1>
+          <p v-if="contentDescription">{{ contentDescription }}</p>
+        </div>
+        <div v-if="$slots.headingActions" class="smartops-heading-actions">
+          <slot name="headingActions"></slot>
+        </div>
+      </header>
       <slot></slot>
     </div>
   </div>
@@ -27,7 +36,7 @@ import {getI18nKey} from '@/utils/routerUtil'
 export default {
   name: 'PageLayout',
   components: {PageHeader},
-  props: ['desc', 'logo', 'title', 'avatar', 'linkList', 'extraImage', "noTitle", "customBreadcrumb"],
+  props: ['desc', 'logo', 'title', 'avatar', 'linkList', 'extraImage', "noTitle", "customBreadcrumb", 'contentTitle', 'contentDescription'],
   data () {
     return {
       page: {},

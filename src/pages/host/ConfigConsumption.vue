@@ -1,12 +1,12 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="config-consumption">
-      <header class="config-consumption__header">
+    <div class="config-consumption smartops-management-page">
+      <header class="config-consumption__header smartops-page-heading">
         <div>
-          <p class="page-kicker">监控配置管理</p>
           <h1>监控配置</h1>
+          <p>维护监控场景策略，查看配置应用与执行记录。</p>
         </div>
-        <div class="heading-actions">
+        <div class="smartops-heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
           <a-button
             v-if="scenarioScope === 'current' && canCreate && writeContextReady"
@@ -18,55 +18,53 @@
           <a-button
             v-if="scenarioScope === 'current' && canOperate && writeContextReady"
             data-testid="configuration-asset-apply"
-            class="apply-action"
             icon="deployment-unit"
             @click="openApply"
           >应用到配置项</a-button>
         </div>
       </header>
 
-      <section class="source-strip" aria-label="监控配置数据边界">
-        <div class="source-identity">
-          <span>配置数据来源</span>
-          <strong>配置管理中心</strong>
+      <section class="smartops-context-grid" aria-label="监控配置数据边界">
+        <div class="smartops-context-item">
+          <span class="context-label">配置数据来源</span>
+          <strong class="context-value">配置管理中心</strong>
         </div>
-        <div class="source-field">
-          <span>配置组织</span>
-          <strong>{{ organizationName }}</strong>
+        <div class="smartops-context-item">
+          <span class="context-label">配置组织</span>
+          <strong class="context-value">{{ organizationName }}</strong>
           <details class="technical-details"><summary>查看组织编码</summary><small>{{ organizationCode }}</small></details>
         </div>
-        <div class="source-field source-field--mono">
-          <span>组织信息</span>
-          <strong>组织编号 {{ cmdbContext.organization_id || '—' }}</strong>
-          <small>组织映射版本 {{ cmdbContext.generation || '—' }}</small>
+        <div class="smartops-context-item">
+          <span class="context-label">组织信息</span>
+          <strong class="context-value">组织编号 {{ cmdbContext.organization_id || '—' }}</strong>
+          <small class="context-meta">组织映射版本 {{ cmdbContext.generation || '—' }}</small>
         </div>
-        <div class="source-field">
-          <span>映射状态</span>
+        <div class="smartops-context-item">
+          <span class="context-label">映射状态</span>
           <a-badge :status="sourceBadge.status" :text="sourceBadge.label" />
-          <small>{{ sourceBoundaryCopy }}</small>
+          <small class="context-meta">{{ sourceBoundaryCopy }}</small>
         </div>
       </section>
 
-      <section v-if="!loading && overview.state === 'unconfigured'" class="state-panel state-panel--warning">
-        <a-icon type="disconnect" />
-        <div><strong>当前租户尚未关联配置组织</strong><span>请联系平台管理员关联配置组织。</span></div>
+      <section v-if="!loading && overview.state === 'unconfigured'" class="smartops-empty smartops-data-panel">
+        <div class="empty-symbol"><a-icon type="disconnect" /></div>
+        <h2>当前租户尚未关联配置组织</h2><p>请联系平台管理员关联配置组织。</p>
       </section>
-      <section v-else-if="!loading && overview.state === 'error'" class="state-panel state-panel--error">
-        <a-icon type="warning" />
-        <div><strong>CMDB 上下文读取失败</strong><span>{{ overview.message || '暂时无法读取配置管理中心映射，所有写入已关闭。' }}</span></div>
-        <a-button icon="reload" @click="refreshAll">重试</a-button>
+      <section v-else-if="!loading && overview.state === 'error'" class="smartops-empty smartops-empty--error smartops-data-panel">
+        <div class="empty-symbol"><a-icon type="warning" /></div>
+        <h2>CMDB 上下文读取失败</h2><p>{{ overview.message || '暂时无法读取配置管理中心映射，所有写入已关闭。' }}</p>
+        <a-button type="primary" icon="reload" @click="refreshAll">重新读取</a-button>
       </section>
 
       <template v-else-if="sourceReady">
 
-        <section class="section-card">
-          <div class="section-heading">
+        <section class="smartops-content-panel">
+          <div class="smartops-panel-heading">
             <div>
-              <p class="section-kicker">场景策略</p>
-              <h2>场景策略</h2>
-              <span>所属应用与配置项类型在创建后保持不变</span>
+              <h2 class="smartops-section-label">场景策略</h2>
+              <span class="smartops-panel-description">所属应用与配置项类型在创建后保持不变</span>
             </div>
-            <a-radio-group v-model="scenarioScope" button-style="solid" size="small" @change="changeScenarioScope">
+            <a-radio-group v-model="scenarioScope" button-style="solid" @change="changeScenarioScope">
               <a-radio-button v-for="scope in scopes" :key="scope.value" :value="scope.value">{{ scope.label }}</a-radio-button>
             </a-radio-group>
           </div>
@@ -120,7 +118,7 @@
               <span v-else class="readonly-label"><a-icon type="lock" /> 只读</span>
             </template>
           </a-table>
-          <footer class="table-footer">
+          <footer class="smartops-panel-footer">
             <span>{{ scopeCaption(scenarioScope) }} · {{ scenarioPage.total }} 条</span>
             <a-pagination
               data-testid="configuration-scenario-pagination"
@@ -133,16 +131,15 @@
           </footer>
         </section>
 
-        <section class="section-card">
-          <div class="section-heading">
+        <section class="smartops-content-panel">
+          <div class="smartops-panel-heading">
             <div>
-              <p class="section-kicker">配置执行记录</p>
-              <h2>执行记录</h2>
-              <span>保留本次任务的资产、监控主机和执行结果，便于核对与追溯</span>
+              <h2 class="smartops-section-label">执行记录</h2>
+              <span class="smartops-panel-description">保留本次任务的资产、监控主机和执行结果，便于核对与追溯</span>
             </div>
             <div class="task-heading-tools">
               <a-tag :color="activeTasks ? 'orange' : 'green'">{{ activeTasks ? `${activeTasks} 个处理中` : '当前无待处理' }}</a-tag>
-              <a-radio-group v-model="taskScope" button-style="solid" size="small" @change="changeTaskScope">
+              <a-radio-group v-model="taskScope" button-style="solid" @change="changeTaskScope">
                 <a-radio-button v-for="scope in scopes" :key="scope.value" :value="scope.value">{{ scope.label }}</a-radio-button>
               </a-radio-group>
             </div>
@@ -206,7 +203,7 @@
               <span v-else class="readonly-label"><a-icon type="lock" /> 只读</span>
             </template>
           </a-table>
-          <footer class="table-footer">
+          <footer class="smartops-panel-footer">
             <span>{{ scopeCaption(taskScope) }} · {{ taskPage.total }} 条</span>
             <a-pagination
               data-testid="configuration-task-pagination"
@@ -221,7 +218,7 @@
       </template>
     </div>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       v-if="scenarioScope === 'current' && canCreate && writeContextReady"
       :visible="scenarioVisible"
       :title="editingScenario ? '编辑场景策略' : '新建场景策略'"
@@ -298,7 +295,7 @@
       </a-form-model>
     </a-modal>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       v-if="scenarioScope === 'current' && canOperate && writeContextReady"
       :visible="applyVisible"
       :confirm-loading="applying"
@@ -1093,36 +1090,11 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.config-consumption { padding: 0 4px 32px; color: #172f4d; }
-.config-consumption__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-.config-consumption__header h1 { margin: 1px 0 6px; color: #12263f; font-size: 28px; font-weight: 650; letter-spacing: -.4px; }
-.config-consumption__header > div:first-child > p:last-child { max-width: 760px; margin: 0; color: #5c7188; }
-.page-kicker, .section-kicker { margin: 0; color: #159cab; font-size: 11px; font-weight: 700; letter-spacing: 1.7px; }
-.heading-actions { display: flex; flex-shrink: 0; gap: 8px; }
-.apply-action { border-color: #159cab; color: #0c7e8a; }
-.source-strip { display: grid; grid-template-columns: 1.2fr 1.45fr 1fr 1.45fr; overflow: hidden; margin-bottom: 14px; border: 1px solid #cfdae4; border-radius: 8px; background: #fff; box-shadow: 0 5px 18px rgba(18, 38, 63, .05); }
-.source-strip > div { min-width: 0; padding: 15px 18px; border-left: 1px solid #e4ebf0; }
-.source-strip > div:first-child { border-left: 0; }
-.source-identity { background: #12263f; color: #fff; }
-.source-identity span, .source-field > span { display: block; margin-bottom: 4px; color: #7f96aa; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
-.source-identity span { color: #69d5de; }
-.source-identity strong, .source-field strong { display: block; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
-.source-identity small, .source-field small { display: block; margin-top: 3px; color: #8ca0b3; font-size: 11px; }
-.source-identity small { color: #aebdcb; }
-.source-field--mono strong, .source-field--mono small, code { font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace; }
-.state-panel { display: flex; align-items: center; gap: 14px; margin: 20px 0; padding: 22px; border: 1px solid; border-radius: 8px; }
-.state-panel > .anticon { font-size: 24px; }
-.state-panel div { display: flex; flex: 1; flex-direction: column; }
-.state-panel span { margin-top: 3px; color: #5c7188; }
-.state-panel--warning { border-color: #efd7aa; background: #fffaf0; }
-.state-panel--error { border-color: #efc2c0; background: #fff6f5; }
+.config-consumption { min-width: 0; padding: 0 0 32px; color: var(--smartops-ink); }
+code { font-family: var(--smartops-font-mono); }
 .modal-alert { margin-bottom: 16px; }
-.section-card { margin-bottom: 16px; padding: 20px 20px 0; border: 1px solid #dce5ec; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px rgba(18, 38, 63, .045); }
-.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
-.section-heading h2 { margin: 1px 0 2px; color: #17314e; font-size: 18px; }
-.section-heading > div:first-child > span { color: #6a7e91; }
-.task-heading-tools { display: flex; align-items: center; gap: 10px; }
-.frozen-note { margin: 0 0 14px; padding: 9px 12px; border-left: 3px solid #d99a2b; color: #795d28; background: #fff9ed; }
+.task-heading-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+.frozen-note { margin: 12px 16px; padding: 9px 12px; border-left: 3px solid #d99a2b; color: #795d28; background: #fff9ed; }
 .identity-cell { display: flex; min-width: 0; flex-direction: column; }
 .identity-cell strong { overflow: hidden; color: #1c3854; text-overflow: ellipsis; white-space: nowrap; }
 .identity-cell code, .identity-cell small, .reason-cell span, .retry-count { margin-top: 2px; color: #718598; font-size: 11px; }
@@ -1132,24 +1104,23 @@ export default {
 .reason-cell { display: flex; flex-direction: column; }
 .reason-cell code { color: #a05d22; font-size: 10px; font-weight: 700; }
 .reason-cell span { color: #5c7188; white-space: normal; }
-.table-footer { display: flex; align-items: center; justify-content: space-between; min-height: 58px; color: #6f8395; }
-.table-footer--compact { min-height: 48px; }
+.table-footer--compact { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; min-height: 48px; color: var(--smartops-muted); }
 .apply-layout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr); gap: 18px; }
 .apply-picker, .apply-inspector { min-width: 0; }
 .asset-picker-table { margin-top: 12px; border: 1px solid #e0e7ed; }
 .asset-picker-table /deep/ .asset-row { cursor: pointer; }
-.asset-picker-table /deep/ .asset-row:hover td { background: #f2f8fa; }
-.asset-picker-table /deep/ .asset-row--selected td { background: #e8f6f7 !important; }
-.apply-inspector { min-height: 390px; padding: 16px; border: 1px solid #d8e2e9; border-radius: 7px; background: #f7fafc; }
+.asset-picker-table /deep/ .asset-row:hover td { background: #f0f5fa; }
+.asset-picker-table /deep/ .asset-row--selected td { background: #e6f0f8 !important; }
+.apply-inspector { min-height: 390px; padding: 16px; border: 1px solid #d8e2e9; border-radius: 2px; background: #f7fafc; }
 .inspector-empty { display: flex; min-height: 350px; align-items: center; justify-content: center; flex-direction: column; color: #7d91a2; text-align: center; }
-.inspector-empty .anticon { margin-bottom: 12px; color: #159cab; font-size: 30px; }
+.inspector-empty .anticon { margin-bottom: 12px; color: var(--smartops-signal-blue); font-size: 30px; }
 .inspector-empty strong { color: #314f69; }
 .inspector-empty span { max-width: 290px; margin-top: 5px; }
 .selected-identity { padding-bottom: 13px; border-bottom: 1px solid #dde6ec; }
 .selected-identity h3 { margin: 7px 0 2px; color: #17314e; }
 .selected-identity code { color: #647b90; font-size: 11px; }
 .selection-rail { display: flex; align-items: stretch; flex-direction: column; margin: 14px 0; }
-.selection-rail > div { padding: 11px 13px; border-left: 3px solid #159cab; background: #fff; box-shadow: 0 2px 7px rgba(18, 38, 63, .045); }
+.selection-rail > div { padding: 11px 13px; border-left: 3px solid var(--smartops-signal-blue); background: #fff; box-shadow: 0 2px 7px rgba(18, 38, 63, .045); }
 .selection-rail > div:nth-of-type(2) { border-left-color: #51718e; }
 .selection-rail > div:nth-of-type(3) { border-left-color: #d99a2b; }
 .selection-rail > .anticon { align-self: center; margin: 5px 0; color: #7b90a2; }
@@ -1157,10 +1128,6 @@ export default {
 .selection-rail strong { display: block; margin: 2px 0; color: #213f59; }
 .selection-node--missing { border-left-color: #d99a2b !important; background: #fffaf0 !important; }
 @media (max-width: 980px) {
-  .config-consumption__header, .section-heading { flex-direction: column; }
-  .source-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .source-strip > div:nth-child(3) { border-left: 0; border-top: 1px solid #e4ebf0; }
-  .source-strip > div:nth-child(4) { border-top: 1px solid #e4ebf0; }
   .apply-layout { grid-template-columns: 1fr; }
 }
 

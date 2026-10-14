@@ -26,10 +26,10 @@ test('F45 prevents content headers from inheriting the global negative margin', 
   ]
   for (const relative of pages) {
     const page = read(relative)
-    assert.match(page, /class="content-page-header"/, `${relative} lacks the content header class`)
+    assert.match(page, /class="content-page-header(?: [^"]*)?"/, `${relative} lacks the content header class`)
     assert.doesNotMatch(page, /class="page-header"/, `${relative} still collides with the global page header`)
   }
 
   const reference = read('src/pages/host/ConfigConsumption.vue')
-  assert.match(reference, /class="config-consumption__header"/)
+  assert.match(reference, /class="config-consumption__header smartops-page-heading"/)
 })

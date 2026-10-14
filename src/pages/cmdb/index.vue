@@ -1,12 +1,12 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="cmdb-center">
+    <div class="cmdb-center smartops-management-page">
       <header class="smartops-page-heading cmdb-heading">
         <div>
-          <p class="cmdb-kicker">资产配置管理</p>
           <h1>资产配置中心</h1>
+          <p>维护资产档案、组织归属与监控关联。</p>
         </div>
-        <div class="heading-actions">
+        <div class="smartops-heading-actions">
           <a-button :loading="loading" icon="reload" @click="refreshAll">刷新</a-button>
           <a-button v-if="platformAdmin" data-testid="cmdb-mapping-open" icon="setting" @click="openMapping">配置组织映射</a-button>
           <a-button v-if="sourceReady" data-testid="cmdb-admission-open" icon="radar-chart" @click="openAdmissions">发现候选入库</a-button>
@@ -14,27 +14,27 @@
         </div>
       </header>
 
-      <section class="source-strip" aria-label="CMDB 数据源状态">
-        <div class="source-identity">
-          <span class="source-strip__eyebrow">配置数据来源</span>
-          <strong>配置管理中心</strong>
+      <section class="smartops-context-grid" aria-label="CMDB 数据源状态">
+        <div class="smartops-context-item">
+          <span class="context-label">配置数据来源</span>
+          <strong class="context-value">配置管理中心</strong>
         </div>
-        <div class="source-field">
-          <span>连接状态</span>
+        <div class="smartops-context-item">
+          <span class="context-label">连接状态</span>
           <a-badge :status="sourceReady ? 'success' : overview.state === 'unconfigured' ? 'warning' : overview.state === 'error' ? 'error' : 'processing'" :text="sourceStateLabel" />
         </div>
-        <div class="source-field">
-          <span>当前配置组织</span>
-          <strong>{{ organizationName }}</strong>
+        <div class="smartops-context-item">
+          <span class="context-label">当前配置组织</span>
+          <strong class="context-value">{{ organizationName }}</strong>
           <details v-if="organizationIdentity" class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details>
         </div>
-        <div class="source-total">
-          <span>配置项</span>
-          <strong>{{ overview.total || 0 }}</strong>
+        <div class="smartops-context-item">
+          <span class="context-label">配置项</span>
+          <strong class="context-value context-value--number">{{ overview.total || 0 }}</strong>
         </div>
       </section>
 
-      <section v-if="!loading && overview.state === 'unconfigured'" class="cmdb-empty smartops-data-panel">
+      <section v-if="!loading && overview.state === 'unconfigured'" class="cmdb-empty smartops-empty smartops-data-panel">
         <div class="empty-symbol"><a-icon type="disconnect" /></div>
         <h2>当前租户尚未关联配置组织</h2>
         <p>建立映射后，本页只会维护该配置组织下的配置项，不会展示或修改其他客户数据。</p>
@@ -42,7 +42,7 @@
         <a-alert v-else type="info" show-icon message="请联系平台管理员完成 CMDB 组织映射。" />
       </section>
 
-      <section v-else-if="!loading && overview.state === 'error'" class="cmdb-empty cmdb-error smartops-data-panel">
+      <section v-else-if="!loading && overview.state === 'error'" class="cmdb-empty smartops-empty smartops-empty--error smartops-data-panel">
         <div class="empty-symbol"><a-icon type="warning" /></div>
         <h2>CMDB 数据读取失败</h2>
         <p>{{ overview.message || '暂时无法读取配置管理中心，请稍后重试。' }}</p>
@@ -75,7 +75,7 @@
 
         <div class="cmdb-workbench">
           <section class="asset-ledger smartops-data-panel">
-            <div class="panel-heading">
+            <div class="panel-heading smartops-panel-heading">
               <div>
                 <span class="smartops-section-label">资产台账</span>
                 <small>点击一行查看配置详情</small>
@@ -93,7 +93,6 @@
               :custom-row="assetRow"
               :row-class-name="assetRowClass"
               :scroll="{x: 695}"
-              size="middle"
             >
               <template slot="asset" slot-scope="record">
                 <div class="asset-name-cell">
@@ -111,7 +110,7 @@
                 <span class="mono-value">{{ record.managementip || record.serialnumber || record.asset_number || '—' }}</span>
               </template>
             </a-table>
-            <footer class="ledger-footer">
+            <footer class="smartops-panel-footer">
               <span>数据来自 {{ organizationName }}</span>
               <a-pagination
                 :current="assetPage.page"
@@ -295,7 +294,7 @@
       </template>
     </div>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :visible="assetFormVisible"
       :title="assetEditing ? '编辑 CMDB 资产' : '新增 CMDB 资产'"
       :confirm-loading="assetSaving"
@@ -365,7 +364,7 @@
       </a-form-model>
     </a-modal>
 
-    <a-drawer
+    <a-drawer wrap-class-name="smartops-management-dialog"
       :visible="admissionVisible"
       title="发现候选入库"
       width="1080"
@@ -564,7 +563,7 @@
       </div>
     </a-drawer>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :visible="monitoringBindingVisible"
       :title="monitoringBound ? '更换监控主机' : '关联监控主机'"
       :confirm-loading="monitoringBindingSaving"
@@ -627,7 +626,7 @@
       </a-spin>
     </a-modal>
 
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :visible="mappingVisible"
       title="配置组织关联管理"
       :mask-closable="false"
@@ -2024,28 +2023,8 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.cmdb-center { min-width: 0; color: var(--smartops-ink); }
-.cmdb-heading { align-items: center; }
-.cmdb-kicker { margin: 0 0 4px !important; color: var(--smartops-signal-blue) !important; font-family: var(--smartops-font-mono); font-size: 10px !important; font-weight: 700; letter-spacing: .14em; }
-.heading-actions { display: flex; flex-shrink: 0; gap: 8px; }
-
-.source-strip { display: grid; grid-template-columns: 220px 150px minmax(210px, 1fr) 105px; min-height: 78px; margin-bottom: 12px; border: 1px solid #173b63; background: var(--smartops-command-navy); color: #fff; }
-.source-identity, .source-field, .source-total { display: flex; justify-content: center; flex-direction: column; padding: 12px 18px; border-right: 1px solid rgba(255,255,255,.13); }
-.source-identity strong { font-size: 17px; letter-spacing: .02em; }
-.source-strip__eyebrow { margin-bottom: 3px; color: #82b5df; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 700; letter-spacing: .13em; }
-.source-field > span, .source-total > span { margin-bottom: 5px; color: #9fb3c9; font-size: 11px; }
-.source-field strong { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.source-field small { overflow: hidden; margin-top: 2px; color: #83a6c2; font-family: var(--smartops-font-mono); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-.source-strip /deep/ .ant-badge-status-text { color: #fff; font-size: 13px; }
-.source-total { align-items: flex-end; border-right: 0; }
-.source-total strong { font-family: var(--smartops-font-mono); font-size: 25px; font-weight: 650; line-height: 1; }
-
-.cmdb-empty { min-height: 430px; padding: 78px 24px; text-align: center; }
-.empty-symbol { display: inline-flex; align-items: center; justify-content: center; width: 70px; height: 70px; margin-bottom: 20px; border: 1px solid #cbd8e6; background: #eef3f8; color: var(--smartops-signal-blue); font-size: 30px; }
-.cmdb-empty h2 { margin: 0 0 9px; color: var(--smartops-command-navy); font-size: 20px; }
-.cmdb-empty p { max-width: 620px; margin: 0 auto 22px; color: var(--smartops-muted); }
+.cmdb-center { min-width: 0; }
 .cmdb-empty .ant-alert { max-width: 520px; margin: 20px auto 0; text-align: left; }
-.cmdb-error .empty-symbol { border-color: #e6c4c4; background: #fff3f3; color: #bd3f3f; }
 
 .cmdb-toolbar { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; }
 .search-control { width: 420px; max-width: 42vw; }
@@ -2053,9 +2032,8 @@ export default {
 .toolbar-summary { margin-left: auto; color: var(--smartops-muted); font-size: 12px; white-space: nowrap; }
 .toolbar-summary strong { margin: 0 3px; color: var(--smartops-command-navy); font-family: var(--smartops-font-mono); font-size: 16px; }
 
-.cmdb-workbench { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) 390px; gap: 12px; }
+.cmdb-workbench { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
 .asset-ledger { min-width: 0; overflow: hidden; }
-.panel-heading { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 11px 16px; border-bottom: 1px solid var(--smartops-line); }
 .panel-heading > div:first-child { display: flex; align-items: center; gap: 12px; }
 .panel-heading small { color: var(--smartops-muted); font-size: 11px; }
 .class-counts { display: flex; overflow: hidden; gap: 12px; color: var(--smartops-muted); font-size: 11px; white-space: nowrap; }
@@ -2069,10 +2047,9 @@ export default {
 .asset-name-cell code { margin-top: 2px; color: #77879a; font-size: 10px; }
 .asset-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 32px; border: 1px solid #cfdae6; background: #f1f5f9; color: var(--smartops-signal-blue); }
 .mono-value { font-family: var(--smartops-font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-.ledger-footer { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 10px 16px; border-top: 1px solid var(--smartops-line); color: var(--smartops-muted); font-size: 11px; }
 
 .asset-inspector { position: sticky; top: 84px; max-height: calc(100vh - 112px); overflow: auto; }
-.inspector-placeholder { display: flex; align-items: center; justify-content: center; min-height: 480px; flex-direction: column; color: var(--smartops-muted); }
+.inspector-placeholder { display: flex; align-items: center; justify-content: center; min-height: 320px; flex-direction: column; color: var(--smartops-muted); }
 .inspector-placeholder .anticon { margin-bottom: 15px; color: #9eb0c3; font-size: 32px; }
 .inspector-placeholder strong { margin-bottom: 5px; color: var(--smartops-command-navy); }
 .inspector-placeholder span { font-size: 12px; }
@@ -2313,14 +2290,9 @@ export default {
 .mapping-actions { display: flex; justify-content: flex-end; margin: 18px -22px -20px; padding: 12px 22px; border-top: 1px solid #dce4ea; background: #f7f9fb; gap: 8px; }
 
 @media (max-width: 1240px) {
-  .source-strip { grid-template-columns: 190px 140px minmax(180px, 1fr) 105px; }
   .cmdb-workbench { grid-template-columns: minmax(0, 1fr) 350px; }
 }
 @media (max-width: 980px) {
-  .cmdb-heading { align-items: flex-start; }
-  .source-strip { grid-template-columns: 1fr 1fr; }
-  .source-identity, .source-field, .source-total { min-height: 66px; border-bottom: 1px solid rgba(255,255,255,.13); }
-  .source-total { align-items: flex-start; }
   .cmdb-toolbar { align-items: stretch; flex-wrap: wrap; }
   .search-control { width: 100%; max-width: none; }
   .toolbar-summary { display: flex; align-items: center; margin-left: 0; }
@@ -2340,13 +2312,9 @@ export default {
   .mapping-impact__grid article:last-child { border-bottom: 0; }
 }
 @media (max-width: 640px) {
-  .heading-actions { width: 100%; flex-wrap: wrap; }
-  .source-strip { grid-template-columns: 1fr; }
-  .source-total { grid-column: auto; }
   .filter-control { width: calc(50% - 5px); }
   .panel-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .class-counts { max-width: 100%; flex-wrap: wrap; }
-  .ledger-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
   .asset-form-section { display: block; }
   .asset-form-section__heading { margin-bottom: 10px; }
   .asset-form-grid { grid-template-columns: 1fr; }

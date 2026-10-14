@@ -40,7 +40,7 @@
     </a-card>
 
     <!-- 新建 / 编辑弹窗 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :title="isEdit ? '编辑分组' : '新建分组'"
       :visible="modalVisible"
       :confirm-loading="modalLoading"

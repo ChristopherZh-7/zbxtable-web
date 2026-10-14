@@ -1,5 +1,5 @@
 <template>
-  <component :is="embedded ? 'div' : 'page-layout'" v-bind="embedded ? {} : { noTitle: true }">
+  <component class="smartops-management-page" :is="embedded ? 'div' : 'page-layout'" v-bind="embedded ? {} : { noTitle: true, contentTitle: '旧设备绑定配置', contentDescription: '查看保留的历史设备绑定信息。' }">
     <div class="asset-binding-page">
 
       <a-card :bordered="false" class="table-card">
@@ -142,7 +142,7 @@
         </a-table>
       </a-card>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         data-testid="system-binding-detail-modal"
         title="旧设备绑定详情（只读）"
         :visible="systemDetailVisible"
@@ -166,7 +166,7 @@
         </a-spin>
       </a-modal>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         data-testid="metric-mapping-detail-modal"
         title="旧指标映射详情（只读）"
         :visible="metricMappingDetailVisible"
@@ -190,7 +190,7 @@
         </a-spin>
       </a-modal>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         data-testid="system-binding-history-modal"
         title="历史执行记录（只读）"
         :visible="historyVisible"
@@ -218,7 +218,7 @@
         </a-table>
       </a-modal>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         data-testid="metric-mapping-history-modal"
         title="指标映射执行历史（只读）"
         :visible="metricMappingHistoryVisible"

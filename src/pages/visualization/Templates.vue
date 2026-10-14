@@ -1,9 +1,9 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="visualization-templates">
-      <div class="content-page-header">
+      <div class="content-page-header smartops-page-heading">
         <div>
-          <h2>五类展示视图</h2>
+          <h1>展示视图</h1><p>按资源类型查看监控指标、运行状态与业务关联。</p>
         </div>
         <a-button :loading="loading" @click="loadAll"><a-icon type="reload" /> 刷新</a-button>
       </div>
@@ -212,10 +212,8 @@ export default {
 
 <style scoped>
 .visualization-templates { padding: 0 4px; }
-.content-page-header, .view-title { display: flex; align-items: flex-start; justify-content: space-between; }
-.content-page-header { margin-bottom: 16px; }
-.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.content-page-header p, .view-title p, .view-title span { color: rgba(0,0,0,.45); }
+.view-title { display: flex; align-items: flex-start; justify-content: space-between; }
+.view-title p, .view-title span { color: rgba(0,0,0,.45); }
 .template-tabs { margin-bottom: 16px; }
 .load-error { margin-bottom: 16px; padding: 12px; color: #a8071a; background: #fff1f0; border: 1px solid #ffa39e; border-radius: 4px; }
 .template-tabs { overflow-x: auto; white-space: nowrap; }
@@ -239,5 +237,5 @@ export default {
 .comprehensive-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
 .comprehensive-grid > div { padding: 22px; background: #f5f8fc; }
 .comprehensive-grid strong { color: #1677ff; font-size: 36px; }
-@media (max-width: 768px) { .content-page-header, .view-title { display: block; } .content-page-header button { margin-top: 10px; } .comprehensive-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .view-title { display: block; } .comprehensive-grid { grid-template-columns: 1fr; } }
 </style>

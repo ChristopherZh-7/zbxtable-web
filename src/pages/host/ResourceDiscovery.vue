@@ -1,9 +1,10 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="resource-discovery">
-      <div class="content-page-header">
+    <div class="resource-discovery smartops-management-page">
+      <div class="content-page-header smartops-page-heading">
         <div>
-          <h2>五类资源发现</h2>
+          <h1>五类资源发现</h1>
+          <p>按资源类型查看自动发现结果与监控状态。</p>
         </div>
         <a-button :loading="loading" @click="loadOverview"><a-icon type="reload" /> 刷新发现结果</a-button>
       </div>
@@ -19,9 +20,9 @@
         </a-col>
       </a-row>
 
-      <section class="section-card">
-        <div class="section-title">
-          <div><strong>发现资源</strong><span>按模板证据自动归类</span></div>
+      <section class="smartops-content-panel">
+        <div class="section-title smartops-panel-heading">
+          <div><strong class="smartops-section-label">发现资源</strong><span>按模板证据自动归类</span></div>
           <div>
             <a-radio-group v-model="selectedCategory" button-style="solid" size="small">
               <a-radio-button value="">全部 {{ resources.length }}</a-radio-button>
@@ -54,7 +55,7 @@
         </a-table>
       </section>
 
-      <div class="summary-line">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配资源模板。</div>
+      <div class="smartops-panel-footer">已检查 {{ overview.source_host_count || 0 }} 台已纳管主机；{{ overview.unmatched_host_count || 0 }} 台未匹配资源模板。</div>
     </div>
   </page-layout>
 </template>
@@ -110,25 +111,18 @@ export default {
 </script>
 
 <style scoped>
-.resource-discovery { padding: 0 4px; }
-.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
+
 .profile-grid { margin-bottom: 18px; }
 .profile-grid .ant-col { margin-bottom: 12px; }
-.profile-card { height: 154px; border: 1px solid #edf0f5; }
-.profile-card.active { border-color: #1890ff; box-shadow: 0 4px 14px rgba(24, 144, 255, .14); }
+.profile-card { height: 154px; border: 1px solid var(--smartops-line); }
+.profile-card.active { border-color: var(--smartops-signal-blue); box-shadow: none; background: #edf2f7; }
 .profile-title { color: rgba(0, 0, 0, .65); font-size: 15px; }
 .profile-title span { margin-left: 8px; }
 .profile-count { margin-top: 8px; color: #17233d; font-size: 30px; font-weight: 600; line-height: 36px; }
-.profile-product { color: #1890ff; font-weight: 500; }
+.profile-product { color: var(--smartops-signal-blue); font-weight: 500; }
 .profile-signature { overflow: hidden; margin-top: 5px; color: rgba(0, 0, 0, .38); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.section-card { padding: 18px 20px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
-.section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.section-title strong { font-size: 16px; }
-.section-title span { margin-left: 10px; color: rgba(0, 0, 0, .45); }
+.section-title > div:first-child > span { margin-left: 10px; color: var(--smartops-muted); font-size: 12px; }
+.muted { color: var(--smartops-muted); }
 .product { margin-top: 5px; font-size: 12px; }
 .evidence { margin-top: 5px; color: rgba(0, 0, 0, .45); font-size: 12px; }
-.summary-line { padding: 12px 4px; color: rgba(0, 0, 0, .45); font-size: 12px; }
-@media (max-width: 900px) { .content-page-header, .section-title { display: block; } .content-page-header button, .section-title > div:last-child { margin-top: 12px; } }
 </style>

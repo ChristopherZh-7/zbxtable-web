@@ -1,6 +1,6 @@
 <template>
-  <page-layout :noTitle="true" class="smartops-workplace">
-    <a-modal
+  <page-layout :noTitle="true" class="smartops-management-page smartops-workplace">
+    <a-modal wrap-class-name="smartops-management-dialog"
       v-if="isPlatformAdministrator"
       :visible="topConfigModalVisible"
       :confirmLoading="topNumSaving"
@@ -32,11 +32,10 @@
         </div>
       </template>
     </a-alert>
-    
+
     <home-layout ref="homeLayout" :errors="widgetErrors" @retry="retryWidget">
       <template #heading>
         <div>
-          <p class="workplace-kicker">值守工作台</p>
           <h1>运维总览</h1>
           <p>集中查看当前告警、资产分布与重点资源运行情况。</p>
         </div>
@@ -1098,13 +1097,6 @@ export default {
   margin-bottom: 14px;
 }
 
-.workplace-kicker {
-  margin: 0 0 4px !important;
-  color: #1b5a96 !important;
-  font-size: 11px !important;
-  font-weight: 700;
-  letter-spacing: .24em;
-}
 
 .smartops-workplace /deep/ .ant-card {
   border-color: #dce4ed;

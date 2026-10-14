@@ -1,16 +1,17 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="script-discovery">
-      <div class="content-page-header">
+    <div class="script-discovery smartops-management-page">
+      <div class="content-page-header smartops-page-heading">
         <div>
-          <h2>扩展脚本发现</h2>
+          <h1>扩展脚本发现</h1>
+          <p>查看扩展脚本上报的资源候选，核对发现信息。</p>
         </div>
         <a-button :loading="loading" @click="loadCandidates"><a-icon type="reload" /> 刷新结果</a-button>
       </div>
 
-      <section class="section-card">
-        <div class="section-title">
-          <div><strong>发现候选</strong><span>候选仅供查看</span></div>
+      <section class="smartops-content-panel">
+        <div class="section-title smartops-panel-heading">
+          <div><strong class="smartops-section-label">发现候选</strong><span>候选仅供查看</span></div>
           <a-tag :color="readyCount ? 'green' : undefined">{{ readyCount }} 个待人工确认</a-tag>
         </div>
         <a-table :loading="loading" :columns="columns" :data-source="candidates" :row-key="rowKey" :pagination="{pageSize: 10}" :scroll="{x: 1380}">
@@ -85,15 +86,9 @@ export default {
 </script>
 
 <style scoped>
-.script-discovery { padding: 0 4px; }
-.content-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
-.content-page-header h2 { margin: 0 0 6px; font-size: 24px; }
-.content-page-header p, .muted { color: rgba(0, 0, 0, .45); }
-.section-card { padding: 18px 20px; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; }
-.section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.section-title strong { font-size: 16px; }
-.section-title span { margin-left: 10px; color: rgba(0, 0, 0, .45); }
+
+.section-title > div:first-child > span { margin-left: 10px; color: var(--smartops-muted); font-size: 12px; }
+.muted { color: var(--smartops-muted); }
 .mono { color: rgba(0, 0, 0, .45); font-family: SFMono-Regular, Consolas, monospace; font-size: 11px; }
 .error { overflow: hidden; max-width: 200px; margin-top: 4px; color: #f5222d; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 900px) { .content-page-header, .section-title { display: block; } .content-page-header button, .section-title .ant-tag { margin-top: 12px; } }
 </style>

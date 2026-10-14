@@ -1,5 +1,5 @@
 <template>
-  <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems">
+  <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems" class="smartops-management-page">
     <a-button slot="action" icon="arrow-left" @click="goBack">返回</a-button>
     <div slot="headerContent" class="linux-detail">
       <monitoring-health-card :health="(detail && detail.monitoring_health) || {}" />

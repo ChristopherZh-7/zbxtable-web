@@ -1,13 +1,14 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="用户组" content-description="维护用户分组及组内成员。">
+    <template slot="headingActions"><a-button icon="plus" type="primary" @click="showModal" v-auth="`add`">{{ $t('add_group_btn') }}</a-button></template>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
     <a-form-model-item :label="$t('label_group_name')">
       <a-input v-model.trim="name" :placeholder="$t('label_group_name')" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('search_btn') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('reset_btn') }}</a-button>
-        <a-button type="primary" style="margin-left: 10px;" @click="showModal" v-auth="`add`">{{ $t('add_group_btn') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('reset_btn') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -25,7 +26,7 @@
         </span>
       </a-table>
     </div>
-    <a-modal :title="$t('add_group')" :visible="visible" :confirm-loading="confirmLoading" @ok="createGroup" @cancel="handleCancel" width="600px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('add_group')" :visible="visible" :confirm-loading="confirmLoading" @ok="createGroup" @cancel="handleCancel" width="600px">
       <template>
         <a-form-model :rules="rules" :model="group">
           <a-form-model-item :label="$t('group_name')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="name">
@@ -37,7 +38,7 @@
         </a-form-model>
       </template>
     </a-modal>
-    <a-modal :title="$t('edit_group')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateGroup" @cancel="handleEditCancel" width="600px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('edit_group')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateGroup" @cancel="handleEditCancel" width="600px">
       <template>
         <a-form-model :rules="rulesUpdate" :model="group">
           <a-form-model-item :label="$t('group_name')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="name">
@@ -49,7 +50,7 @@
         </a-form-model>
       </template>
     </a-modal>
-    <a-modal :title="$t('edit_members')" :visible="visibleMember" :confirm-loading="confirmLoading" @ok="updateGroupMember" @cancel="handleMemberCancel" width="600px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('edit_members')" :visible="visibleMember" :confirm-loading="confirmLoading" @ok="updateGroupMember" @cancel="handleMemberCancel" width="600px">
       <template>
         <a-form-model :rules="rulesUpdate" :model="group">
           <a-form-model-item :label="$t('group_name')" :labelCol="{span: 3}" :wrapperCol="{span: 10}" prop="name">

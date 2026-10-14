@@ -1,10 +1,11 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-card :title="$t('title')" :bordered="false">
-      <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+  <page-layout :noTitle="true" content-title="监控源管理" content-description="维护监控实例连接，查看连接状态与认证方式。">
+    <template slot="headingActions">
         <a-button type="primary" @click="openCreate">{{$t('addInstance')}}</a-button>
         <a-button @click="load">{{$t('refresh')}}</a-button>
-      </div>
+      </template>
+    <a-card :bordered="false" class="smartops-table-card">
+
 
       <a-table :loading="loading" :columns="columns" :data-source="list" :rowKey="r => r.id" :pagination="{ pageSize: 10 }" :scroll="{ x: 'max-content' }">
         <template slot="instance" slot-scope="text">
@@ -86,7 +87,7 @@
               <a-tag v-else color="orange">
                 <a-icon type="exclamation-circle" /> {{ $t('status_not_installed') }}
               </a-tag>
-              
+
               <!-- 未安装时显示安装按钮 -->
               <a-button v-if="!record.webhook_installed" type="link" size="small" style="color: #52c41a; padding: 0;" @click="handleInstallWebhook(record)">
                 <a-icon type="download" /> {{ $t('btn_install') }}
@@ -116,9 +117,9 @@
     </a-card>
 
     <!-- 编辑/新增对话框 -->
-    <a-modal 
-      :title="editingId ? $t('modal_title_edit') : $t('modal_title_add')" 
-      :visible="visible" 
+    <a-modal wrap-class-name="smartops-management-dialog"
+      :title="editingId ? $t('modal_title_edit') : $t('modal_title_add')"
+      :visible="visible"
       @cancel="handleModalCancel"
       :destroyOnClose="true"
       :getContainer="() => $el"
@@ -185,15 +186,15 @@
           </div>
         </a-form-model-item>
       </a-form-model>
-      
+
       <!-- 自定义底部按钮 -->
       <template slot="footer">
         <a-button @click="handleModalCancel">{{ $t('btn_cancel') }}</a-button>
-        
+
         <!-- 保存按钮 - 始终显示，测试通过前禁用 -->
-        <a-button 
-          type="primary" 
-          :loading="saving" 
+        <a-button
+          type="primary"
+          :loading="saving"
           :disabled="!testOk"
           @click="saveOnly">
           <a-icon type="save" /> {{ $t('btn_save') }}
@@ -202,7 +203,7 @@
     </a-modal>
 
     <!-- 安装进度对话框 -->
-    <a-modal :title="currentInstallType === 'webhook' ? $t('modal_title_install_webhook') : $t('modal_title_install_msagent')" :visible="installVisible" :footer="installCompleted ? null : []" :closable="installCompleted"
+    <a-modal wrap-class-name="smartops-management-dialog" :title="currentInstallType === 'webhook' ? $t('modal_title_install_webhook') : $t('modal_title_install_msagent')" :visible="installVisible" :footer="installCompleted ? null : []" :closable="installCompleted"
       :maskClosable="false" :destroyOnClose="true" :getContainer="() => $el" width="800px" @cancel="closeInstallModal">
       <div style="min-height: 300px;">
         <!-- 安装说明 -->
@@ -288,7 +289,7 @@
     </a-modal>
 
     <!-- Webhook 配置信息对话框 -->
-    <a-modal :title="$t('modal_title_webhook_info')" :visible="webhookInfoVisible" @cancel="webhookInfoVisible=false" :footer="null" :destroyOnClose="true" :getContainer="() => $el" width="800px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('modal_title_webhook_info')" :visible="webhookInfoVisible" @cancel="webhookInfoVisible=false" :footer="null" :destroyOnClose="true" :getContainer="() => $el" width="800px">
       <div v-if="webhookInfo">
         <div :style="{ padding: '12px 16px', background: hexToRgba($themeColor, 0.1), border: `1px solid ${hexToRgba($themeColor, 0.3)}`, borderRadius: '4px', marginBottom: '16px' }">
           <div :style="{ display: 'flex', alignItems: 'center', marginBottom: '8px' }">

@@ -1,6 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="用户管理" content-description="管理平台账号、角色、联系方式与账号状态。">
+    <template slot="headingActions"><a-button icon="plus" type="primary" @click="showModal" v-auth="`add`">{{ $t('add_user_btn') }}</a-button></template>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('label_username')">
         <a-input v-model.trim="username" :placeholder="$t('label_username')" />
       </a-form-model-item>
@@ -11,8 +12,8 @@
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('search_btn') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('reset_btn') }}</a-button>
-        <a-button type="primary" style="margin-left: 10px;" @click="showModal" v-auth="`add`">{{ $t('add_user_btn') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('reset_btn') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -47,7 +48,7 @@
         </span>
       </a-table>
     </div>
-    <a-modal title="新增用户" :visible="visible" :confirm-loading="confirmLoading" @ok="createUser" @cancel="handleCancel" width="600px">
+    <a-modal wrap-class-name="smartops-management-dialog" title="新增用户" :visible="visible" :confirm-loading="confirmLoading" @ok="createUser" @cancel="handleCancel" width="600px">
       <template>
         <a-form-model ref="createForm" :rules="rules" :model="user">
           <a-form-model-item :label="$t('modalUsername')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="username">
@@ -81,7 +82,7 @@
         </a-form-model>
       </template>
     </a-modal>
-    <a-modal :title="$t('edit')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateUser" @cancel="handleEditCancel" width="600px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('edit')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateUser" @cancel="handleEditCancel" width="600px">
       <template>
         <a-form-model ref="editForm" :rules="rulesUpdate" :model="user">
           <a-form-model-item :label="$t('modalUsername')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="username">

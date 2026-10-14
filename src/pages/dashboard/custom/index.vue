@@ -1,5 +1,8 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" :content-title="visualizationMode ? '大屏管理' : '独立仪表盘'" :content-description="visualizationMode ? '顶部“进入大屏”打开默认屏；默认选择仅对你在本机的当前租户生效。' : '查看和维护之前创建的独立仪表盘。'">
+    <template slot="headingActions"><a-button v-auth="'create'" type="primary" @click="createNew">
+          <a-icon type="plus" /> 新建{{ resourceLabel }}
+        </a-button></template>
     <a-alert v-if="!visualizationMode" type="info" show-icon style="margin-bottom: 16px" message="主页现在支持直接编辑">
       <template slot="description">
         <p>在主页点击“编辑主页”，即可添加组件、调整布局并保存。下方保留之前创建的独立仪表盘。</p>
@@ -7,10 +10,6 @@
       </template>
     </a-alert>
     <template v-if="visualizationMode">
-      <div class="screen-management-heading">
-        <h2>大屏管理</h2>
-        <span>顶部“进入大屏”打开默认屏；默认选择仅对你在本机的当前租户生效。</span>
-      </div>
       <div class="builtin-screen">
         <div class="builtin-screen__icon"><a-icon type="dashboard" /></div>
         <div class="builtin-screen__description">
@@ -24,16 +23,14 @@
         </div>
       </div>
     </template>
-    <a-form-model layout="inline" class="dashboard-search">
+    <a-form-model layout="inline" class="dashboard-search smartops-filter-panel">
       <a-form-model-item :label="`${resourceLabel}名称`">
         <a-input v-model.trim="name" allow-clear placeholder="输入名称" @pressEnter="load" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="load">查询</a-button>
         <a-button style="margin-left: 8px" @click="reset">重置</a-button>
-        <a-button v-auth="'create'" type="primary" style="margin-left: 8px" @click="createNew">
-          <a-icon type="plus" /> 新建{{ resourceLabel }}
-        </a-button>
+
       </a-form-model-item>
     </a-form-model>
 
@@ -211,9 +208,6 @@ export default {
 .dashboard-search {
   margin-bottom: 16px;
 }
-.screen-management-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.screen-management-heading h2 { font-size: 20px; font-weight: 600; margin: 0; }
-.screen-management-heading span { font-size: 12px; color: #65798e; }
 .builtin-screen { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #dbe6ef; background: #f6f9fc; border-radius: 6px; }
 .builtin-screen__icon { display: grid; place-items: center; width: 48px; height: 48px; color: #285e90; background: #e4eef7; border-radius: 6px; font-size: 24px; }
 .builtin-screen__description { flex: 1; min-width: 260px; }

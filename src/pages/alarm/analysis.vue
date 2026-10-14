@@ -1,7 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-card :bodyStyle="{boxShadow: '0 1px 8px 0 #ddd'}" :loading="!showPage">
-      <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="告警分析" content-description="按时间和监控实例查看告警分布、排行与变化趋势。">
+    <a-spin :spinning="!showPage">
+      <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
 		<a-form-model-item v-if="$can('platform.zabbix', 'read')" :label="$t('analysis_select_instance')">
           <a-select v-model="selectedInstance" :placeholder="$t('analysis_all_instances')" allowClear style="width: 200px">
             <a-select-option value="">{{ $t('analysis_all_instances') }}</a-select-option>
@@ -18,7 +18,7 @@
           <a-button type="primary" @click="init">{{ $t('btn_query') }}</a-button>
         </a-form-model-item>
         <a-form-model-item>
-		  <a-button v-if="$can('tenant.alarms', 'export')" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		  <a-button v-if="$can('tenant.alarms', 'export')" @click="anayexport">{{ $t('btn_export') }}</a-button>
         </a-form-model-item>
       </a-form-model>
       <a-row style="margin: 20px -12px">
@@ -38,7 +38,7 @@
           </a-card>
         </a-col>
       </a-row>
-    </a-card>
+    </a-spin>
   </page-layout>
 </template>
 

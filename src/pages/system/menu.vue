@@ -1,11 +1,9 @@
 <template>
-  <page-layout :title="$t('title')">
-    <a-card :bordered="false">
-      <div style="margin-bottom: 16px;">
-        <a-button type="primary" icon="plus" @click="handleAdd">
+  <page-layout :noTitle="true" content-title="菜单管理" content-description="维护导航菜单、图标和页面入口。">
+    <template slot="headingActions"><a-button type="primary" icon="plus" @click="handleAdd">
           {{ $t('add_menu') }}
-        </a-button>
-      </div>
+        </a-button></template>
+    <a-card :bordered="false">
 
       <a-table
         :columns="columns"
@@ -53,7 +51,7 @@
     </a-card>
 
     <!-- 添加/编辑菜单对话框 -->
-    <a-modal
+    <a-modal wrap-class-name="smartops-management-dialog"
       :title="modalTitle"
       :visible="modalVisible"
       :confirm-loading="modalLoading"

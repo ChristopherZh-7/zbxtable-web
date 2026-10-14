@@ -1,7 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="操作审计" content-description="按操作人、资源和时间追溯系统操作记录。">
 
-    <a-form-model layout="inline" class="audit-filters">
+    <a-form-model layout="inline" class="audit-filters smartops-filter-panel">
       <a-form-model-item label="操作人">
         <a-input v-model.trim="filters.actor" allow-clear placeholder="精确用户名" />
       </a-form-model-item>

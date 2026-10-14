@@ -1,5 +1,5 @@
 <template>
-  <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems">
+  <page-layout :title="detail.name" :custom-breadcrumb="breadcrumbItems" class="smartops-management-page">
     <a-button slot="action" icon="arrow-left" @click="goBack">返回</a-button>
     <div slot="headerContent" class="linux-detail">
       <monitoring-health-card :health="(detail && detail.monitoring_health) || {}" />
@@ -147,10 +147,10 @@
             </a-row>
           </a-card>
           <div>
-            <a-modal v-model="visible" width="1400px" :title="$t('modal_interface_detail')">
+            <a-modal wrap-class-name="smartops-management-dialog" v-model="visible" width="1400px" :title="$t('modal_interface_detail')">
               <a-row>
                 <a-col>
-                  <a-form-model class="home-search" layout="inline" style="width: 80%; height: 10%;margin:0 auto;" :colon='false'>
+                  <a-form-model class="home-search smartops-filter-panel" layout="inline" style="width: 80%; height: 10%;margin:0 auto;" :colon='false'>
                     <a-form-model-item :label="$t('form_time_label')">
                       <a-range-picker format="YYYY-MM-DD HH:mm:ss" :show-time="{ format: 'HH:mm', defaultValue:[moment('00:00:00', 'HH:mm:ss'),moment('23:59:59', 'HH:mm:ss')]}" v-model="timeValue"
                         @change="changeCreationTime" :getCalendarContainer="triggerNode=>{return triggerNode.parentNode || document.body}" />

@@ -1,13 +1,12 @@
 <template>
   <page-layout :noTitle="true">
-    <div class="responsibility-directory" data-testid="cmdb-responsibility-page">
+    <div class="responsibility-directory smartops-management-page" data-testid="cmdb-responsibility-page">
       <header class="smartops-page-heading responsibility-heading">
         <div>
-          <p class="responsibility-kicker">运维责任资料</p>
           <h1>运维基础资料</h1>
           <p>维护当前配置组织的运维团队与负责人，再供资产建档和发现入库统一选用。</p>
         </div>
-        <div class="heading-actions">
+        <div class="smartops-heading-actions">
           <span class="context-chip"><i />{{ currentTenant.name || '当前租户' }}</span>
           <a-tag v-if="!canUpdate" color="blue">只读视图</a-tag>
           <a-button icon="reload" :loading="loading" @click="reload">刷新</a-button>
@@ -16,49 +15,52 @@
         </div>
       </header>
 
-      <section class="identity-spine" data-testid="identity-boundary">
-        <div class="identity-node">
-          <span class="identity-index">01</span>
-          <div><small>登录身份</small><strong>平台账号</strong><p>只管登录与账号启停</p></div>
-        </div>
-        <span class="identity-arrow">→</span>
-        <div class="identity-node">
-          <span class="identity-index">02</span>
-          <div><small>授权范围</small><strong>租户成员</strong><p>只管角色与数据范围</p></div>
-        </div>
-        <span class="identity-arrow">→</span>
-        <div class="identity-node identity-node--truth">
-          <span class="identity-index">03</span>
-          <div><small>责任信息</small><strong>团队与负责人</strong><p>保存真实运维责任</p></div>
-        </div>
-        <div class="identity-rule"><a-icon type="safety-certificate" /><span>关联只表示身份对应，<strong>不会授予或改变任何平台权限</strong></span></div>
-      </section>
-
       <a-spin :spinning="loading">
-        <section v-if="directory.state === 'error'" class="directory-empty directory-empty--error smartops-data-panel" data-testid="responsibility-load-error">
-          <div class="empty-symbol">异常</div>
+        <section v-if="directory.state === 'error'" class="directory-empty smartops-empty smartops-empty--error smartops-data-panel" data-testid="responsibility-load-error">
+          <div class="empty-symbol"><a-icon type="warning" /></div>
           <h2>运维基础资料读取失败</h2>
           <p>{{ directory.message || '配置管理中心或智能运维管理系统接口暂时不可用，请稍后重试。' }}</p>
           <a-button type="primary" icon="reload" @click="reload">重新读取</a-button>
         </section>
 
-        <section v-else-if="directory.state === 'unconfigured'" class="directory-empty smartops-data-panel">
-          <div class="empty-symbol">组织</div>
+        <section v-else-if="directory.state === 'unconfigured'" class="directory-empty smartops-empty smartops-data-panel">
+          <div class="empty-symbol"><a-icon type="disconnect" /></div>
           <h2>当前租户尚未关联配置组织</h2>
           <p>先由平台管理员在资产配置中心建立组织映射，再在这里维护责任基础资料。</p>
           <a-button type="primary" @click="goToAssets">前往资产配置中心</a-button>
         </section>
 
         <template v-else>
-          <section class="directory-summary">
-            <article><span>所属组织</span><strong>{{ organizationName }}</strong><details class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details></article>
-            <article><span>启用团队</span><strong>{{ summary.activeTeams }}</strong><small>共 {{ directory.teams.length }} 个团队</small></article>
-            <article><span>启用负责人</span><strong>{{ summary.activePeople }}</strong><small>共 {{ directory.people.length }} 位负责人</small></article>
-            <article :class="{'summary-warning': summary.accountWarnings}"><span>账号关联</span><strong>{{ summary.linkedAccounts }}</strong><small>{{ summary.accountWarnings ? `${summary.accountWarnings} 项需重新关联` : '身份关联正常' }}</small></article>
+          <section class="smartops-context-grid" aria-label="运维基础资料概览">
+            <article class="smartops-context-item"><span class="context-label">所属组织</span><strong class="context-value">{{ organizationName }}</strong><details class="technical-details"><summary>组织技术详情</summary><small>{{ organizationIdentity }}</small></details></article>
+            <article class="smartops-context-item"><span class="context-label">启用团队</span><strong class="context-value context-value--number">{{ summary.activeTeams }}</strong><small class="context-meta">共 {{ directory.teams.length }} 个团队</small></article>
+            <article class="smartops-context-item"><span class="context-label">启用负责人</span><strong class="context-value context-value--number">{{ summary.activePeople }}</strong><small class="context-meta">共 {{ directory.people.length }} 位负责人</small></article>
+            <article class="smartops-context-item" :class="{'summary-warning': summary.accountWarnings}"><span class="context-label">账号关联</span><strong class="context-value context-value--number">{{ summary.linkedAccounts }}</strong><small class="context-meta">{{ summary.accountWarnings ? `${summary.accountWarnings} 项需重新关联` : '身份关联正常' }}</small></article>
           </section>
 
+          <details class="responsibility-boundary">
+            <summary>身份关联说明：关联账号不会改变平台权限</summary>
+            <section class="identity-spine" data-testid="identity-boundary">
+              <div class="identity-node">
+                <span class="identity-index">01</span>
+                <div><small>登录身份</small><strong>平台账号</strong><p>只管登录与账号启停</p></div>
+              </div>
+              <span class="identity-arrow">→</span>
+              <div class="identity-node">
+                <span class="identity-index">02</span>
+                <div><small>授权范围</small><strong>租户成员</strong><p>只管角色与数据范围</p></div>
+              </div>
+              <span class="identity-arrow">→</span>
+              <div class="identity-node identity-node--truth">
+                <span class="identity-index">03</span>
+                <div><small>责任信息</small><strong>团队与负责人</strong><p>保存真实运维责任</p></div>
+              </div>
+              <div class="identity-rule"><a-icon type="safety-certificate" /><span>关联只表示身份对应，<strong>不会授予或改变任何平台权限</strong></span></div>
+            </section>
+          </details>
+
           <section class="directory-ledger smartops-data-panel">
-            <div class="ledger-toolbar">
+            <div class="ledger-toolbar smartops-panel-heading">
               <a-radio-group v-model="activeTab" button-style="solid">
                 <a-radio-button data-testid="responsibility-tab-team" value="team">运维团队 <b>{{ directory.teams.length }}</b></a-radio-button>
                 <a-radio-button data-testid="responsibility-tab-person" value="person">负责人 <b>{{ directory.people.length }}</b></a-radio-button>
@@ -79,7 +81,7 @@
               :data-source="filteredTeams"
               :row-key="record => `team-${record.id}`"
               :pagination="{pageSize: 12, showSizeChanger: false}"
-              :locale="{emptyText: '暂无匹配的运维团队'}"
+              :scroll="{x: 960}"
             >
               <template slot="identity" slot-scope="record">
                 <div class="contact-identity"><span class="contact-mark contact-mark--team">团</span><div><strong>{{ record.display_name }}</strong><small>运维团队 #{{ record.id }} · {{ record.function || '未设置职能' }}</small></div></div>
@@ -107,7 +109,7 @@
               :data-source="filteredPeople"
               :row-key="record => `person-${record.id}`"
               :pagination="{pageSize: 12, showSizeChanger: false}"
-              :locale="{emptyText: '暂无匹配的负责人'}"
+              :scroll="{x: 960}"
             >
               <template slot="identity" slot-scope="record">
                 <div class="contact-identity"><span class="contact-mark">{{ initials(record) }}</span><div><strong>{{ record.display_name }}</strong><small>负责人 #{{ record.id }} · {{ record.employee_number || '无工号' }}</small></div></div>
@@ -133,7 +135,7 @@
         </template>
       </a-spin>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         v-model="editorVisible"
         :title="editorTitle"
         :width="editorType === 'person' ? 720 : 620"
@@ -173,7 +175,7 @@
         </a-form-model>
       </a-modal>
 
-      <a-modal v-model="impactVisible" title="停用前需先完成责任重新分配" :footer="null" :width="620">
+      <a-modal wrap-class-name="smartops-management-dialog" v-model="impactVisible" title="停用前需先完成责任重新分配" :footer="null" :width="620">
         <div v-if="impactTarget" class="impact-dialog">
           <div class="impact-number">{{ impactTarget.impact.total }}</div>
           <div><h3>{{ impactTarget.display_name }} 仍被资产引用</h3><p>{{ deactivateText(impactTarget) }}</p></div>
@@ -551,44 +553,25 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.responsibility-directory { min-width: 0; color: var(--smartops-ink); }
-.responsibility-heading { align-items: center; }
-.responsibility-kicker { margin: 0 0 4px !important; color: var(--smartops-signal-blue) !important; font-family: var(--smartops-font-mono); font-size: 10px !important; font-weight: 800; letter-spacing: .15em; }
-.heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.context-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 11px; border: 1px solid #cfdae4; border-radius: 3px; background: #fff; color: #38516a; font-size: 12px; font-weight: 600; }
-.context-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--smartops-success); box-shadow: 0 0 0 3px rgba(39, 155, 109, .13); }
-.identity-spine { position: relative; display: grid; grid-template-columns: 1fr 34px 1fr 34px 1fr; align-items: stretch; gap: 0; margin-bottom: 14px; padding: 14px 16px 44px; border: 1px solid #163e5c; border-radius: 4px; background: #0d2c43; color: #fff; overflow: hidden; box-shadow: 0 8px 22px rgba(12, 42, 64, .08); }
-.identity-spine::before { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: #20a4d8; content: ''; }
-.identity-node { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 9px 11px; border: 1px solid rgba(176, 211, 232, .16); background: rgba(255, 255, 255, .035); }
-.identity-node--truth { border-color: rgba(72, 198, 147, .45); background: rgba(38, 159, 111, .1); }
-.identity-index { flex: 0 0 auto; color: #6db9df; font-family: var(--smartops-font-mono); font-size: 11px; }
-.identity-node small { display: block; margin-bottom: 3px; color: #7eb8d6; font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .12em; }
-.identity-node strong { display: block; font-size: 14px; letter-spacing: .01em; }
-.identity-node p { margin: 2px 0 0; color: #b6cbd9; font-size: 11px; }
-.identity-arrow { display: flex; align-items: center; justify-content: center; color: #54add5; font-size: 18px; }
-.identity-rule { position: absolute; right: 16px; bottom: 10px; left: 16px; display: flex; align-items: center; gap: 8px; color: #a9c4d6; font-size: 11px; }
-.identity-rule .anticon { color: #48c693; }
-.identity-rule strong { color: #dff7ee; font-weight: 600; }
-.directory-empty { min-height: 390px; padding: 72px 24px; text-align: center; }
-.directory-empty .empty-symbol { display: inline-flex; align-items: center; justify-content: center; width: 58px; height: 58px; margin-bottom: 18px; border: 1px solid #b9cfdd; border-radius: 50%; background: #edf6fa; color: #28799f; font-family: var(--smartops-font-mono); font-size: 12px; font-weight: 800; }
-.directory-empty--error .empty-symbol { border-color: #e6b8b1; background: #fff1ef; color: #b84231; }
-.directory-empty h2 { margin: 0 0 8px; color: var(--smartops-command-navy); font-size: 20px; }
-.directory-empty p { max-width: 620px; margin: 0 auto 20px; color: var(--smartops-muted); }
-.directory-summary { display: grid; grid-template-columns: minmax(220px, 1.45fr) repeat(3, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
-.directory-summary article { min-width: 0; padding: 14px 16px; border: 1px solid #d9e2e9; border-top: 3px solid #9ab2c3; border-radius: 3px; background: #fff; box-shadow: 0 3px 10px rgba(20, 55, 78, .035); }
-.directory-summary article:first-child { border-top-color: var(--smartops-signal-blue); }
-.directory-summary article.summary-warning { border-top-color: #d9962e; }
-.directory-summary span { display: block; color: #75899a; font-family: var(--smartops-font-mono); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
-.directory-summary strong { display: block; margin: 5px 0 2px; overflow: hidden; color: #12324a; font-size: 22px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.directory-summary article:first-child strong { font-size: 16px; line-height: 27px; }
-.directory-summary small { color: #718496; font-size: 11px; }
-.directory-ledger { overflow: hidden; }
-.ledger-toolbar { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: 1px solid #e1e8ee; background: #f7fafc; }
-.ledger-toolbar /deep/ .ant-radio-button-wrapper b { margin-left: 6px; font-family: var(--smartops-font-mono); font-size: 10px; }
+.responsibility-directory { min-width: 0; }
+.context-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 10px; border: 1px solid var(--smartops-line); border-radius: 2px; color: var(--smartops-muted); font-size: 12px; }
+.context-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--smartops-success); }
+.responsibility-boundary { margin-bottom: 16px; border: 1px solid var(--smartops-line); border-radius: 2px; background: #f3f6fa; }
+.responsibility-boundary > summary { padding: 10px 16px; color: var(--smartops-muted); font-size: 12px; cursor: pointer; }
+.identity-spine { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr; align-items: center; padding: 4px 16px 12px; gap: 8px; }
+.identity-node { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--smartops-line); background: #fff; }
+.identity-index { color: var(--smartops-signal-blue); font-family: var(--smartops-font-mono); font-size: 12px; }
+.identity-node small, .identity-node p { color: var(--smartops-muted); font-size: 12px; }
+.identity-node strong { display: block; margin: 4px 0; color: var(--smartops-command-navy); font-size: 14px; }
+.identity-node p { margin: 0; }
+.identity-arrow { text-align: center; color: var(--smartops-muted); }
+.identity-rule { display: flex; align-items: center; grid-column: 1 / -1; gap: 8px; color: var(--smartops-muted); font-size: 12px; }
+.identity-rule strong { color: var(--smartops-ink); font-weight: 600; }
+.directory-ledger { min-width: 0; overflow: hidden; }
+.ledger-toolbar /deep/ .ant-radio-button-wrapper b { margin-left: 6px; font-family: var(--smartops-font-mono); font-size: 12px; }
 .toolbar-spacer { flex: 1; }
-.ledger-toolbar .ant-input-search { width: 360px; max-width: 34vw; }
-.status-filter { width: 128px; }
-.directory-ledger /deep/ .ant-table-thead > tr > th { background: #f2f6f8; color: #526a7b; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+.ledger-toolbar .ant-input-search { width: 320px; max-width: 100%; }
+.status-filter { width: 150px; }
 .directory-ledger /deep/ .ant-table-tbody > tr > td { vertical-align: middle; }
 .contact-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .contact-mark { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 3px; background: #e4f2f8; color: #146e99; font-family: var(--smartops-font-mono); font-size: 10px; font-weight: 800; }
@@ -615,8 +598,8 @@ export default {
 .row-actions { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
 .row-actions .ant-btn { padding: 0 4px; font-size: 12px; }
 .danger-link { color: #be4a4a; }
-.editor-boundary { display: flex; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border-left: 3px solid #2788b6; background: #edf6fa; color: #48677a; font-size: 12px; line-height: 1.6; }
-.editor-boundary .anticon { margin-top: 3px; color: #2788b6; }
+.editor-boundary { display: flex; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border-left: 3px solid var(--smartops-signal-blue); background: #edf2f7; color: #48677a; font-size: 12px; line-height: 1.6; }
+.editor-boundary .anticon { margin-top: 3px; color: var(--smartops-signal-blue); }
 .editor-form /deep/ .ant-form-item { margin-bottom: 13px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
 .field-help { display: block; margin-top: 5px; color: #8495a3; font-size: 10px; line-height: 1.45; }
@@ -630,20 +613,11 @@ export default {
 .impact-assets span { color: #294b62; }
 .impact-assets small { color: #8999a5; font-family: var(--smartops-font-mono); }
 .impact-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-@media (max-width: 1180px) {
-  .directory-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .identity-spine { grid-template-columns: 1fr 24px 1fr 24px 1fr; }
-  .identity-node { padding: 9px 7px; }
-}
-@media (max-width: 820px) {
-  .responsibility-heading { align-items: flex-start; }
-  .heading-actions { justify-content: flex-start; }
-  .identity-spine { grid-template-columns: 1fr; padding-bottom: 58px; }
-  .identity-arrow { height: 24px; transform: rotate(90deg); }
-  .directory-summary { grid-template-columns: 1fr; }
-  .ledger-toolbar { align-items: stretch; flex-wrap: wrap; }
+@media (max-width: 900px) {
   .toolbar-spacer { display: none; }
   .ledger-toolbar .ant-input-search { width: 100%; }
+  .identity-spine { grid-template-columns: 1fr; }
+  .identity-arrow { transform: rotate(90deg); }
   .form-grid { grid-template-columns: 1fr; }
 }
 

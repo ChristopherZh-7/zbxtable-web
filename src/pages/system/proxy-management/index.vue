@@ -1,5 +1,5 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="代理管理" content-description="查看代理组、在线状态、主机分配与采集负载。">
     <a-alert v-if="!pricingBasis.complete" class="proxy-error" type="warning" show-icon :message="$t('billingIncomplete')" />
 
     <div class="proxy-toolbar">
@@ -28,7 +28,7 @@
       :message="`${instance.name || instance.instance}：${instance.error || instance.warnings.join('；')}`"
     />
 
-    <a-form-model layout="inline" class="proxy-filters">
+    <a-form-model layout="inline" class="proxy-filters smartops-filter-panel">
       <a-form-model-item :label="$t('instance')">
         <a-select v-model="filters.zid" allow-clear :placeholder="$t('allInstances')" style="width: 190px">
           <a-select-option v-for="instance in instanceOptions" :key="instance.zid" :value="instance.zid">

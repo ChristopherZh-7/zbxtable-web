@@ -1,8 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="smartops-page-heading alarm-heading">
       <div>
-        <p class="alarm-kicker">风险处置</p>
         <h1>告警中心</h1>
         <p>集中查看告警影响、通知结果与处置进度。</p>
       </div>
@@ -43,10 +42,10 @@
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="queryData">{{ $t('btn_query') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-		<a-button v-auth="'export'" style="margin-left: 10px;" type="primary" @click="anayexport">{{ $t('btn_export') }}</a-button>
-		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openPipeline">{{ $t('pipeline_config') }}</a-button>
-		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 10px;" @click="openAggregation">{{ $t('aggregation_config') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
+		<a-button v-auth="'export'" style="margin-left: 8px;" @click="anayexport">{{ $t('btn_export') }}</a-button>
+		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 8px;" @click="openPipeline">{{ $t('pipeline_config') }}</a-button>
+		<a-button v-if="$can('tenant.alarms', 'operate')" style="margin-left: 8px;" @click="openAggregation">{{ $t('aggregation_config') }}</a-button>
       </a-form-model-item>
     </a-form-model>
 
@@ -100,12 +99,12 @@
 		  <a-button v-if="record.notify_status!=1" v-auth="'operate'" class="pd20 paddingleft0" type="link" size="small" @click="addMutes(record)">{{ $t('btn_mute') }}</a-button>
 		  <a-button v-auth="'operate'" class="pd20" type="link" size="small" @click="analyzeWithDeepseek(record)">{{ $t('btn_ai_analysis') }}</a-button>
         </span>
-        
+
         <notification-delivery-panel slot="expandedRowRender" slot-scope="record" :deliveries="(record && record.innerData) ? record.innerData : []" :can-operate="$can('tenant.alarms', 'operate')" :retrying="retryingDeliveries" @retry="retryNotification(record, $event)" />
       </a-table>
     </div>
 
-    <a-drawer
+    <a-drawer wrap-class-name="smartops-management-dialog"
       :title="$t('handling_drawer_title')"
       placement="right"
       :visible="handlingVisible"
@@ -182,7 +181,7 @@
       </a-spin>
     </a-drawer>
 
-    <a-drawer
+    <a-drawer wrap-class-name="smartops-management-dialog"
       :title="$t('aggregation_config_title')"
       placement="right"
       :visible="aggregationVisible"
@@ -204,7 +203,7 @@
       </a-spin>
     </a-drawer>
 
-    <a-drawer
+    <a-drawer wrap-class-name="smartops-management-dialog"
       :title="$t('pipeline_config_title')"
       placement="right"
       :visible="pipelineVisible"
@@ -263,7 +262,7 @@
     </a-drawer>
 
     <!-- AI 助手 Drawer -->
-    <a-drawer
+    <a-drawer wrap-class-name="smartops-management-dialog"
       :title="$t('drawer_title_ai_chat')"
       placement="right"
       :closable="true"
@@ -271,7 +270,7 @@
       :width="560"
       @close="handleDrawerClose"
       :bodyStyle="{ padding: 0, height: 'calc(100vh - 55px)', overflow: 'hidden' }">
-      
+
       <div class="ai-chat-container">
         <!-- 告警上下文信息 -->
         <div v-if="currentAlarmContext" class="alarm-context">
@@ -307,7 +306,7 @@
               <div v-else class="user-message">{{ msg.content }}</div>
             </div>
           </div>
-          
+
           <!-- 正在输入指示器 -->
           <div v-if="isTyping" class="chat-message assistant typing-indicator">
             <div class="message-header">
@@ -1848,13 +1847,6 @@ export default {
   margin-bottom: 14px;
 }
 
-.alarm-kicker {
-  margin: 0 0 4px !important;
-  color: #1b5a96 !important;
-  font-size: 11px !important;
-  font-weight: 700;
-  letter-spacing: .24em;
-}
 
 .home-search.smartops-filter-panel {
   margin-bottom: 12px;

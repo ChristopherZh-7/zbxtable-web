@@ -1,5 +1,5 @@
 <template>
-  <a-modal
+  <a-modal wrap-class-name="smartops-management-dialog"
     :title="title"
     :visible="visible"
     :confirm-loading="loading"

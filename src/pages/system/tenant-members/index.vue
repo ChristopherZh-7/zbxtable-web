@@ -1,5 +1,5 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="当前租户成员" content-description="将已有账号加入当前租户，管理成员访问范围。">
 
     <a-card title="添加已有普通账号" class="member-card">
       <a-form-model layout="inline" :model="draft">

@@ -1,9 +1,9 @@
 <template>
-  <component :is="wrapper" v-bind="wrapperProps">
+  <component class="smartops-management-page" :is="wrapper" v-bind="wrapperProps">
     <div class="generic-device-list">
       <!-- 搜索栏 -->
       <div class="search-bar-row smartops-filter-panel">
-        <a-form-model class="home-search" layout="inline" :colon="false">
+        <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon="false">
           <a-form-model-item label="设备名称">
             <a-input v-model.trim="hosts" placeholder="设备名称" allow-clear />
           </a-form-model-item>
@@ -35,8 +35,8 @@
           </a-form-model-item>
           <a-form-model-item>
             <a-button type="primary" @click="onQuery">查询</a-button>
-            <a-button style="margin-left: 10px" @click="resetSearch">重置</a-button>
-            <a-button v-if="$can('tenant.assets', 'export')" type="primary" style="margin-left: 10px" @click="handleExport">导出</a-button>
+            <a-button style="margin-left: 8px;" @click="resetSearch">重置</a-button>
+            <a-button v-if="$can('tenant.assets', 'export')" style="margin-left: 8px;" @click="handleExport">导出</a-button>
           </a-form-model-item>
         </a-form-model>
         <!-- 字段设置按钮（有 typeId 时才显示） -->
@@ -134,7 +134,7 @@
         </span>
       </a-table>
 
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         :visible="tagEditorVisible"
         :title="`编辑标准标签 - ${tagRecord.name || ''}`"
         :confirm-loading="tagSaving"
@@ -164,7 +164,7 @@
       </a-modal>
 
       <!-- 查看图形弹窗（复用原列表页“查看图形”内容） -->
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         :visible="graphVisible"
         :title="`监控图形 - ${detailRecord.name || ''}`"
         :width="1200"
@@ -201,7 +201,7 @@
       </a-modal>
 
       <!-- 详细信息弹窗 -->
-      <a-modal
+      <a-modal wrap-class-name="smartops-management-dialog"
         :visible="infoVisible"
         :title="`详细信息 - ${detailRecord.name || ''}`"
         :width="760"

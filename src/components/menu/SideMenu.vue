@@ -1,13 +1,14 @@
 <template>
   <a-layout-sider :theme="sideTheme" :class="['side-menu', 'beauty-scroll', isMobile ? null : 'shadow']" width="256px" :collapsible="collapsible" v-model="collapsed" :trigger="null">
     <div :class="['logo', theme]">
-      <router-link to="/dashboard/workplace">
+      <router-link to="/dashboard/workplace" :aria-label="systemName" :title="systemName">
         <span :class="['logo-brand', collapsed ? 'is-collapsed' : 'is-expanded']">
           <img
             class="brand-image"
             :src="collapsed ? brandMarkEmbeddedLogo : brandWideEmbeddedLogo"
             :alt="collapsed ? '奇安信标志' : '奇安信 新一代网络安全领军者'"
           >
+          <span v-if="!collapsed" class="brand-system-name">{{ systemName }}</span>
         </span>
       </router-link>
     </div>
@@ -52,7 +53,7 @@ export default {
     sideTheme() {
       return this.theme == "light" ? this.theme : "dark";
     },
-    ...mapState("setting", ["isMobile"]),
+    ...mapState("setting", ["isMobile", "systemName"]),
   },
   methods: {
     onSelect(obj) {

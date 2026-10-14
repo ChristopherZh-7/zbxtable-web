@@ -30,7 +30,7 @@
       @saved="loadData"
     />
   </div>
-  <page-layout v-else :noTitle="true">
+  <page-layout v-else :noTitle="true" content-title="设备类型" content-description="维护设备类型定义与列表显示字段。" class="smartops-management-page">
     <a-card :bordered="false" title="资产类型列表">
       <template #extra>
         <a-button type="primary" icon="plus" @click="handleAdd">新建类型</a-button>

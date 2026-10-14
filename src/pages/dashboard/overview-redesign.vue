@@ -1,9 +1,8 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="overview-container">
       <div class="smartops-page-heading overview-heading">
         <div>
-          <p class="overview-kicker">运行脉络</p>
           <h1>资产运行总览</h1>
         </div>
         <div class="smartops-heading-metric">纳管资产<strong>{{ totalAssets }}</strong></div>
@@ -224,7 +223,6 @@ export default {
 <style lang="less" scoped>
 .overview-container { min-height: calc(100vh - 104px); padding: 2px 0 24px; }
 .overview-heading { margin-bottom: 14px; }
-.overview-kicker { margin: 0 0 4px !important; color: #1b5a96 !important; font-size: 11px !important; font-weight: 700; letter-spacing: .24em; }
 .smartops-signal-rail { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 14px; border: 1px solid #dce4ed; background: #fff; }
 .smartops-signal-rail::before { position: absolute; top: 50%; right: 6%; left: 6%; height: 1px; background: #cbd7e3; content: ''; }
 .signal-metric { position: relative; z-index: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; min-height: 102px; padding: 18px; border-right: 1px solid #e3e9ef; background: rgba(255, 255, 255, .92); }

@@ -1,7 +1,7 @@
 <template>
   <a-layout-header :class="[headerTheme, 'admin-header']">
     <div :class="['admin-header-wide', layout, pageWidth]">
-      <router-link v-if="isMobile || layout === 'head'" to="/" :class="['logo', isMobile ? null : 'pc', headerTheme]">
+      <router-link v-if="isMobile || layout === 'head'" to="/" :class="['logo', isMobile ? null : 'pc', headerTheme]" :aria-label="systemName" :title="systemName">
         <img
           width="48"
           :src="isMobile ? brandMarkEmbeddedLogo : brandWideEmbeddedLogo"

@@ -1,7 +1,7 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <!-- 顶部标题栏 -->
-    <div class="topology-header" :style="{ background: `linear-gradient(135deg, ${$themeColor} 0%, ${adjustColor($themeColor, -30)} 100%)` }">
+    <div class="topology-header smartops-topology-heading">
       <div class="header-content">
         <div class="topology-title">
           <a-icon type="apartment" class="title-icon" />
@@ -10,13 +10,13 @@
             <a-icon type="clock-circle" />
             {{ $t('label_update_time') }}: {{ form.updateTime }}
           </span>
-          <a-badge 
-            :status="isWebSocket ? 'processing' : 'default'" 
+          <a-badge
+            :status="isWebSocket ? 'processing' : 'default'"
             :text="isWebSocket ? $t('status_realtime_updating') : $t('status_not_connected')"
             class="status-badge"
           />
       </div>
-        <div class="header-actions">
+        <div class="header-actions smartops-heading-actions">
           <a-button-group>
 			<a-button v-auth="'export'" @click="saveToPNG()">
               <a-icon type="file-image" />
@@ -950,17 +950,6 @@ export default {
   align-items: center;
   gap: 12px;
   
-  .ant-btn {
-    height: 36px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-  }
 }
 
 // 画布区域

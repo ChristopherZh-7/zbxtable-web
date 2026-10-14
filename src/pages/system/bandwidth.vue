@@ -1,24 +1,25 @@
 <template>
-  <page-layout :title="$t('egress_config')">
+  <page-layout :noTitle="true" content-title="出口配置" content-description="管理出口线路及带宽监控项。">
+    <template slot="headingActions"><a-button type="primary" icon="plus" @click="handleAdd">
+          {{ $t('add_egress') }}
+        </a-button></template>
     <div>
       <a-card :bordered="false">
 
-        <a-button type="primary" icon="plus" @click="handleAdd" style="margin-bottom: 16px;">
-          {{ $t('add_egress') }}
-        </a-button>
 
-        <a-table 
-          :columns="columns" 
-          :data-source="dataSource" 
+
+        <a-table
+          :columns="columns"
+          :data-source="dataSource"
           :loading="loading"
           :pagination="false"
           :scroll="{ x: 1200 }"
           rowKey="id"
         >
           <span slot="name" slot-scope="text, record">
-            <a-input 
-              v-if="record.editable" 
-              v-model="record.name" 
+            <a-input
+              v-if="record.editable"
+              v-model="record.name"
               :placeholder="$t('placeholder_egress_name')"
               style="width: 100%"
             />
@@ -26,7 +27,7 @@
           </span>
 
           <span slot="instance" slot-scope="text, record">
-            <a-select 
+            <a-select
               v-if="record.editable"
               v-model="record.zid"
               :placeholder="$t('select_instance')"
@@ -43,7 +44,7 @@
           </span>
 
           <span slot="host" slot-scope="text, record">
-            <a-select 
+            <a-select
               v-if="record.editable"
               v-model="record.host_id"
               :placeholder="$t('select_host')"
@@ -53,9 +54,9 @@
               option-filter-prop="children"
               :disabled="!record.zid"
             >
-              <a-select-option 
-                v-for="item in record.hostList || []" 
-                :key="item.hostid" 
+              <a-select-option
+                v-for="item in record.hostList || []"
+                :key="item.hostid"
                 :value="item.hostid"
                 :title="item.name"
               >
@@ -68,7 +69,7 @@
           </span>
 
           <span slot="in_item" slot-scope="text, record">
-            <a-select 
+            <a-select
               v-if="record.editable"
               v-model="record.in_item_id"
               :placeholder="$t('select_in_item')"
@@ -78,9 +79,9 @@
               :disabled="!record.host_id"
               :dropdown-style="{ maxWidth: '500px' }"
             >
-              <a-select-option 
-                v-for="item in record.itemList || []" 
-                :key="item.itemid" 
+              <a-select-option
+                v-for="item in record.itemList || []"
+                :key="item.itemid"
                 :value="item.itemid"
                 :title="item.name"
               >
@@ -93,7 +94,7 @@
           </span>
 
           <span slot="out_item" slot-scope="text, record">
-            <a-select 
+            <a-select
               v-if="record.editable"
               v-model="record.out_item_id"
               :placeholder="$t('select_out_item')"
@@ -103,9 +104,9 @@
               :disabled="!record.host_id"
               :dropdown-style="{ maxWidth: '500px' }"
             >
-              <a-select-option 
-                v-for="item in record.itemList || []" 
-                :key="item.itemid" 
+              <a-select-option
+                v-for="item in record.itemList || []"
+                :key="item.itemid"
                 :value="item.itemid"
                 :title="item.name"
               >

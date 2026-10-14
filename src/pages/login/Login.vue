@@ -3,7 +3,7 @@
     <section class="smartops-login-story" aria-label="系统介绍">
       <div class="smartops-login-context">
         <span></span>
-        智能运维运行中枢
+        {{ systemName }}
       </div>
 
       <div class="smartops-login-statement">

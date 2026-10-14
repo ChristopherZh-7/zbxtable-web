@@ -1,14 +1,15 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" content-title="分发规则" content-description="配置告警匹配条件、通知渠道与接收人。">
+    <template slot="headingActions"><a-button icon="plus" v-if="$can('platform.rules', 'create')" type="primary" @click="addRecord">{{ $t('btn_add') }}</a-button></template>
 
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('label_search')">
         <a-input v-model.trim="name" :placeholder="$t('rule_name_placeholder')" />
       </a-form-model-item>
       <a-form-model-item>
         <a-button type="primary" @click="queryRules">{{ $t('btn_query') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
-        <a-button v-if="$can('platform.rules', 'create')" style="margin-left: 10px;" type="primary" @click="addRecord">{{ $t('btn_add') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('btn_reset') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div class="linux-list">
@@ -37,7 +38,7 @@
       </a-table>
     </div>
     <!-- 新增/编辑规则弹窗 -->
-    <a-modal :title="editingId ? $t('modal_title_edit_rule') : $t('modal_title_add_rule')" :visible="modalVisible" :confirmLoading="modalLoading" @ok="saveRule" @cancel="closeModal" width="900px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="editingId ? $t('modal_title_edit_rule') : $t('modal_title_add_rule')" :visible="modalVisible" :confirmLoading="modalLoading" @ok="saveRule" @cancel="closeModal" width="900px">
       <a-form-model :model="editRule" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
         <a-form-model-item :label="$t('form_label_name')" required>
           <a-input v-model.trim="editRule.name" :placeholder="$t('form_placeholder_name')" />

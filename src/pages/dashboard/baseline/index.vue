@@ -1,11 +1,11 @@
 <template>
-  <page-layout :noTitle="true">
+  <page-layout :noTitle="true" class="smartops-management-page">
     <div class="baseline-page">
-      <div class="baseline-page__header">
+      <div class="smartops-page-heading">
         <div>
-          <h2>动态基线</h2>
+          <h1>动态基线</h1><p>管理周期基线规则，查看指标偏离与触发记录。</p>
         </div>
-        <div>
+        <div class="smartops-heading-actions">
           <a-button :loading="loading" @click="load"><a-icon type="reload" /> 刷新</a-button>
           <a-button v-auth="'create'" type="primary" style="margin-left: 8px" @click="openCreate">
             <a-icon type="plus" /> 新建基线
@@ -38,7 +38,7 @@
       </a-table>
     </div>
 
-    <a-modal :visible="modalVisible" :title="editing ? '编辑动态基线' : '新建动态基线'" :confirm-loading="saving" width="660px" @ok="save" @cancel="closeModal">
+    <a-modal wrap-class-name="smartops-management-dialog" :visible="modalVisible" :title="editing ? '编辑动态基线' : '新建动态基线'" :confirm-loading="saving" width="660px" @ok="save" @cancel="closeModal">
       <a-form-model layout="vertical">
         <a-form-model-item label="规则名称">
           <a-input v-model.trim="form.name" placeholder="例如：CPU 日周期动态基线" />
@@ -100,7 +100,7 @@
       </a-form-model>
     </a-modal>
 
-    <a-drawer :visible="drawerVisible" title="基线曲线与触发事件" width="760" @close="closeDrawer">
+    <a-drawer wrap-class-name="smartops-management-dialog" :visible="drawerVisible" title="基线曲线与触发事件" width="760" @close="closeDrawer">
       <a-spin :spinning="detailLoading">
         <template v-if="selectedRule">
           <a-descriptions bordered size="small" :column="2">
@@ -310,8 +310,6 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.baseline-page__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.baseline-page__header h2 { margin-bottom: 4px; }
-.baseline-page__header p, .muted { color: #78849a; }
+.muted { color: var(--smartops-muted); }
 .baseline-chart { width: 100%; height: 360px; margin: 18px 0; }
 </style>

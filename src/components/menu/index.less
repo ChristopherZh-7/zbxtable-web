@@ -42,7 +42,9 @@
     }
     .logo-brand.is-expanded {
       width: 204px;
-      height: 56px;
+      height: 64px;
+      grid-template-rows: 40px 20px;
+      row-gap: 2px;
     }
     .logo-brand.is-collapsed {
       width: 58px;
@@ -55,8 +57,18 @@
       object-fit: contain;
     }
     .logo-brand.is-expanded .brand-image {
-      width: 198px !important;
-      height: 52px !important;
+      width: 160px !important;
+      height: 40px !important;
+    }
+    .brand-system-name {
+      max-width: 100%;
+      overflow: hidden;
+      color: #f3f7fc;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 20px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .logo-brand.is-collapsed .brand-image {
       width: 52px !important;

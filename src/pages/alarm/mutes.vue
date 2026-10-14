@@ -1,14 +1,15 @@
 <template>
-  <page-layout :noTitle="true">
-    <a-form-model class="home-search" layout="inline" :colon='false'>
+  <page-layout :noTitle="true" content-title="屏蔽规则" content-description="管理告警屏蔽范围与生效时间。">
+    <template slot="headingActions"><a-button icon="plus" type="primary" @click="showModal">{{ $t('mutes_btn_add') }}</a-button></template>
+    <a-form-model class="home-search smartops-filter-panel" layout="inline" :colon='false'>
       <a-form-model-item :label="$t('mutes_search_label')">
         <a-input v-model.trim="hosts" :placeholder="$t('mutes_search_placeholder')" />
       </a-form-model-item>
       <!-- 实例筛选已取消：统一跟随顶部“当前 Zabbix 连接” -->
       <a-form-model-item>
         <a-button type="primary" @click="init">{{ $t('mutes_btn_query') }}</a-button>
-        <a-button style="margin-left: 10px;" @click="resetData">{{ $t('mutes_btn_reset') }}</a-button>
-        <a-button type="primary" style="margin-left: 10px;" @click="showModal">{{ $t('mutes_btn_add') }}</a-button>
+        <a-button style="margin-left: 8px;" @click="resetData">{{ $t('mutes_btn_reset') }}</a-button>
+
       </a-form-model-item>
     </a-form-model>
     <div>
@@ -34,7 +35,7 @@
       </a-table>
       <p class="mute-time-hint">{{ $t('mutes_server_reference_hint') }}</p>
     </div>
-    <a-modal :title="$t('mutes_modal_title_add')" :visible="visible" :confirm-loading="confirmLoading" @ok="createRule" @cancel="handleCancel" width="1000px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('mutes_modal_title_add')" :visible="visible" :confirm-loading="confirmLoading" @ok="createRule" @cancel="handleCancel" width="1000px">
       <template>
         <a-form-model :model="rule">
           <a-form-model-item :label="$t('mutes_form_name')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="name" :required="true">
@@ -135,7 +136,7 @@
         </a-form-model>
       </template>
     </a-modal>
-    <a-modal :title="$t('mutes_modal_title_edit')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateRule" @cancel="handleEditCancel" width="1000px">
+    <a-modal wrap-class-name="smartops-management-dialog" :title="$t('mutes_modal_title_edit')" :visible="visibleEdit" :confirm-loading="confirmLoading" @ok="updateRule" @cancel="handleEditCancel" width="1000px">
       <template>
         <a-form-model :model="rule">
           <a-form-model-item :label="$t('mutes_form_name')" :labelCol="{span: 7}" :wrapperCol="{span: 10}" prop="name" :required="true">
