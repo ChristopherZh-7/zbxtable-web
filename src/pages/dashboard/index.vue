@@ -1,12 +1,5 @@
 <template>
   <page-layout :noTitle="true" class="smartops-workplace">
-    <div class="smartops-page-heading workplace-heading">
-      <div>
-        <p class="workplace-kicker">值守工作台</p>
-        <h1>运维总览</h1>
-        <p>集中查看当前告警、资产分布与重点资源运行情况。</p>
-      </div>
-    </div>
     <a-modal
       v-if="isPlatformAdministrator"
       :visible="topConfigModalVisible"
@@ -40,209 +33,213 @@
       </template>
     </a-alert>
     
-    <a-card :bodyStyle="{boxShadow: '0 1px 8px 0 #ddd'}" :loading="!loading1 &&!loading2 && !loading3">
-      <a-row :gutter="16">
-        <a-col :xl="{ span: 12 }" :lg="{ span: 24 }">
-          <a-card :title="$t('title_problems')" :headStyle="cardHeadStyle" size="small" :loading="!loading1">
-            <div :class="['homeMain', 'beauty-scroll', { 'is-empty': !triggerList.length }]">
-              <a-timeline>
-                <a-timeline-item v-for="(v, i) in triggerList" :key="i">
-                  <a-tag v-if="v.severity == 1" color="#7499FF">{{ $t('severity_informational') }}</a-tag>
-                  <a-tag v-else-if="v.severity == 2" color="#FFC859">{{ $t('severity_warning') }}</a-tag>
-                  <a-tag v-else-if="v.severity == 3" color="#FFA059">{{ $t('severity_average') }}</a-tag>
-                  <a-tag v-else-if="v.severity == 4" color="#E97659">{{ $t('severity_high') }}</a-tag>
-                  <a-tag v-else-if="v.severity == 5" color="#f50000">{{ $t('severity_disaster') }}</a-tag>
-                  <a-tag v-else color="#97AAB3">{{ $t('severity_unknown') }}</a-tag>
-                  <a-tag v-if="v.instance_name" :color="theme.color" style="margin-left: 4px;">{{ v.instance_name }}</a-tag>
-                  <!-- <a-icon slot="dot" type="minus-circle" v-else-if="v.severity == 2" :style="{ fontSize: '16px', color: '#F56C6C' }" />
-                  <a-icon slot="dot" type="exclamation-circle" v-else :style="{ fontSize: '16px', color: '#E6A23C' }" /> -->
-                  {{v.lastchange | parsetime}} <b>{{v.name}}</b> {{v.lasteventname}}
-                </a-timeline-item>
-              </a-timeline>
-              <a-empty v-if="!triggerList.length" :description="$t('empty_unresolved_alerts')" />
-            </div>
-          </a-card>
-        </a-col>
-        <a-col :xl="{ span: 12 }" :lg="{ span: 24 }">
-          <a-row>
-            <a-col :lg="24" :md="24">
-              <a-card :title="$t('title_hosttypecount')" :headStyle="cardHeadStyle" :bodyStyle="{minHeight: '194px', height: 'auto', padding: '14px'}" size="small" :loading="!loading2">
-                <div class="device-stat-grid" :style="cssVars" role="list" aria-label="设备数量">
-                  <div
-                    class="device-stat-card"
-                    v-for="item in deviceStats"
-                    :key="item.type_code"
-                    role="listitem"
-                    :aria-label="`${item.name} ${item.count} 台`"
-                  >
-                    <span class="device-stat-icon" aria-hidden="true"><a-icon :type="item.icon" /></span>
-                    <div class="device-stat-content">
-                      <span class="device-name" :title="item.name">{{ item.name }}</span>
-                      <div class="device-stat-value">
-                        <strong class="device-count">{{ item.count }}</strong>
-                        <span class="device-stat-unit">台</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </a-card>
-            </a-col>
-            <a-col :lg="24" :md="24" style="margin-top: 8px;">
-              <a-card :headStyle="cardHeadStyle" :bodyStyle="{padding: '12px'}" size="small" :loading="!loading3">
-                <template slot="title">
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <span>{{ $t('bandwidth') }}</span>
-                    <span style="font-size: 12px; font-weight: 400; color: rgba(0,0,0,0.45); white-space: nowrap;">{{ egressUpdateTime ? (egressUpdateTime) : '' }}</span>
-                  </div>
-                </template>
-                <egress-bandwidth :data="egressData" />
-              </a-card>
-            </a-col>
-          </a-row>
-        </a-col>
-      </a-row>
-    </a-card>
-    <div style="width: 100%;height: 12px;"></div>
-    <a-row :gutter="16" class="top-panels-row">
-      <a-col :xl="{ span: 12 }" :lg="{ span: 12 }" :md="{ span: 24 }" :sm="{ span: 24 }">
-        <a-card :bodyStyle="{boxShadow: '0 1px 8px 0 #ddd'}" :loading="false">
-          <a-card :headStyle="cardHeadStyle" :bodyStyle="{ padding: 0 }" size="small" :loading="!loading6">
-            <template slot="title">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <span>{{ $t('linux_systems_title') }}</span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <a-radio-group size="small" :value="linSortBy" @change="onLinSortChange">
-                    <a-radio-button value="CPU">{{ $t('sort_by_cpu') }}</a-radio-button>
-                    <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
-                  </a-radio-group>
-                  <a-tooltip :title="$t('top_settings')">
-                    <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_LIN')" />
-                  </a-tooltip>
+    <home-layout ref="homeLayout" :errors="widgetErrors" @retry="retryWidget">
+      <template #heading>
+        <div>
+          <p class="workplace-kicker">值守工作台</p>
+          <h1>运维总览</h1>
+          <p>集中查看当前告警、资产分布与重点资源运行情况。</p>
+        </div>
+      </template>
+      <template #alerts>
+        <a-card :title="$t('title_problems')" :headStyle="cardHeadStyle" size="small" :loading="!loading1">
+          <div :class="['homeMain', 'beauty-scroll', { 'is-empty': !triggerList.length }]">
+            <a-timeline>
+              <a-timeline-item v-for="(v, i) in triggerList" :key="i">
+                <a-tag v-if="v.severity == 1" color="#7499FF">{{ $t('severity_informational') }}</a-tag>
+                <a-tag v-else-if="v.severity == 2" color="#FFC859">{{ $t('severity_warning') }}</a-tag>
+                <a-tag v-else-if="v.severity == 3" color="#FFA059">{{ $t('severity_average') }}</a-tag>
+                <a-tag v-else-if="v.severity == 4" color="#E97659">{{ $t('severity_high') }}</a-tag>
+                <a-tag v-else-if="v.severity == 5" color="#f50000">{{ $t('severity_disaster') }}</a-tag>
+                <a-tag v-else color="#97AAB3">{{ $t('severity_unknown') }}</a-tag>
+                <a-tag v-if="v.instance_name" :color="theme.color" style="margin-left: 4px;">{{ v.instance_name }}</a-tag>
+                <!-- <a-icon slot="dot" type="minus-circle" v-else-if="v.severity == 2" :style="{ fontSize: '16px', color: '#F56C6C' }" />
+                <a-icon slot="dot" type="exclamation-circle" v-else :style="{ fontSize: '16px', color: '#E6A23C' }" /> -->
+                {{v.lastchange | parsetime}} <b>{{v.name}}</b> <span :title="'原文：' + (v.lasteventname || '')">{{ alarmText(v.lasteventname) }}</span>
+              </a-timeline-item>
+            </a-timeline>
+            <a-empty v-if="!triggerList.length" :description="$t('empty_unresolved_alerts')" />
+          </div>
+        </a-card>
+      </template>
+      <template #devices>
+        <a-card :title="$t('title_hosttypecount')" :headStyle="cardHeadStyle" :bodyStyle="{minHeight: '194px', height: 'auto', padding: '14px'}" size="small" :loading="!loading2">
+          <div class="device-stat-grid" :style="cssVars" role="list" aria-label="设备数量">
+            <div
+              class="device-stat-card"
+              v-for="item in deviceStats"
+              :key="item.type_code"
+              role="listitem"
+              :aria-label="`${item.name} ${item.count} 台`"
+            >
+              <span class="device-stat-icon" aria-hidden="true"><a-icon :type="item.icon" /></span>
+              <div class="device-stat-content">
+                <span class="device-name" :title="item.name">{{ item.name }}</span>
+                <div class="device-stat-value">
+                  <strong class="device-count">{{ item.count }}</strong>
+                  <span class="device-stat-unit">台</span>
                 </div>
               </div>
-            </template>
-            <div class="homeTopList" :style="cssVars">
-              <div class="topListHeader">
-                <span class="col-name">{{ $t('column_hostname') }}</span>
+            </div>
+          </div>
+        </a-card>
+      </template>
+      <template #bandwidth>
+        <a-card :headStyle="cardHeadStyle" :bodyStyle="{padding: '12px'}" size="small" :loading="!loading3">
+          <template slot="title">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span>{{ $t('bandwidth') }}</span>
+              <span style="font-size: 12px; font-weight: 400; color: rgba(0,0,0,0.45); white-space: nowrap;">{{ egressUpdateTime ? (egressUpdateTime) : '' }}</span>
+            </div>
+          </template>
+          <egress-bandwidth :data="egressData" />
+        </a-card>
+      </template>
+      <template #linux>
+        <a-card :headStyle="cardHeadStyle" :bodyStyle="{ padding: 0 }" size="small" :loading="!loading6">
+          <template slot="title">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span>{{ $t('linux_systems_title') }}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <a-radio-group size="small" :value="linSortBy" @change="onLinSortChange">
+                  <a-radio-button value="CPU">{{ $t('sort_by_cpu') }}</a-radio-button>
+                  <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
+                </a-radio-group>
+                <a-tooltip :title="$t('top_settings')">
+                  <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_LIN')" />
+                </a-tooltip>
+              </div>
+            </div>
+          </template>
+          <div class="homeTopList" :style="cssVars">
+            <div class="topListHeader">
+              <span class="col-name">{{ $t('column_hostname') }}</span>
+              <template v-if="linSortBy === 'CPU'">
+                <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+                <span class="col-metric">{{ $t('top_header_mem') }}</span>
+              </template>
+              <template v-else>
+                <span class="col-metric">{{ $t('top_header_mem') }}</span>
+                <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+              </template>
+            </div>
+            <div :class="['beauty-scroll', 'listBody', { 'is-empty': !linTop.length }]">
+              <div class="topListItem" v-for="(v, i) in linTop" :key="'linTop-'+i">
+                <div class="col-name" :title="hostTitle(v)">
+                  <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
+                  <div class="host-info">
+                    <a-tag v-if="v.instance_name" :color="theme.color" class="instance-tag-small">{{v.instance_name}}</a-tag>
+                    <span class="hostname">{{v.hostname}}</span>
+                  </div>
+                </div>
                 <template v-if="linSortBy === 'CPU'">
-                  <span class="col-metric">{{ $t('top_header_cpu') }}</span>
-                  <span class="col-metric">{{ $t('top_header_mem') }}</span>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
+                  </div>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.mem)}}</span>
+                  </div>
                 </template>
                 <template v-else>
-                  <span class="col-metric">{{ $t('top_header_mem') }}</span>
-                  <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.mem)}}</span>
+                  </div>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
+                  </div>
                 </template>
               </div>
-              <div :class="['beauty-scroll', 'listBody', { 'is-empty': !linTop.length }]">
-                <div class="topListItem" v-for="(v, i) in linTop" :key="'linTop-'+i">
-                  <div class="col-name" :title="hostTitle(v)">
-                    <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
-                    <div class="host-info">
-                      <a-tag v-if="v.instance_name" :color="theme.color" class="instance-tag-small">{{v.instance_name}}</a-tag>
-                      <span class="hostname">{{v.hostname}}</span>
-                    </div>
-                  </div>
-                  <template v-if="linSortBy === 'CPU'">
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
-                    </div>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.mem)}}</span>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.mem)}}</span>
-                    </div>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
-                    </div>
-                  </template>
-                </div>
-                <div v-if="!linTop.length" class="top-list-empty">{{ $t('empty_linux_top') }}</div>
-                <div v-else class="topListItem empty" v-for="i in linTopNum-linTop.length" :key="'linTop-empty-'+i"></div>
+              <div v-if="!linTop.length" class="top-list-empty">{{ $t('empty_linux_top') }}</div>
+              <div v-else class="topListItem empty" v-for="i in linTopNum-linTop.length" :key="'linTop-empty-'+i"></div>
+            </div>
+          </div>
+        </a-card>
+      </template>
+      <template #windows>
+        <a-card :headStyle="cardHeadStyle" :bodyStyle="{ padding: 0 }" size="small" :loading="!loading4">
+          <template slot="title">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span>{{ $t('windows_systems_title') }}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <a-radio-group size="small" :value="winSortBy" @change="onWinSortChange">
+                  <a-radio-button value="CPU">{{ $t('sort_by_cpu') }}</a-radio-button>
+                  <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
+                </a-radio-group>
+                <a-tooltip :title="$t('top_settings')">
+                  <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_WIN')" />
+                </a-tooltip>
               </div>
             </div>
-          </a-card>
-        </a-card>
-      </a-col>
-      <a-col :xl="{ span: 12 }" :lg="{ span: 12 }" :md="{ span: 24 }" :sm="{ span: 24 }">
-        <a-card :bodyStyle="{boxShadow: '0 1px 8px 0 #ddd'}" :loading="false">
-          <a-card :headStyle="cardHeadStyle" :bodyStyle="{ padding: 0 }" size="small" :loading="!loading4">
-            <template slot="title">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <span>{{ $t('windows_systems_title') }}</span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <a-radio-group size="small" :value="winSortBy" @change="onWinSortChange">
-                    <a-radio-button value="CPU">{{ $t('sort_by_cpu') }}</a-radio-button>
-                    <a-radio-button value="MEM">{{ $t('sort_by_mem') }}</a-radio-button>
-                  </a-radio-group>
-                  <a-tooltip :title="$t('top_settings')">
-                    <a-button v-if="isPlatformAdministrator" size="small" icon="setting" @click="openTopConfigModal('VM_WIN')" />
-                  </a-tooltip>
+          </template>
+          <div class="homeTopList" :style="cssVars">
+            <div class="topListHeader">
+              <span class="col-name">{{ $t('column_hostname') }}</span>
+              <template v-if="winSortBy === 'CPU'">
+                <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+                <span class="col-metric">{{ $t('top_header_mem') }}</span>
+              </template>
+              <template v-else>
+                <span class="col-metric">{{ $t('top_header_mem') }}</span>
+                <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+              </template>
+            </div>
+            <div :class="['beauty-scroll', 'listBody', { 'is-empty': !winTop.length }]">
+              <div class="topListItem" v-for="(v, i) in winTop" :key="'winTop-'+i">
+                <div class="col-name" :title="hostTitle(v)">
+                  <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
+                  <div class="host-info">
+                    <a-tag v-if="v.instance_name" :color="theme.color" class="instance-tag-small">{{v.instance_name}}</a-tag>
+                    <span class="hostname">{{v.hostname}}</span>
+                  </div>
                 </div>
-              </div>
-            </template>
-            <div class="homeTopList" :style="cssVars">
-              <div class="topListHeader">
-                <span class="col-name">{{ $t('column_hostname') }}</span>
                 <template v-if="winSortBy === 'CPU'">
-                  <span class="col-metric">{{ $t('top_header_cpu') }}</span>
-                  <span class="col-metric">{{ $t('top_header_mem') }}</span>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
+                  </div>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.mem)}}</span>
+                  </div>
                 </template>
                 <template v-else>
-                  <span class="col-metric">{{ $t('top_header_mem') }}</span>
-                  <span class="col-metric">{{ $t('top_header_cpu') }}</span>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.mem)}}</span>
+                  </div>
+                  <div class="col-metric">
+                    <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
+                    <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
+                  </div>
                 </template>
               </div>
-              <div :class="['beauty-scroll', 'listBody', { 'is-empty': !winTop.length }]">
-                <div class="topListItem" v-for="(v, i) in winTop" :key="'winTop-'+i">
-                  <div class="col-name" :title="hostTitle(v)">
-                    <div class="rank-icon"><img :src="require('../../assets/img/top'+(i+1)+'.png')" v-if="i < 3" /><span v-else>{{i+1}}</span></div>
-                    <div class="host-info">
-                      <a-tag v-if="v.instance_name" :color="theme.color" class="instance-tag-small">{{v.instance_name}}</a-tag>
-                      <span class="hostname">{{v.hostname}}</span>
-                    </div>
-                  </div>
-                  <template v-if="winSortBy === 'CPU'">
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
-                    </div>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.mem)}}</span>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.mem) !== '—'" :rate="v.mem" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.mem)}}</span>
-                    </div>
-                    <div class="col-metric">
-                      <legent v-if="fmtPercent(v.cpu) !== '—'" :rate="v.cpu" :height="20"></legent>
-                      <span class="metric-value">{{fmtPercent(v.cpu)}}</span>
-                    </div>
-                  </template>
-                </div>
-                <div v-if="!winTop.length" class="top-list-empty">{{ $t('empty_windows_top') }}</div>
-                <div v-else class="topListItem empty" v-for="i in winTopNum-winTop.length" :key="'winTop-empty-'+i"></div>
-              </div>
+              <div v-if="!winTop.length" class="top-list-empty">{{ $t('empty_windows_top') }}</div>
+              <div v-else class="topListItem empty" v-for="i in winTopNum-winTop.length" :key="'winTop-empty-'+i"></div>
             </div>
-          </a-card>
+          </div>
         </a-card>
-      </a-col>
-    </a-row>
-    <div style="width: 100%;height: 20px;"></div>
+      </template>
+      <template #summary>
+        <home-extras kind="summary" :head-style="cardHeadStyle" :info="info" :alerts="triggerList" :egress="egressData" :ready="widgetReady" :errors="loadErrors" />
+      </template>
+      <template #severity>
+        <home-extras kind="severity" :head-style="cardHeadStyle" :info="info" :alerts="triggerList" :egress="egressData" :ready="widgetReady" :errors="loadErrors" />
+      </template>
+      <template #shortcuts>
+        <home-extras kind="shortcuts" :head-style="cardHeadStyle" :info="info" :alerts="triggerList" :egress="egressData" :ready="widgetReady" :errors="loadErrors" />
+      </template>
+    </home-layout>
   </page-layout>
 </template>
 
 <script>
 import PageLayout from '@/layouts/PageLayout'
+import HomeLayout from './home/HomeLayout'
+import HomeExtras from './home/HomeExtras'
 import {
   indexTrigger,
   indexInfo,
@@ -253,6 +250,7 @@ import {
 } from '@/services/admin'
 import { message } from 'ant-design-vue'
 import { parseTimeFun } from '@/utils/formatter'
+import {formatAlarmMessage} from '@/utils/alarm-display'
 import legent from '@/components/gcharts/legent'
 import EgressBandwidth from '@/components/egress/EgressBandwidth'
 import { mapGetters, mapState } from 'vuex'
@@ -262,6 +260,7 @@ export default {
   i18n: require('./i18n'),
   data() {
     return {
+      loadErrors: {alerts: false, devices: false, bandwidth: false, linux: false, windows: false},
       triggerList: [],
       loading1: false,
       loading2: false,
@@ -302,6 +301,8 @@ export default {
       const role = String(this.accountUser && this.accountUser.role || '').toLowerCase()
       return role === 'admin' || role === 'platform_admin'
     },
+    widgetErrors() { return {...this.loadErrors, severity: this.loadErrors.alerts} },
+    widgetReady() { return {alerts: this.loading1, devices: this.loading2, bandwidth: this.loading3} },
     cardHeadStyle() {
       // 使用主题颜色的浅色版本作为卡片标题背景
       return {
@@ -341,6 +342,8 @@ export default {
   },
   components: {
     PageLayout,
+    HomeLayout,
+    HomeExtras,
     legent,
     EgressBandwidth
   },
@@ -357,6 +360,10 @@ export default {
       this.initEgress()
     }, 30000)
   },
+  beforeRouteLeave(to, from, next) {
+    if (to.path === '/screen/dashboard' || !this.$refs.homeLayout) return next()
+    this.$refs.homeLayout.confirmLeave(next)
+  },
   beforeDestroy() {
     // 清除定时器
     if (this.refreshTimer) {
@@ -364,6 +371,11 @@ export default {
     }
   },
   methods: {
+    retryWidget(type) {
+      const actions = {alerts: 'initTrigger', severity: 'initTrigger', devices: 'initInfo', bandwidth: 'initEgress', linux: 'loadLinTop', windows: 'loadWinTop'}
+      if (actions[type]) this[actions[type]]()
+    },
+    alarmText(value) { return formatAlarmMessage(value, this.$i18n.locale) },
     getDeviceIcon(typeCode, name) {
       const code = String(typeCode || '').toUpperCase()
       const label = String(name || '')
@@ -456,6 +468,8 @@ export default {
       return indexRestop({ host_type: 'VM_WIN', metrics_type: this.winSortBy, top_num: String(this.winTopNum) })
         .then((resp) => {
           const res = resp.data
+          if (!res || (res.code !== 200 && res.code !== 0) || !Array.isArray(res.data)) throw new Error('排行数据暂不可用')
+          this.loadErrors.windows = false
           const arr = (res && Array.isArray(res.data)) ? res.data : []
           this.winTop = arr.filter(Boolean).map(item => ({
             ...item,
@@ -463,6 +477,7 @@ export default {
           }))
         })
         .catch((err) => {
+          this.loadErrors.windows = true
           console.error('获取 Windows 排行失败:', err)
           this.winTop = []
         })
@@ -471,6 +486,8 @@ export default {
       return indexRestop({ host_type: 'VM_LIN', metrics_type: this.linSortBy, top_num: String(this.linTopNum) })
         .then((resp) => {
           const res = resp.data
+          if (!res || (res.code !== 200 && res.code !== 0) || !Array.isArray(res.data)) throw new Error('排行数据暂不可用')
+          this.loadErrors.linux = false
           const arr = (res && Array.isArray(res.data)) ? res.data : []
           this.linTop = arr.filter(Boolean).map(item => ({
             ...item,
@@ -478,6 +495,7 @@ export default {
           }))
         })
         .catch((err) => {
+          this.loadErrors.linux = true
           console.error('获取 Linux 排行失败:', err)
           this.linTop = []
         })
@@ -511,9 +529,11 @@ export default {
       return `rgba(${r}, ${g}, ${b}, ${alpha})`
     },
     initTrigger() {
-      indexTrigger()
+      return indexTrigger()
         .then((resp) => {
           let res = resp.data
+          if (!res || (res.code !== 200 && res.code !== 0) || res.data == null) throw new Error('主页数据暂不可用')
+          this.loadErrors.alerts = false
           // 添加空值保护
           this.triggerList = (res && res.data && res.data.items) ? res.data.items : []
           // 如果有数据或者明确返回成功，认为实例已配置
@@ -524,6 +544,7 @@ export default {
           }
         })
         .catch((err) => {
+          this.loadErrors.alerts = true
           console.error('获取告警信息失败:', err)
           // 任何错误都可能是未配置实例导致的
           this.hasZabbixInstance = false
@@ -534,9 +555,11 @@ export default {
         })
     },
     initInfo() {
-      indexInfo()
+      return indexInfo()
         .then((resp) => {
           let res = resp.data
+          if (!res || (res.code !== 200 && res.code !== 0) || res.data == null) throw new Error('主页数据暂不可用')
+          this.loadErrors.devices = false
           const data = (res && res.data) || {}
           // 确保数据有默认值
           this.info = {
@@ -555,6 +578,7 @@ export default {
           }
         })
         .catch((err) => {
+          this.loadErrors.devices = true
           console.error('获取主机统计信息失败:', err)
           // 任何错误都可能是未配置实例导致的
           this.hasZabbixInstance = false
@@ -573,9 +597,12 @@ export default {
         })
     },
     initEgress() {
-      indexEgress()
+      return indexEgress()
         .then((resp) => {
           let res = resp.data
+          if (!res || (res.code !== 200 && res.code !== 0) || res.data == null) throw new Error('主页数据暂不可用')
+          this.loadErrors.bandwidth = false
+          this.egressUpdateTime = ''
           // 检查返回的数据格式
           if (res.data && Array.isArray(res.data)) {
             // 新格式：数组，确保每个项都有有效的值
@@ -614,6 +641,8 @@ export default {
           }
         })
         .catch((err) => {
+          this.loadErrors.bandwidth = true
+          this.egressUpdateTime = ''
           console.error('获取出口数据失败:', err)
           this.egressData = []
         })

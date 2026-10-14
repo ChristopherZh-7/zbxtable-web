@@ -1069,9 +1069,9 @@ export default {
         success: {label: '配置已应用', color: 'green'},
         failed: {label: '失败', color: 'red'},
         blocked: {label: '已阻断', color: 'volcano'},
-        archived: {label: '已归档', color: 'default'},
+        archived: {label: '已归档', color: undefined},
         legacy_frozen: {label: '遗留冻结', color: 'gold'},
-      })[status] || {label: status || '—', color: 'default'}
+      })[status] || {label: status || '—', color: undefined}
     },
     formatTime(value) { return value ? new Date(value).toLocaleString('zh-CN', {hour12: false}) : '—' },
     async retry(record) {

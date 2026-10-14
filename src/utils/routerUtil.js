@@ -75,7 +75,7 @@ function parseRoutes(routesConfig, routerMap) {
     Object.assign(meta, cfgMeta)
     const route = {
       path: routeCfg.path || router.path || routeCfg.router,
-      name: routeCfg.name || router.name,
+      name: router.menuName || routeCfg.name || router.name,
       component: router.component,
       redirect: routeCfg.redirect || router.redirect,
       meta: {...meta, authority: meta.authority || '*'}

@@ -37,7 +37,7 @@
       <section class="section-card">
         <div class="section-title">
           <div><strong>发现结果</strong><span>只展示当前租户规则中状态为在线 的服务</span></div>
-          <a-tag :color="results.length ? 'green' : 'default'">{{ results.length }} 台存活设备</a-tag>
+          <a-tag :color="results.length ? 'green' : undefined">{{ results.length }} 台存活设备</a-tag>
         </div>
         <a-table :loading="loading" :columns="resultColumns" :data-source="results" :row-key="record => `${record.rule_id}:${record.ip}`" :pagination="{pageSize: 10}" :scroll="{x: 900}">
           <span slot="ip" slot-scope="record"><strong>{{ record.ip }}</strong><br /><span class="muted">{{ record.dns || '无 DNS' }}</span></span>

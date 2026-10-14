@@ -5,7 +5,7 @@ import OperationsWidget from '../../screen/components/OperationsWidget'
 // updates so animated values and local flow history survive a refresh.
 export function renderOperationsNode(node, parent) {
   const element = document.createElement('div')
-  element.style.cssText = 'width:100%;height:100%;background:#061226'
+  element.style.cssText = 'width:100%;height:100%;background:transparent'
   const mount = document.createElement('div')
   element.appendChild(mount)
   let vm

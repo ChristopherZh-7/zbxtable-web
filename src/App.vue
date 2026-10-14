@@ -1,6 +1,8 @@
 <template>
   <a-config-provider :locale="locale" :get-popup-container="popContainer">
-    <router-view/>
+    <keep-alive :include="workbenchCacheIncludes" :key="workbenchCacheIdentity">
+      <router-view/>
+    </keep-alive>
   </a-config-provider>
 </template>
 
@@ -10,6 +12,7 @@ import {mapState, mapMutations} from 'vuex'
 import themeUtil from '@/utils/themeUtil';
 import {getI18nKey} from '@/utils/routerUtil'
 import {getPublicSystemInfo} from '@/services/admin'
+import {SCREEN_PATH, isWorkbenchRoute, screenContextKey} from '@/utils/screen-navigation'
 
 export default {
   name: 'App',
@@ -61,7 +64,13 @@ export default {
     }
   },
   computed: {
-    ...mapState('setting', ['layout', 'theme', 'weekMode', 'lang', 'systemName'])
+    ...mapState('setting', ['layout', 'theme', 'weekMode', 'lang', 'systemName']),
+    workbenchCacheIncludes() {
+      return this.$route.path === SCREEN_PATH || isWorkbenchRoute(this.$route) ? ['TabsView'] : []
+    },
+    workbenchCacheIdentity() {
+      return screenContextKey(this.$store) || 'no-screen-context'
+    },
   },
   methods: {
     ...mapMutations('setting', ['setDevice', 'setSystemName', 'setSystemSubtitle', 'setSystemLogo', 'setDemoMode']),

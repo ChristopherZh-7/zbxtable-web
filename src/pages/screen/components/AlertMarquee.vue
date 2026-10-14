@@ -14,7 +14,7 @@
           <span class="sev-tag" :class="'sev-' + sevKey(v)">{{ sevLabel(v) }}</span>
           <span class="col-time">{{ fmtTime(v.lastchange) }}</span>
           <span class="col-host" :title="v.name || ''">{{ v.name || '--' }}</span>
-          <span class="col-evt"  :title="v.lasteventname || ''">{{ v.lasteventname || '--' }}</span>
+          <span class="col-evt" :title="'原文：' + (v.lasteventname || '')">{{ alarmText(v.lasteventname) || '--' }}</span>
         </div>
       </div>
     </div>
@@ -24,6 +24,7 @@
 
 <script>
 import { parseTimeFun } from '@/utils/formatter'
+import {formatAlarmMessage} from '@/utils/alarm-display'
 
 export default {
   name: 'AlertMarquee',
@@ -40,6 +41,7 @@ export default {
     }
   },
   methods: {
+    alarmText(value) { return formatAlarmMessage(value, this.$i18n.locale) },
     sevKey(v) {
       const s = Number(v && v.severity)
       return [0, 1, 2, 3, 4, 5].includes(s) ? s : 0

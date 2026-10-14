@@ -11,7 +11,7 @@
       <section class="section-card">
         <div class="section-title">
           <div><strong>发现候选</strong><span>候选仅供查看</span></div>
-          <a-tag :color="readyCount ? 'green' : 'default'">{{ readyCount }} 个待人工确认</a-tag>
+          <a-tag :color="readyCount ? 'green' : undefined">{{ readyCount }} 个待人工确认</a-tag>
         </div>
         <a-table :loading="loading" :columns="columns" :data-source="candidates" :row-key="rowKey" :pagination="{pageSize: 10}" :scroll="{x: 1380}">
           <span slot="asset" slot-scope="record">

@@ -113,7 +113,7 @@ const ADMISSION_STATE_META = {
 const REFERENCE_FIELD_KINDS = new Set(['location', 'networkType', 'team', 'person', 'virtualHost'])
 
 function classMeta(assetClass) {
-  return CLASS_META[assetClass] || {label: assetClass || '未知类型', icon: 'database', color: 'default'}
+  return CLASS_META[assetClass] || {label: assetClass || '未知类型', icon: 'database', color: undefined}
 }
 
 function assetKey(asset) {

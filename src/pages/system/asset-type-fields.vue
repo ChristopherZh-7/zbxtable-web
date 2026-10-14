@@ -117,7 +117,7 @@ const ALL_FIELDS = [
 ];
 
 const RENDER_OPTIONS = [
-  { value: 'text',     label: 'text',     color: 'default' },
+  { value: 'text',     label: 'text',     color: undefined },
   { value: 'progress', label: 'progress', color: 'blue'    },
   { value: 'status',   label: 'status',   color: 'green'   },
   { value: 'ping',     label: 'ping',     color: 'cyan'    },

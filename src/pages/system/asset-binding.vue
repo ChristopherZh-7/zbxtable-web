@@ -48,7 +48,7 @@
             </a-tooltip>
           </span>
           <span slot="legacy_automation" slot-scope="text, record">
-            <a-tag color="default">已停用</a-tag>
+            <a-tag>已停用</a-tag>
             <span class="legacy-meta">{{ legacyAutomationLabel(record) }}</span>
           </span>
           <span slot="status" slot-scope="text, record">
@@ -117,7 +117,7 @@
             <a-tag color="blue">{{ metricCount(record) }} 项历史关联</a-tag>
           </span>
           <span slot="mapping_automation" slot-scope="text, record">
-            <a-tag color="default">已停用</a-tag>
+            <a-tag>已停用</a-tag>
             <span class="legacy-meta">{{ legacyAutomationLabel(record) }}</span>
           </span>
           <span slot="mapping_status" slot-scope="text, record">

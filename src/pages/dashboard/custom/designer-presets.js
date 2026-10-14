@@ -41,4 +41,22 @@ const DASHBOARD_PRESETS = Object.freeze([
   },
 ])
 
-module.exports = {DASHBOARD_PRESETS}
+// The screen templates use the original 1920×1080 heading and 14 px gutters.
+// Existing saved layouts and the ordinary dashboard presets are not rewritten.
+const screenLayouts = [
+  [[18, 94, 936, 479], [968, 94, 460, 479], [1442, 94, 460, 479], [18, 587, 1884, 479]],
+  [[18, 94, 618, 479], [650, 94, 620, 479], [1284, 94, 618, 479], [18, 587, 618, 479], [650, 587, 620, 479], [1284, 587, 618, 479]],
+  [[18, 94, 1242, 972], [1274, 94, 628, 479], [1274, 587, 628, 479]],
+]
+const SCREEN_PRESETS = Object.freeze(DASHBOARD_PRESETS.map((preset, index) => ({
+  ...preset,
+  description: preset.description + ' · 原版运维样式',
+  width: 1920,
+  height: 1080,
+  nodes: preset.nodes.map((node, nodeIndex) => {
+    const [x, y, width, height] = screenLayouts[index][nodeIndex]
+    return {...node, position: {x, y}, size: {width, height}}
+  }),
+})))
+
+module.exports = {DASHBOARD_PRESETS, SCREEN_PRESETS}

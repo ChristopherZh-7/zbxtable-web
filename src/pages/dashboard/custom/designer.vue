@@ -1,24 +1,20 @@
 <template>
-  <page-layout :noTitle="true">
-    <div class="custom-dashboard-designer">
-      <div class="custom-dashboard-designer__header">
+  <page-layout :noTitle="true" :class="{'custom-dashboard-presentation-page': presenting}">
+    <div ref="designer" class="custom-dashboard-designer" :class="{'is-presenting': presenting, 'has-screen-heading': canvasHeading}">
+      <div v-show="!presenting" class="custom-dashboard-designer__header">
         <div class="custom-dashboard-designer__identity">
           <h2>{{ dashboardId ? (isReadonly ? `查看${resourceLabel}` : `编辑${resourceLabel}`) : `新建${resourceLabel}` }}</h2>
-          <a-input v-model.trim="form.name" :disabled="isReadonly" :placeholder="`${resourceLabel}名称`" style="width: 260px" />
+          <a-input v-model.trim="form.name" :disabled="isReadonly" :placeholder="`${resourceLabel}名称`" class="designer-name" />
           <a-select v-model="form.visibility" :disabled="isReadonly" style="width: 140px">
             <a-select-option value="personal">仅自己可见</a-select-option>
             <a-select-option value="tenant">租户可见</a-select-option>
           </a-select>
-          <a-tag color="blue">{{ nodes.length }} 个组件</a-tag>
-          <span class="designer-meta">画布 {{ form.canvasWidth }} × {{ form.canvasHeight }} · 拖拽后可在右侧精确调整</span>
-          <a-tag :color="activePresetKey ? 'cyan' : 'default'">{{ activePresetLabel }}</a-tag>
         </div>
         <div class="custom-dashboard-designer__actions">
           <a-button :loading="refreshing" @click="refreshAll"><a-icon type="sync" /> 刷新数据</a-button>
           <a-button
             v-if="dashboardId && !isReadonly"
             :loading="shareLoading"
-            style="margin-left: 8px"
             @click="generateShare"
           >
             <a-icon type="share-alt" /> {{ dashboard && dashboard.share_enabled ? '重新生成分享' : '生成分享' }}
@@ -28,24 +24,37 @@
             title="撤销后当前分享链接将立即失效，确认撤销？"
             @confirm="revokeShare"
           >
-            <a-button :loading="shareRevoking" style="margin-left: 8px"><a-icon type="stop" /> 撤销分享</a-button>
+            <a-button :loading="shareRevoking"><a-icon type="stop" /> 撤销分享</a-button>
           </a-popconfirm>
-          <a-button v-if="!isReadonly" type="primary" :loading="saving" style="margin-left: 8px" @click="save">
-            <a-icon type="save" /> 保存{{ resourceLabel }}
-          </a-button>
           <a-popconfirm
             v-if="!isReadonly && nodes.length"
             title="清空后当前未保存的组件会被移除，确认继续？"
             @confirm="clearCanvas"
           >
-            <a-button style="margin-left: 8px">清空画布</a-button>
+            <a-button class="clear-canvas-btn" icon="delete">清空画布</a-button>
           </a-popconfirm>
-          <a-button style="margin-left: 8px" @click="back">返回列表</a-button>
+          <a-button icon="arrow-left" @click="back">返回列表</a-button>
+          <a-button icon="play-circle" :disabled="!nodes.length" @click="startPresentation">展示{{ resourceLabel }}</a-button>
+          <a-button v-if="!isReadonly" type="primary" :loading="saving" @click="save">
+            <a-icon type="save" /> 保存{{ resourceLabel }}
+          </a-button>
         </div>
+      </div>
+      <div v-show="!presenting" class="designer-context">
+        <a-tag color="blue">{{ nodes.length }} 个组件</a-tag>
+        <span class="designer-meta">画布 {{ form.canvasWidth }} × {{ form.canvasHeight }}</span>
+        <span class="designer-layout-badge">{{ activePresetLabel }}</span>
+        <span class="designer-flow-hint">保存后可从列表展示；编辑中的展示为当前草稿预览。</span>
+      </div>
+
+      <div v-if="presenting && !canvasHeading" class="presentation-toolbar">
+        <strong>{{ form.name || resourceLabel + '预览' }}</strong>
+        <a-button icon="fullscreen" @click="togglePresentationFullscreen">{{ presentationFullscreen ? '退出全屏' : '全屏显示' }}</a-button>
+        <a-button icon="close" @click="exitPresentation">{{ presentationOnly ? '返回原页面' : '退出展示' }}</a-button>
       </div>
 
       <a-alert
-        v-if="isReadonly"
+        v-if="isReadonly && !presenting"
         message="当前为只读查看模式，可刷新图表数据，但不能改变布局、数据源或可见范围。"
         type="info"
         show-icon
@@ -53,15 +62,22 @@
       />
 
       <div v-if="!isReadonly" class="custom-dashboard-designer__palette">
-        <strong>展示组件</strong>
-        <span class="palette-hint">拖入画布，或单击快速添加</span>
+        <div class="palette-heading">
+        <strong>{{ visualizationMode ? '原版运维组件' : '展示组件' }}</strong>
+        <span class="palette-hint">{{ visualizationMode ? '原版配套样式 · 拖入画布，或单击添加' : '拖入画布，或单击快速添加' }}</span>
+        <a-button v-if="visualizationMode" type="link" size="small" @click="extraChartsExpanded = !extraChartsExpanded">{{ extraChartsExpanded ? '收起补充图表' : '更多同款图表' }}</a-button>
+        </div>
+        <div class="palette-grid">
         <div
-          v-for="item in chartTypes"
+          v-for="item in paletteTypes"
           :key="item.value"
           class="dashboard-chart-tool"
           role="button"
+          tabindex="0"
           :aria-label="`添加${item.label}`"
           @click="addChart(item.value)"
+          @keydown.enter.prevent="addChart(item.value)"
+          @keydown.space.prevent="addChart(item.value)"
         >
           <span
             class="dashboard-chart-tool__drag"
@@ -71,7 +87,8 @@
           >
             <a-icon :type="item.icon" />
           </span>
-          <span>{{ item.label }}</span>
+          <span class="dashboard-chart-tool__label">{{ item.label }}</span>
+        </div>
         </div>
       </div>
 
@@ -83,11 +100,17 @@
         <div v-if="presetsExpanded" class="preset-list">
           <div v-for="preset in presets" :key="preset.key" class="preset-card">
             <div class="preset-preview" :class="{'preset-preview--dark': visualizationMode}" :aria-label="preset.label + '布局预览'">
-              <svg v-if="preset.key === 'operations-screen'" viewBox="0 0 1920 1080" width="100%" height="100%" aria-label="原版运维组件预览">
-                <foreignObject x="0" y="0" width="1920" height="1080">
-                  <div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:1920px;height:1080px;pointer-events:none">
-                    <operations-widget v-for="node in preset.nodes" :key="node.chart_type" :type="node.chart_type" :title="node.title"
-                      :style="{position:'absolute', left: node.position.x + 'px', top: node.position.y + 'px', width: node.size.width + 'px', height: node.size.height + 'px'}" />
+              <svg v-if="visualizationMode" :viewBox="'0 0 ' + preset.width + ' ' + preset.height" width="100%" height="100%" :aria-label="preset.label + '原版样式预览'">
+                <foreignObject x="0" y="0" :width="preset.width" :height="preset.height">
+                  <div xmlns="http://www.w3.org/1999/xhtml" class="screen-surface preset-screen-surface" :style="{width: preset.width + 'px', height: preset.height + 'px'}">
+                    <div class="screen-header"><div class="header-title"><div class="title-main">{{ preset.key === 'operations-screen' ? '运维监控指挥中心' : preset.label }}</div><div class="title-sub">集中监控与运行态势</div></div></div>
+                    <template v-for="node in preset.nodes">
+                      <operations-widget v-if="isOperationsType(node.chart_type)" :key="node.title" :type="node.chart_type" :title="node.title"
+                        :style="presetScreenNodeStyle(node)" />
+                      <screen-panel v-else :key="node.title" :title="node.title" extra="监控指标" :style="presetScreenNodeStyle(node)">
+                        <div class="preset-screen-graphic" v-html="previewGraphic(node.chart_type)"></div>
+                      </screen-panel>
+                    </template>
                   </div>
                 </foreignObject>
               </svg>
@@ -112,7 +135,7 @@
 
       <div class="custom-dashboard-designer__body">
         <div ref="canvasWrap" class="custom-dashboard-designer__canvas-wrap">
-          <div class="canvas-help">
+          <div v-show="!presenting" class="canvas-help">
             <strong>画布布局</strong>
             <span>{{ isReadonly ? '只读查看；拖动空白处平移画布。' : '点击组件或从配置区选择；拖动空白处平移画布。' }}</span>
             <div class="canvas-tools">
@@ -123,7 +146,39 @@
               <a-button size="small" @click="fitCanvas">查看全图</a-button>
             </div>
           </div>
-          <div ref="canvas" class="custom-dashboard-designer__canvas"></div>
+          <div v-if="!isReadonly" class="layout-tools">
+            <span class="selection-hint">已选 {{ selectionCount }} 项 <small>Ctrl / ⌘ 单击多选</small></span>
+            <a-button size="small" @click="selectAllComponents">全选</a-button>
+            <a-select placeholder="对齐方式" :value="undefined" :disabled="selectionCount < 2" style="width: 116px" @change="arrangeSelection">
+              <a-select-option value="left">左对齐</a-select-option>
+              <a-select-option value="center">水平居中</a-select-option>
+              <a-select-option value="right">右对齐</a-select-option>
+              <a-select-option value="top">顶端对齐</a-select-option>
+              <a-select-option value="middle">垂直居中</a-select-option>
+              <a-select-option value="bottom">底端对齐</a-select-option>
+            </a-select>
+            <label>间距 <a-input-number v-model="layoutGap" :min="0" :max="200" :precision="0" size="small" aria-label="组件间距（像素）" /> px</label>
+            <a-button size="small" :disabled="selectionCount < 2" @click="arrangeSelection('horizontal-gap')">统一横向间距</a-button>
+            <a-button size="small" :disabled="selectionCount < 2" @click="arrangeSelection('vertical-gap')">统一纵向间距</a-button>
+            <span class="snap-hint"><a-icon type="border" /> 10 px 网格 · 自动对齐线</span>
+          </div>
+          <div class="canvas-stage">
+            <div v-if="visualizationMode" class="screen-design-surface screen-surface" :style="screenSurfaceStyle"></div>
+            <div v-if="canvasHeading" class="screen-design-heading" :style="screenHeadingStyle">
+              <header-bar :title="form.name" :viewport-label="form.canvasWidth + '×' + form.canvasHeight">
+                <template slot="left">
+                  <button v-if="presenting" type="button" class="header-btn" @click="exitPresentation"><a-icon type="arrow-left" />{{ presentationOnly ? '返回原页面' : '退出展示' }}</button>
+                  <span v-else class="screen-status">原版运维大屏</span>
+                </template>
+                <template slot="controls">
+                  <span class="screen-status">30 秒自动刷新</span>
+                  <button v-if="presenting" type="button" class="header-btn" @click="refreshAll"><a-icon type="sync" />刷新数据</button>
+                  <button v-if="presenting" type="button" class="header-btn" @click="togglePresentationFullscreen"><a-icon type="fullscreen" />{{ presentationFullscreen ? '退出全屏' : '全屏显示' }}</button>
+                </template>
+              </header-bar>
+            </div>
+            <div ref="canvas" class="custom-dashboard-designer__canvas"></div>
+          </div>
         </div>
 
         <aside v-if="!isReadonly" class="custom-dashboard-designer__editor">
@@ -262,11 +317,15 @@ import {
   registerDashboardChartNode,
   validateDashboardNodes,
 } from './dashboard-canvas'
-import {DASHBOARD_PRESETS} from './designer-presets'
+import {DASHBOARD_PRESETS, SCREEN_PRESETS} from './designer-presets'
 import {previewGraphic} from './component-preview'
 import {OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType} from '../../screen/operations-model'
 import {renderOperationsNode} from './operations-renderer'
 import OperationsWidget from '../../screen/components/OperationsWidget'
+import HeaderBar from '../../screen/components/HeaderBar'
+import ScreenPanel from '../../screen/components/ScreenPanel'
+import {arrangeNodes, presentationTransform} from './designer-layout'
+import {screenID, copyScreenDraft} from './screen-management'
 
 registerDashboardChartNode(Graph, echarts)
 
@@ -276,7 +335,11 @@ function clone(value) {
 
 export default {
   name: 'CustomDashboardDesigner',
-  components: {PageLayout, OperationsWidget},
+  components: {PageLayout, OperationsWidget, HeaderBar, ScreenPanel},
+  props: {
+    presentationOnly: {type: Boolean, default: false},
+    screenId: {type: String, default: ''},
+  },
   data() {
     return {
       dashboardId: '',
@@ -284,6 +347,7 @@ export default {
       graph: null,
       activePresetKey: '',
       presetsExpanded: false,
+      extraChartsExpanded: false,
       form: {name: '', visibility: 'personal', canvasWidth: 1600, canvasHeight: 900},
       nodes: [],
       selectedNode: null,
@@ -302,14 +366,26 @@ export default {
       loadingDashboard: false,
       addIndex: 0,
       canvasZoom: 1,
+      canvasTranslation: {tx: 0, ty: 0},
       canvasViewMode: 'edit',
+      selectionCount: 0,
+      layoutGap: 16,
+      presenting: this.presentationOnly,
+      presentationFullscreen: false,
     }
   },
   computed: {
     chartTypes() { return this.visualizationMode ? [...OPERATIONS_TYPES, ...CHART_TYPES] : CHART_TYPES },
-    presets() { return this.visualizationMode ? [OPERATIONS_PRESET, ...DASHBOARD_PRESETS] : DASHBOARD_PRESETS },
+    paletteTypes() { return this.visualizationMode && !this.extraChartsExpanded ? OPERATIONS_TYPES : this.chartTypes },
+    canvasHeading() { return this.visualizationMode && this.nodes.length > 0 && this.nodes.every(node => node.getPosition().y >= 80) },
+    screenSurfaceStyle() {
+      return {width: this.form.canvasWidth + 'px', height: this.form.canvasHeight + 'px',
+        transform: `translate(${this.canvasTranslation.tx}px, ${this.canvasTranslation.ty}px) scale(${this.canvasZoom})`}
+    },
+    screenHeadingStyle() { return {...this.screenSurfaceStyle, height: '80px'} },
+    presets() { return this.visualizationMode ? [OPERATIONS_PRESET, ...SCREEN_PRESETS] : DASHBOARD_PRESETS },
     visualizationMode() {
-      return this.$route.path.startsWith('/topology/custom-screen')
+      return this.presentationOnly || this.$route.path.startsWith('/topology/custom-screen')
     },
     resourceLabel() {
       return this.visualizationMode ? '大屏' : '仪表盘'
@@ -321,7 +397,7 @@ export default {
       return this.visualizationMode ? '/topology/custom-screens' : '/dashboard/custom-dashboards'
     },
     isReadonly() {
-      return this.$route.query.readonly === '1' || Boolean(this.dashboardId && !this.$can('tenant.dashboard', 'update'))
+      return this.presenting || this.$route.query.readonly === '1' || this.presentationOnly || Boolean(this.dashboardId && !this.$can('tenant.dashboard', 'update'))
     },
     activePresetLabel() {
       const preset = this.presets.find(item => item.key === this.activePresetKey)
@@ -329,6 +405,9 @@ export default {
     },
   },
   watch: {
+    '$route'(route) {
+      if (!this.presentationOnly && this.graph && route.path === this.designerPath && this.designerSourceKey(route) !== this._designerSource) this.initializeDashboard()
+    },
     isReadonly() {
       if (!this.graph) return
       const content = this.graph.toJSON()
@@ -349,9 +428,9 @@ export default {
     },
   },
   created() {
-    this.dashboardId = this.$route.query.id || ''
+    this.dashboardId = this.screenId || screenID(this.$route.query.id) || ''
     if (!this.dashboardId && !this.$can('tenant.dashboard', 'create')) {
-      this.$router.replace('/dashboard/custom-dashboards')
+      this.$router.replace(this.listPath)
     }
   },
   mounted() {
@@ -359,16 +438,20 @@ export default {
     this._canvasObserver = new ResizeObserver(() => this.resizeCanvas())
     this._canvasObserver.observe(this.$refs.canvasWrap)
     window.addEventListener('resize', this.resizeCanvas)
+    document.addEventListener('fullscreenchange', this.syncPresentationFullscreen)
+    window.addEventListener('keydown', this.presentationKeydown)
     if (!this.isReadonly) this.loadHosts()
-    if (this.dashboardId) this.loadDashboard()
-    else if (this.visualizationMode && !this.isReadonly) this.applyPreset(OPERATIONS_PRESET)
+    this.initializeDashboard()
     this._operationsTimer = setInterval(() => {
-      if (this.nodes.some(node => isOperationsType(node.getData().chart_type))) this.refreshAll()
+        if (this.visualizationMode || this.nodes.some(node => isOperationsType(node.getData().chart_type))) this.refreshAll()
     }, 30000)
   },
   beforeDestroy() {
+    this._dashboardRequest = (this._dashboardRequest || 0) + 1
     if (this._canvasObserver) this._canvasObserver.disconnect()
     window.removeEventListener('resize', this.resizeCanvas)
+    document.removeEventListener('fullscreenchange', this.syncPresentationFullscreen)
+    window.removeEventListener('keydown', this.presentationKeydown)
     if (this.graph) this.graph.dispose()
     if (this._disposeRenderers) this._disposeRenderers()
     clearInterval(this._operationsTimer)
@@ -376,6 +459,99 @@ export default {
   methods: {
     previewGraphic,
     isOperationsType,
+    designerSourceKey(route) {
+      return JSON.stringify([route.path, route.query.id || '', route.query.copy_from || '', route.query.template || ''])
+    },
+    initializeDashboard() {
+      this._designerSource = this.designerSourceKey(this.$route)
+      this._dashboardRequest = (this._dashboardRequest || 0) + 1
+      this.dashboardId = this.screenId || screenID(this.$route.query.id) || ''
+      const copyID = !this.presentationOnly && screenID(this.$route.query.copy_from)
+      if ((!this.dashboardId || copyID) && !this.$can('tenant.dashboard', 'create')) {
+        this.$router.replace(this.listPath)
+        return
+      }
+      if ((copyID && this.dashboardId) || (this.$route.query.copy_from && !copyID) || (this.$route.query.id && !this.dashboardId)) {
+        this.$message.warning('无效的大屏编号')
+        this.$router.replace(this.listPath)
+        return
+      }
+      this.dashboard = null
+      this.shareVisible = false
+      this.shareUrl = ''
+      this.loadingDashboard = false
+      this.form = {name: '', visibility: 'personal', canvasWidth: 1600, canvasHeight: 900}
+      this.activePresetKey = ''
+      this.presenting = this.presentationOnly
+      this.selectedNode = null
+      this.selectedHostKey = ''
+      this.graph.clearCells()
+      if (copyID) return this.loadDashboard(copyID, true)
+      if (this.dashboardId) return this.loadDashboard()
+      if (this.visualizationMode && !this.isReadonly) {
+        this.applyPreset(OPERATIONS_PRESET)
+        if (this.$route.query.template === 'operations') this.form.name = '运维大屏 - 副本'
+      }
+    },
+    selectAllComponents() {
+      if (this.isReadonly) return
+      this.graph.resetSelection(this.nodes)
+    },
+    arrangeSelection(action) {
+      if (this.isReadonly) return
+      const selected = this.graph.getSelectedCells().filter(cell => cell.isNode())
+      try {
+        const positions = arrangeNodes(selected.map(node => ({id: node.id, ...node.getPosition(), ...node.getSize()})), action, this.layoutGap,
+          {width: this.form.canvasWidth, height: this.form.canvasHeight})
+        positions.forEach(position => this.graph.getCellById(position.id).position(position.x, position.y))
+        this.activePresetKey = ''
+        this.syncNodes()
+      } catch (error) { this.$message.warning(error.message) }
+    },
+    startPresentation() {
+      if (!this.graph || !this.nodes.length) return
+      this._editorView = {zoom: this.canvasZoom, translation: this.graph.translate(), mode: this.canvasViewMode, selectedID: this.selectedNode && this.selectedNode.id}
+      this.presenting = true
+      this.$nextTick(() => this.resizeCanvas())
+    },
+    async exitPresentation() {
+      if (document.fullscreenElement === this.$refs.designer && document.exitFullscreen) {
+        try { await document.exitFullscreen() } catch (_) { /* leave presentation even if fullscreen exit fails */ }
+      }
+      if (this.presentationOnly) {
+        this.$emit('exit')
+        return
+      }
+      this.presenting = false
+      this.$nextTick(() => {
+        this.resizeCanvas()
+        const view = this._editorView
+        if (view && this.graph) {
+          this.canvasViewMode = view.mode
+          this.graph.zoomTo(view.zoom)
+          this.graph.translate(view.translation.tx, view.translation.ty)
+          if (!this.isReadonly && view.selectedID) {
+            this.selectedNode = this.nodes.find(node => node.id === view.selectedID) || null
+            if (this.selectedNode) this.graph.resetSelection([this.selectedNode])
+            this.syncNodes()
+          }
+        }
+      })
+    },
+    async togglePresentationFullscreen() {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen()
+        else if (this.$refs.designer.requestFullscreen) await this.$refs.designer.requestFullscreen()
+        else this.$message.info('当前浏览器不支持全屏，已使用窗口展示')
+      } catch (_) { this.$message.info('未进入浏览器全屏，可继续使用窗口展示') }
+    },
+    syncPresentationFullscreen() {
+      this.presentationFullscreen = document.fullscreenElement === this.$refs.designer
+      this.resizeCanvas()
+    },
+    presentationKeydown(event) {
+      if (this.presenting && event.key === 'Escape' && !document.fullscreenElement) this.exitPresentation()
+    },
     initGraph() {
       this._disposeRenderers = registerDashboardChartNode(Graph, echarts, node => renderOperationsNode(node, this))
       const canvasWidth = Math.max(this.$refs.canvas.clientWidth || 960, 320)
@@ -384,16 +560,20 @@ export default {
         container: this.$refs.canvas,
         width: canvasWidth,
         height: canvasHeight,
-        background: {color: this.visualizationMode ? '#061226' : '#f5f7fb'},
-        grid: {visible: true, size: 10},
+        background: {color: this.visualizationMode ? 'transparent' : '#f5f7fb'},
+        grid: {visible: !this.isReadonly, size: 10},
+        snapline: {enabled: !this.isReadonly, tolerance: 8},
         panning: true,
         mousewheel: {enabled: true, modifiers: ['ctrl', 'meta']},
         resizing: {enabled: !this.isReadonly, minWidth: 240, minHeight: 160},
-        selecting: {enabled: !this.isReadonly, showNodeSelectionBox: true},
+        selecting: {enabled: !this.isReadonly, multiple: true, multipleSelectionModifiers: ['ctrl', 'meta'], showNodeSelectionBox: true},
         interacting: !this.isReadonly,
       })
-      this.graph.on('node:click', ({node}) => {
-        if (!this.isReadonly) this.selectNode(node)
+      this.graph.on('node:click', ({node, e}) => {
+        if (!this.isReadonly && !(e && (e.ctrlKey || e.metaKey))) this.selectNode(node)
+      })
+      this.graph.on('selection:changed', () => {
+        this.selectionCount = this.graph.getSelectedCells().filter(cell => cell.isNode()).length
       })
       this.graph.on('node:added', ({node}) => {
         this.syncNodes()
@@ -405,6 +585,7 @@ export default {
       this.graph.on('node:change:size', () => this.syncNodes())
       this.graph.on('node:change:data', () => this.syncNodes())
       this.graph.on('scale', ({sx}) => { this.canvasZoom = sx })
+      this.graph.on('translate', ({tx, ty}) => { this.canvasTranslation = {tx, ty} })
       this.graph.on('blank:click', () => {
         this.selectedNode = null
         this.selectedHostKey = ''
@@ -420,9 +601,18 @@ export default {
     },
     resizeCanvas() {
       if (this.graph && this.$refs.canvas) {
+        if (this.presenting) {
+          const width = this.$refs.canvasWrap.clientWidth, height = this.$refs.canvasWrap.clientHeight
+          this.graph.resize(width, height)
+          const view = presentationTransform({width: this.form.canvasWidth, height: this.form.canvasHeight}, {width, height},
+            this.nodes.map(node => ({...node.getPosition(), ...node.getSize()})), this.canvasHeading ? 0 : 16)
+          this.graph.zoomTo(view.scale)
+          this.graph.translate(view.x, view.y)
+          return
+        }
         // X6 writes an inline canvas width; measure the flex parent, not that stale width.
         this.graph.resize(this.$refs.canvasWrap.clientWidth, Math.max(420, Math.min(window.innerHeight * 0.65, 720)))
-        if (this.canvasViewMode === 'fit' && this.nodes.length) this.graph.zoomToFit({padding: 30, maxScale: 1})
+        if (this.canvasViewMode === 'fit' && this.nodes.length) this.fitDesignCanvas()
         else if (this.selectedNode) this.graph.centerCell(this.selectedNode)
       }
     },
@@ -439,7 +629,14 @@ export default {
     fitCanvas() {
       this.canvasViewMode = 'fit'
       this.resizeCanvas()
-      if (this.nodes.length) this.graph.zoomToFit({padding: 30, maxScale: 1})
+    },
+    fitDesignCanvas() {
+      if (!this.visualizationMode) return this.graph.zoomToFit({padding: 30, maxScale: 1})
+      const view = presentationTransform({width: this.form.canvasWidth, height: this.form.canvasHeight},
+        {width: this.$refs.canvas.clientWidth, height: this.$refs.canvas.clientHeight},
+        this.nodes.map(node => ({...node.getPosition(), ...node.getSize()})), 24)
+      this.graph.zoomTo(view.scale)
+      this.graph.translate(view.x, view.y)
     },
     selectComponent(id) {
       const node = this.nodes.find(item => item.id === id)
@@ -468,7 +665,7 @@ export default {
     },
     nextPosition() {
       const index = this.addIndex++
-      return {x: 30 + (index % 3) * 390, y: 30 + Math.floor(index / 3) * 270}
+      return {x: 30 + (index % 3) * 390, y: (this.visualizationMode ? 94 : 30) + Math.floor(index / 3) * 270}
     },
     addChart(chartType) {
       if (this.isReadonly) return
@@ -482,6 +679,9 @@ export default {
         width: (node.size.width / preset.width * 100) + '%',
         height: (node.size.height / preset.height * 100) + '%',
       }
+    },
+    presetScreenNodeStyle(node) {
+      return {position: 'absolute', left: node.position.x + 'px', top: node.position.y + 'px', width: node.size.width + 'px', height: node.size.height + 'px', boxSizing: 'border-box'}
     },
     applyPreset(preset) {
       if (this.isReadonly) return
@@ -663,28 +863,39 @@ export default {
     openShare() {
       if (this.shareUrl) window.open(this.shareUrl, '_blank', 'noopener')
     },
-    loadDashboard() {
+    loadDashboard(sourceID = this.dashboardId, asCopy = false) {
+      const request = this._dashboardRequest = (this._dashboardRequest || 0) + 1
       this.loadingDashboard = true
-      dashboardDetail(this.dashboardId).then((response) => {
+      return dashboardDetail(sourceID).then((response) => {
+        if (request !== this._dashboardRequest || !this.graph) return
         const result = response.data
-        if (result.code !== 200) throw new Error(result.message || '仪表盘加载失败')
-        this.dashboard = result.data
-        this.form = {
-          name: this.dashboard.name,
-          visibility: this.dashboard.visibility,
-          canvasWidth: this.dashboard.canvas_width || 1600,
-          canvasHeight: this.dashboard.canvas_height || 900,
+        if (result.code !== 200) {
+          const error = new Error(result.message || '大屏加载失败')
+          error.code = result.code
+          throw error
         }
-        const nodes = Array.isArray(this.dashboard.nodes) ? this.dashboard.nodes : JSON.parse(this.dashboard.nodes || '[]')
+        const source = result.data
+        this.dashboard = asCopy ? null : source
+        const copied = asCopy ? copyScreenDraft(source) : null
+        this.form = copied ? copied.form : {
+          name: source.name, visibility: source.visibility,
+          canvasWidth: source.canvas_width || 1600, canvasHeight: source.canvas_height || 900,
+        }
+        const nodes = copied ? copied.nodes : clone(Array.isArray(source.nodes) ? source.nodes : JSON.parse(source.nodes || '[]'))
         nodes.forEach(node => {
           node.data = {...node.data, preview_enabled: !this.isReadonly}
         })
         this.graph.fromJSON({nodes, edges: []})
         this.syncNodes()
         this.fitCanvas()
+        if (this.presentationOnly) this.$nextTick(() => this.resizeCanvas())
+        else if (this.$route.query.present === '1') this.startPresentation()
         return this.refreshAll()
-      }).catch((error) => this.$message.error(error.message || '仪表盘加载失败'))
-        .finally(() => { this.loadingDashboard = false })
+      }).catch((error) => {
+        if (request !== this._dashboardRequest) return
+        if (this.presentationOnly) this.$emit('unavailable', error)
+        else this.$message.error(error.message || '大屏加载失败')
+      }).finally(() => { if (request === this._dashboardRequest) this.loadingDashboard = false })
     },
     refreshNode(node) {
       if (!node) return Promise.resolve()
@@ -754,6 +965,7 @@ export default {
       }))
     },
     save() {
+      if (this.isReadonly || !this.$can('tenant.dashboard', this.dashboardId ? 'update' : 'create')) return
       if (!this.form.name || this.form.name.length < 2) {
         this.$message.warning('请输入至少 2 个字符的仪表盘名称')
         return
@@ -777,7 +989,11 @@ export default {
         if (result.code !== 200) throw new Error(result.message || '保存失败')
         this.dashboard = result.data
         this.dashboardId = String(result.data.id)
-        if (String(this.$route.query.id || '') !== this.dashboardId) this.$router.replace({path: this.designerPath, query: {id: this.dashboardId}})
+        if (String(this.$route.query.id || '') !== this.dashboardId) {
+          const destination = {path: this.designerPath, query: {id: this.dashboardId}}
+          this._designerSource = this.designerSourceKey(destination)
+          this.$router.replace(destination)
+        }
         this.$message.success(`${this.resourceLabel}保存成功`)
       }).catch((error) => this.$message.error(error.message || `${this.resourceLabel}保存失败`))
         .finally(() => { this.saving = false })
@@ -801,8 +1017,8 @@ export default {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 16px;
+  gap: 12px 24px;
+  padding: 16px;
   border-bottom: 1px solid #e8e8e8;
 }
 .custom-dashboard-designer__identity {
@@ -815,43 +1031,77 @@ export default {
 .custom-dashboard-designer__identity h2 {
   margin: 0 10px 0 0;
   white-space: nowrap;
+  font-size: 18px;
+  font-weight: 600;
 }
-.custom-dashboard-designer__palette {
-  min-height: 70px;
+.designer-name { width: 240px; max-width: 100%; }
+.designer-context {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 10px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e6edf4;
+}
+.designer-context .ant-tag { margin: 0; }
+.designer-layout-badge { padding: 2px 8px; color: #526b83; border-radius: 3px; background: #eaf0f6; font-size: 12px; }
+.designer-flow-hint { margin-left: auto; color: #73869a; font-size: 12px; }
+.custom-dashboard-designer__actions .ant-btn { height: 34px; margin: 0; border-radius: 4px; }
+.custom-dashboard-designer__actions .clear-canvas-btn { color: #a45555; }
+.palette-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+.custom-dashboard-designer__palette {
+  padding: 14px 16px 16px;
   border-bottom: 1px solid #e8e8e8;
 }
 .palette-hint {
-  color: #8c8c8c;
-  margin-right: 8px;
+  color: #8290a0;
+  font-size: 12px;
 }
 .dashboard-chart-tool {
-  width: 92px;
-  height: 46px;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dce5ee;
+  border-radius: 4px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
+  justify-content: flex-start;
+  gap: 10px;
   cursor: pointer;
-  background: #fafafa;
+  background: #fff;
   user-select: none;
 }
 .dashboard-chart-tool__drag {
   display: inline-flex;
-  padding: 7px;
-  margin: -7px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: #47759f;
+  background: #eef4fa;
+  border-radius: 4px;
   cursor: grab;
 }
-.dashboard-chart-tool:hover {
-  color: #1890ff;
-  border-color: #1890ff;
-  background: #e6f7ff;
+.dashboard-chart-tool__label { white-space: nowrap; font-size: 13px; }
+.dashboard-chart-tool:hover,
+.dashboard-chart-tool:focus-visible {
+  color: #1b5a96;
+  border-color: #82a8cb;
+  background: #f3f8fd;
+  outline: none;
 }
 .designer-meta {
   color: #6b7f95;
@@ -869,8 +1119,11 @@ export default {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
+  margin: 0;
 }
+.custom-dashboard-designer__presets[open] .presets-heading { margin-bottom: 12px; }
+.presets-heading::before { content: '›'; color: #6b7f95; font-size: 18px; }
+.custom-dashboard-designer__presets[open] .presets-heading::before { transform: rotate(90deg); }
 .presets-heading span {
   color: #8290a0;
   font-size: 12px;
@@ -904,11 +1157,8 @@ export default {
   background: #061226;
   border-color: #1c5269;
 }
-.preset-preview--dark .preset-preview__node {
-  background: #091c34;
-  color: #00e6ff;
-  border-color: #1c5269;
-}
+.preset-screen-surface { position: relative; pointer-events: none; }
+.preset-screen-graphic { height: 100%; color: #00e6ff; }
 .preset-preview__graphic {
   width: 100%;
   height: 100%;
@@ -989,6 +1239,63 @@ export default {
   color: #1b5a96;
   white-space: nowrap;
 }
+.layout-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #dbe4ee;
+  background: #fff;
+  font-size: 12px;
+}
+.layout-tools .ant-select-selection--single { height: 28px; }
+.layout-tools .ant-select-selection__rendered { line-height: 26px; }
+.layout-tools .ant-input-number { width: 60px; margin: 0 4px; }
+.selection-hint { color: #31506e; }
+.selection-hint small, .snap-hint { color: #8290a0; margin-left: 4px; }
+.custom-dashboard-designer .x6-widget-snapline { stroke: #4b9bd8; }
+/* Elevate the page as well: PageLayout's content creates a z-index: 9
+   stacking context below the workbench sidebar (z-index: 10). */
+.custom-dashboard-presentation-page {
+  position: relative;
+  z-index: 1500;
+}
+.custom-dashboard-designer.is-presenting {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  width: 100vw;
+  height: 100vh;
+  background: #061226;
+}
+.presentation-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 20px;
+  color: #d5e8fa;
+  background: #0a1d34;
+  border-bottom: 1px solid #203d59;
+}
+.presentation-toolbar strong { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.presentation-toolbar strong { text-align: center; color: #cfe8ff; font-size: 20px; letter-spacing: 3px; text-shadow: 0 0 12px rgba(0,230,255,.5); }
+.presentation-toolbar .ant-btn { color: #d5e8fa; background: transparent; border-color: #42617d; }
+.is-presenting .custom-dashboard-designer__body,
+.is-presenting .custom-dashboard-designer__canvas-wrap,
+.is-presenting .custom-dashboard-designer__canvas { height: calc(100vh - 56px); width: 100%; }
+.is-presenting.has-screen-heading .custom-dashboard-designer__body,
+.is-presenting.has-screen-heading .custom-dashboard-designer__canvas-wrap,
+.is-presenting.has-screen-heading .custom-dashboard-designer__canvas { height: 100vh; }
+.canvas-stage { position: relative; overflow: hidden; background: #02060d; }
+.screen-design-surface, .screen-design-heading { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.screen-design-surface { z-index: 0; }
+.screen-design-heading { z-index: 2; }
+.screen-design-heading .header-title { min-width: 0; }
+.screen-design-heading .title-main { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.is-presenting .screen-design-heading .header-btn { pointer-events: auto; }
+.canvas-stage > .custom-dashboard-designer__canvas { position: relative; z-index: 1; }
 .custom-dashboard-designer__canvas {
   width: 100%;
   height: clamp(420px, 65vh, 720px);

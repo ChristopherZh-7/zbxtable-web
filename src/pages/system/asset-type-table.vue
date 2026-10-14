@@ -75,7 +75,7 @@ export default {
       } catch { /* silent */ }
     },
     monitorTypeLabel: (t) => (MONITOR_TYPE_MAP[t] || {}).label || t || '-',
-    monitorTypeColor: (t) => (MONITOR_TYPE_MAP[t] || {}).color || 'default',
+    monitorTypeColor: (t) => (MONITOR_TYPE_MAP[t] || {}).color || undefined,
     groupName(key)  { return this.groupMap[key] ? this.groupMap[key].name : key; },
     groupIcon(key)  { return this.groupMap[key] ? this.groupMap[key].icon : ''; },
   },

@@ -1,22 +1,25 @@
 <template>
   <div class="screen-header">
     <div class="header-left">
-      <span class="header-btn" @click="goBack"><a-icon type="arrow-left" />{{ $t('screen_back') }}</span>
+      <slot name="left">
+      <button type="button" class="header-btn screen-back" @click="goBack"><a-icon type="arrow-left" />{{ $t('screen_back') }}</button>
       <span v-if="canManageScreens" class="header-btn" @click="$emit('manage-screens')">
         <a-icon type="appstore" />{{ $t('screen_manage') }}
       </span>
       <span v-if="canCreateScreen" class="header-btn" @click="$emit('create-screen')">
         <a-icon type="plus" />{{ $t('screen_create') }}
       </span>
+      </slot>
     </div>
     <div class="header-title">
-      <div class="title-main">{{ $t('screen_title') }}</div>
+      <div class="title-main">{{ title || $t('screen_title') }}</div>
       <div class="title-sub">{{ $t('screen_subtitle') }}</div>
     </div>
     <div class="header-right">
       <span class="clock-date">{{ dateText }}</span>
       <span class="clock-time">{{ timeText }}</span>
 
+      <slot name="controls">
       <span class="screen-status"><a-icon type="desktop" />{{ viewportLabel }}</span>
       <span class="screen-status"><a-icon type="history" />{{ $t('screen_last_refresh') }} {{ lastUpdated || '--' }}</span>
 
@@ -33,15 +36,19 @@
         <a-icon :type="isFs ? 'fullscreen-exit' : 'fullscreen'" />
         {{ isFs ? $t('screen_exit_fullscreen') : $t('screen_fullscreen') }}
       </span>
+      </slot>
     </div>
   </div>
 </template>
 
 <script>
+import {screenContextKey, screenSessionStorage, screenReturnPath} from '@/utils/screen-navigation'
+
 export default {
   name: 'HeaderBar',
   i18n: require('../i18n'),
   props: {
+    title: { type: String, default: '' },
     interval: { type: Number, default: 30 },
     lastUpdated: { type: String, default: '' },
     viewportLabel: { type: String, default: '1920×1080' },
@@ -86,7 +93,13 @@ export default {
   },
   methods: {
     pad(n) { return String(n).padStart(2, '0') },
-    goBack() { this.$router.push('/dashboard/workplace') },
+    async goBack() {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        try { await document.exitFullscreen() } catch (_) { /* navigation remains available */ }
+      }
+      const path = screenReturnPath(screenSessionStorage(window), screenContextKey(this.$store), this.$router)
+      this.$router.replace(path)
+    },
     syncFs() { this.isFs = !!document.fullscreenElement },
     toggleFullscreen() {
       const el = document.documentElement
@@ -107,3 +120,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.screen-back { font: inherit; background: transparent; cursor: pointer; }
+</style>

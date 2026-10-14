@@ -4,6 +4,7 @@
 
 <script>
 import * as echarts from 'echarts'
+import {screenTooltip, screenAxis, screenLineStyle} from '../chart-theme'
 
 const MAX_POINTS = 30
 
@@ -68,10 +69,7 @@ export default {
       const outs = this.history.map(p => p.out)
       this.chart.setOption({
         tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(2,6,13,0.85)',
-          borderColor: 'rgba(0,230,255,0.4)',
-          textStyle: { color: '#cfe8ff' },
+          ...screenTooltip('axis'),
           formatter: params => {
             const lines = params.map(p => `${p.marker} ${p.seriesName}: ${this.fmt(p.value)}`)
             return `${params[0].axisValue}<br/>${lines.join('<br/>')}`
@@ -93,16 +91,14 @@ export default {
           type: 'category',
           data: xs,
           boundaryGap: false,
-          axisLine: { lineStyle: { color: 'rgba(0,230,255,0.3)' } },
-          axisLabel: { color: 'rgba(207,232,255,0.6)', fontSize: 11 }
+          axisLine: screenAxis().axisLine,
+          axisLabel: screenAxis().axisLabel
         },
         yAxis: {
           type: 'value',
-          axisLine: { lineStyle: { color: 'rgba(0,230,255,0.3)' } },
-          splitLine: { lineStyle: { color: 'rgba(0,230,255,0.08)' } },
+          ...screenAxis(),
           axisLabel: {
-            color: 'rgba(207,232,255,0.6)',
-            fontSize: 11,
+            ...screenAxis().axisLabel,
             margin: 12,
             formatter: v => this.fmt(v)
           }
@@ -111,31 +107,13 @@ export default {
           {
             name: this.$t('egress_in'),
             type: 'line',
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { color: '#00e6ff', width: 2 },
-            itemStyle: { color: '#00e6ff' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(0,230,255,0.55)' },
-                { offset: 1, color: 'rgba(0,230,255,0.02)' }
-              ])
-            },
+            ...screenLineStyle('#00e6ff'),
             data: ins
           },
           {
             name: this.$t('egress_out'),
             type: 'line',
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { color: '#ff9248', width: 2 },
-            itemStyle: { color: '#ff9248' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(255,146,72,0.5)' },
-                { offset: 1, color: 'rgba(255,146,72,0.02)' }
-              ])
-            },
+            ...screenLineStyle('#ff9248', 0.5),
             data: outs
           }
         ]

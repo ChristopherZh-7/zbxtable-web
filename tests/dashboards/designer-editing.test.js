@@ -13,7 +13,7 @@ function methods(overrides = {}) {
     .replace(/^import[\s\S]*?from ['"][^'"]+['"]\r?\n/gm, '')
     .replace('registerDashboardChartNode(Graph, echarts)', '')
     .replace('export default', 'module.exports =')
-  const sandbox = {module: {exports: {}}, PageLayout: {}, OperationsWidget: {}, defaultNodeData, previewGraphic, isOperationsType, OPERATIONS_PRESET, ...overrides}
+  const sandbox = {module: {exports: {}}, PageLayout: {}, OperationsWidget: {}, HeaderBar: {}, ScreenPanel: {}, defaultNodeData, previewGraphic, isOperationsType, OPERATIONS_PRESET, ...overrides}
   vm.runInNewContext(script, sandbox)
   return sandbox.module.exports.methods
 }
@@ -138,7 +138,9 @@ test('canvas resizing uses the visible parent instead of X6 stale inline width',
     graph: {resize: (width, height) => calls.push([width, height]), zoomToFit: () => calls.push('fit')},
     nodes: [node()], canvasViewMode: 'fit',
   }
-  methods({window: {innerHeight: 800}}).resizeCanvas.call(ctx)
+  const impl = methods({window: {innerHeight: 800}})
+  ctx.fitDesignCanvas = impl.fitDesignCanvas.bind(ctx)
+  impl.resizeCanvas.call(ctx)
   assert.deepEqual(calls, [[800, 520], 'fit'])
 })
 

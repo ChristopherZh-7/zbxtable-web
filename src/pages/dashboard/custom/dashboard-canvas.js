@@ -1,5 +1,6 @@
 const {previewGraphic, darkBackground} = require('./component-preview')
 const {OPERATIONS_TYPES, isOperationsType} = require('../../screen/operations-model')
+const {SCREEN_FONT, screenTooltip, screenAxis, screenLineStyle, screenGradient, screenPieStyle, screenValueScale, formatScreenValue} = require('../../screen/chart-theme')
 
 const CHART_TYPES = Object.freeze([
   {value: 'line', label: '折线图', icon: 'line-chart'},
@@ -66,31 +67,56 @@ function chartOption(data) {
   const units = source.units || ''
   const style = data && data.style || {}
   const color = style.color || '#1677ff'
-  const textColor = darkBackground(style.background) ? '#cfe8ff' : '#455468'
+  const dark = darkBackground(style.background)
+  const textColor = dark ? '#cfe8ff' : '#455468'
+  const formatValue = (value) => dark ? formatScreenValue(value, units, style.precision) : formatDashboardValue(value, data)
+  const scale = screenValueScale(units, Math.max(0, ...values.map(Math.abs)))
+  const axisValue = value => String(Number((Number(value) / scale.divisor).toFixed(2)))
   const common = {
     animation: false,
     color: [color],
-    backgroundColor: style.background || '#ffffff',
-    textStyle: {fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: textColor},
-    tooltip: {trigger: data.chart_type === 'pie' ? 'item' : 'axis'},
+    backgroundColor: dark ? 'transparent' : style.background || '#ffffff',
+    textStyle: {fontFamily: dark ? SCREEN_FONT : '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: textColor},
+    tooltip: dark ? {...screenTooltip(['pie', 'gauge'].includes(data.chart_type) ? 'item' : 'axis'), renderMode: 'richText', valueFormatter: formatValue}
+      : {trigger: data.chart_type === 'pie' ? 'item' : 'axis'},
   }
   if (data.chart_type === 'gauge') {
-    const max = units === '%' ? 100 : Math.max(100, Math.ceil(latest * 1.2))
-    return {...common, series: [{type: 'gauge', min: 0, max, axisLabel: {color: textColor}, detail: {color: textColor, formatter: (value) => formatDashboardValue(value, data)}, data: [{value: latest, name: source.item_name || ''}]}]}
+    let max = units === '%' ? 100 : Math.max(100, Math.ceil(latest * 1.2))
+    if (dark && scale.divisor > 1) max = Math.ceil(max / scale.divisor / 5) * 5 * scale.divisor
+    return {...common, series: [{type: 'gauge', min: 0, max, axisLabel: {color: textColor},
+      ...(dark ? {radius: '84%', center: ['50%', '48%'], splitNumber: 5,
+        axisLabel: {...screenAxis().axisLabel, formatter: axisValue, distance: 16},
+        axisLine: {lineStyle: {width: 10, color: [[1, 'rgba(0,230,255,.16)']]}},
+        progress: {show: true, width: 10, itemStyle: {color}}, pointer: {itemStyle: {color}},
+        axisTick: {lineStyle: {color: 'rgba(207,232,255,.5)'}}, splitLine: {lineStyle: {color: 'rgba(207,232,255,.7)'}},
+        title: {show: false}} : {}),
+      detail: {color: dark ? color : textColor, ...(dark ? {fontSize: 26, offsetCenter: [0, '65%'], fontFamily: SCREEN_FONT} : {}), formatter: formatValue},
+      data: [{value: latest, name: source.item_name || ''}]}]}
   }
   if (data.chart_type === 'pie') {
     const max = units === '%' ? 100 : Math.max(latest, 1)
-    return {...common, series: [{type: 'pie', radius: ['38%', '68%'], data: [
+    return {...common,
+      ...(dark ? {legend: {bottom: 4, left: 'center', itemWidth: 10, itemHeight: 10,
+        textStyle: {color: 'rgba(207,232,255,0.75)', fontSize: 12},
+        formatter: name => name.length > 26 ? name.slice(0, 25) + '…' : name}} : {}),
+      series: [{type: 'pie', radius: dark ? ['38%', '62%'] : ['38%', '68%'],
+      ...(dark ? {...screenPieStyle(color), center: ['50%', '46%'], avoidLabelOverlap: true,
+        labelLayout: {hideOverlap: true}} : {}), data: [
       {name: source.item_name || '最新值', value: latest},
-      {name: '剩余', value: Math.max(0, max - latest), itemStyle: {color: '#e8edf5'}},
-    ], label: {color: textColor, formatter: (params) => `${params.name}\n${formatDashboardValue(params.value, data)}`}}]}
+      {name: '剩余', value: Math.max(0, max - latest), itemStyle: {color: dark ? 'rgba(0,230,255,.12)' : '#e8edf5'}},
+    ], label: {color: textColor, ...(dark ? {fontSize: 11} : {}),
+      formatter: (params) => dark ? formatValue(params.value) : `${params.name}\n${formatValue(params.value)}`}}]}
   }
   return {
     ...common,
-    grid: {left: 52, right: 18, top: 20, bottom: 38},
-    xAxis: {type: 'category', data: labels, axisLabel: {fontSize: 10, color: textColor}},
-    yAxis: {type: 'value', name: units, nameTextStyle: {color: textColor}, axisLabel: {fontSize: 10, color: textColor}},
-    series: [{type: data.chart_type === 'bar' ? 'bar' : 'line', data: values, smooth: data.chart_type === 'line', areaStyle: data.chart_type === 'line' ? {opacity: 0.12} : undefined}],
+    grid: dark ? {left: 12, right: 18, top: 30, bottom: 30, containLabel: true} : {left: 52, right: 18, top: 20, bottom: 38},
+    xAxis: {type: 'category', data: labels, axisLabel: {fontSize: 10, color: textColor},
+      ...(dark ? {boundaryGap: data.chart_type === 'bar', axisLine: screenAxis().axisLine, axisLabel: screenAxis().axisLabel} : {})},
+    yAxis: {type: 'value', name: dark ? scale.units : units, nameTextStyle: {color: textColor}, axisLabel: {fontSize: 10, color: textColor},
+      ...(dark ? {...screenAxis(), axisLabel: {...screenAxis().axisLabel, margin: 12, formatter: axisValue}} : {})},
+    series: [{name: source.item_name || data.title || '', type: data.chart_type === 'bar' ? 'bar' : 'line', data: values,
+      ...(dark ? (data.chart_type === 'bar' ? {barMaxWidth: 20, itemStyle: {color: screenGradient(color, 0.95)}} : screenLineStyle(color))
+        : {smooth: data.chart_type === 'line', areaStyle: data.chart_type === 'line' ? {opacity: 0.12} : undefined})}],
   }
 }
 
@@ -98,6 +124,12 @@ function formatDashboardValue(value, data) {
   const precision = Number(data && data.style && data.style.precision)
   const digits = Number.isInteger(precision) && precision >= 0 && precision <= 4 ? precision : 2
   return `${Number(value || 0).toFixed(digits)}${data && data.data_source && data.data_source.units || ''}`
+}
+
+function displayValue(value, data) {
+  return darkBackground(data.style && data.style.background)
+    ? formatScreenValue(value, data.data_source && data.data_source.units, data.style.precision)
+    : formatDashboardValue(value, data)
 }
 
 function renderTable(plot, data) {
@@ -122,7 +154,7 @@ function renderTable(plot, data) {
       const value = document.createElement('td')
       const stamp = Number(point.clock) * 1000
       time.textContent = Number.isFinite(stamp) ? new Date(stamp).toLocaleString() : point.clock
-      value.textContent = formatDashboardValue(point.value, data)
+      value.textContent = displayValue(point.value, data)
       row.appendChild(time)
       row.appendChild(value)
       body.appendChild(row)
@@ -149,7 +181,7 @@ function renderTopology(plot, data) {
   const name = document.createElement('span')
   name.textContent = source.item_name || '未绑定监控项'
   const value = document.createElement('strong')
-  value.textContent = formatDashboardValue(latest, data)
+  value.textContent = displayValue(latest, data)
   metric.appendChild(name)
   metric.appendChild(value)
   topology.appendChild(host)
@@ -194,24 +226,33 @@ function registerDashboardChartNode(Graph, echarts, operationsRenderer) {
           return resource.element
         }
         const wrap = document.createElement('div')
-        wrap.className = 'dashboard-chart-node'
         const style = data.style || defaultNodeData('line').style
-        wrap.style.background = style.background || '#ffffff'
         const dark = darkBackground(style.background)
+        wrap.className = dark ? 'dashboard-chart-node dashboard-chart-node--screen screen-panel' : 'dashboard-chart-node'
+        if (!dark) wrap.style.background = style.background || '#ffffff'
         wrap.style.color = dark ? '#cfe8ff' : '#455468'
-        wrap.style.borderColor = dark ? '#1c5269' : '#dfe5ef'
+        if (!dark) wrap.style.borderColor = '#dfe5ef'
         wrap.style.setProperty('--dashboard-accent', style.color || '#1677ff')
+        if (dark) ['tl', 'tr', 'bl', 'br'].forEach(corner => {
+          const ornament = document.createElement('div')
+          ornament.className = 'corner corner-' + corner
+          wrap.appendChild(ornament)
+        })
         const header = document.createElement('div')
-        header.className = 'dashboard-chart-node__header'
+        header.className = dark ? 'panel-title' : 'dashboard-chart-node__header'
         const title = document.createElement('strong')
+        if (dark) title.className = 'title-text'
         title.textContent = data.title || CHART_LABELS[data.chart_type] || '未命名图表'
+        title.title = title.textContent
         const source = document.createElement('span')
+        if (dark) source.className = 'title-extra'
         source.textContent = data.data_source && data.data_source.item_name || '待绑定监控项'
+        source.title = source.textContent
         source.style.color = dark ? '#85a5bd' : '#8c8c8c'
         header.appendChild(title)
         header.appendChild(source)
         const plot = document.createElement('div')
-        plot.className = 'dashboard-chart-node__plot'
+        plot.className = dark ? 'dashboard-chart-node__plot panel-body' : 'dashboard-chart-node__plot'
         wrap.appendChild(header)
         wrap.appendChild(plot)
         const render = () => {

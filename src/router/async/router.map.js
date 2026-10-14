@@ -33,6 +33,7 @@ const routerMap = {
 		component: view.blank,
 	},
 	workplace: {
+		menuName: '主页',
 		component: () => import('@/pages/dashboard/index'),
 	},
 	overview: {
@@ -42,6 +43,7 @@ const routerMap = {
 		component: () => import('@/pages/dashboard/dash'),
 	},
 	customDashboards: {
+		invisible: true,
 		component: () => import('@/pages/dashboard/custom/index'),
 	},
 	customDashboardDesigner: {
@@ -119,9 +121,11 @@ const routerMap = {
 	},
 	screenDashboard: {
 		path: '/screen/dashboard',
-		component: () => import('@/pages/screen/index'),
+		invisible: true,
+		component: () => import('@/pages/screen/ScreenEntry'),
 	},
 	visualizationDashboards: {
+		menuName: '大屏管理',
 		component: () => import('@/pages/dashboard/custom/index'),
 	},
 	visualizationDashboardDesigner: {

@@ -53,6 +53,7 @@
     <div class="linux-list smartops-data-panel">
       <a-table :loading="loading" :columns="columns" :data-source="list" :expanded-row-keys="expandedAlarmKeys" @expand="getEvent" @change="changePage" :pagination="pagination" :rowKey="(record) => { return record.id;}">
         <!-- 主表格的插槽 -->
+        <span slot="message" slot-scope="record" :title="'原文：' + (record.message || '')">{{ alarmText(record.message) }}</span>
         <div slot="instance_name" slot-scope="record">
           <a-tag :color="themeColor">{{getInstanceName(record)}}</a-tag>
         </div>
@@ -284,7 +285,7 @@
                 <div v-if="contextExpanded" class="context-detail">
                   <div><strong>{{ $t('col_device_name') }}:</strong> {{ currentAlarmContext.hostname }}</div>
                   <div><strong>{{ $t('col_ip') }}:</strong> {{ currentAlarmContext.host_ip }}</div>
-                  <div><strong>{{ $t('col_alarm_description') }}:</strong> {{ currentAlarmContext.message }}</div>
+                  <div :title="'原文：' + (currentAlarmContext.message || '')"><strong>{{ $t('col_alarm_description') }}:</strong> {{ alarmText(currentAlarmContext.message) }}</div>
                 </div>
               </div>
             </template>
@@ -351,6 +352,7 @@
 </template>
 
 <script>
+import {formatAlarmMessage} from '@/utils/alarm-display'
 import PageLayout from "@/layouts/PageLayout";
 import { alarm, alarmExport, eventLogGet, retryNotificationDelivery, alarmDeepseekAnalysis, configGetList, alarmHandlingDetail, claimAlarm, handleAlarm, getAlarmPipeline, updateAlarmPipeline, runAlarmPipeline, getAlarmAggregation, updateAlarmAggregation } from "@/services/admin";
 import { listZabbixInstance } from '@/services/zabbix'
@@ -554,6 +556,7 @@ export default {
     this.init();
   },
   methods: {
+    alarmText(value) { return formatAlarmMessage(value, this.$i18n.locale) },
     normalizeAlarmSource, alarmSourceMeta, canHandleProblem,
     invalidateAlarmContext() {
       this.listSequence += 1
@@ -597,7 +600,7 @@ export default {
         { title: this.$t('col_device_name'), dataIndex: "hostname", align: "left" },
         { title: this.$t('col_ip'), dataIndex: "host_ip", align: "left" },
         { title: this.$t('col_alarm_level'), key: "level", align: "left", scopedSlots: { customRender: "level" } },
-        { title: this.$t('col_alarm_description'), dataIndex: "message", align: "left" },
+        { title: this.$t('col_alarm_description'), key: "message", align: "left", scopedSlots: { customRender: "message" } },
         { title: this.$t('col_alarm_detail'), dataIndex: "detail", align: "left" },
         { title: this.$t('col_occurrence_time'), key: "occur_time", align: "left", scopedSlots: { customRender: "occur_time" } },
 		{ title: this.$t('aggregation_column'), key: "aggregation", align: "left", width: 150, scopedSlots: { customRender: "aggregation" } },

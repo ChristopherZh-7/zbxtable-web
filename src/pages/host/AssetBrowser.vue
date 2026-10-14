@@ -429,6 +429,7 @@ export default {
   }
 
   &__content {
+    min-width: 0;
     padding: 16px;
     overflow-y: auto;
     background: #fff;

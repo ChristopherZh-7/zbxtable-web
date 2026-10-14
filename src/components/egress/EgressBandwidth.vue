@@ -70,8 +70,9 @@ export default {
   watch: {
     data: {
       handler(newData) {
-        if (newData && newData.length > 0) {
-          this.egressList = newData
+        this.egressList = Array.isArray(newData) ? newData : []
+        this.updateTime = '--'
+        if (this.egressList.length > 0) {
           // 取最新的后端采集时间（timestamp 为秒级）
           const timestamps = newData.map(item => item.timestamp).filter(t => t > 0)
           if (timestamps.length > 0) {

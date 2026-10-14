@@ -11,7 +11,7 @@ const policy = require(path.join(root, 'src/utils/permission-policy'))
 const stripImports = (script) => script.replace(/^import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
 function component(file, bindings = {}) {
   const script = source(file).match(/<script>([\s\S]*?)<\/script>/)[1]
-  const defaults = {PageLayout: {}, AssetTypeFieldDrawer: {}, MonitoringHealthCard: {}, themeMixin: {},
+  const defaults = {PageLayout: {}, AssetTypeFieldDrawer: {}, DeviceMetric: {}, MonitoringHealthCard: {}, themeMixin: {},
     moment: (value) => value, parseTimeFun: (value) => value.toISOString(), expiryStatus: () => '',
     mapState: () => ({}), VueRouter, ...require(path.join(root, 'src/pages/host/asset-tags')), ...bindings}
   const localRequire = (name) => require(name.startsWith('@/')

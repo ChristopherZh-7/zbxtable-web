@@ -13,7 +13,7 @@
     <div :class="['tabs-view-content', layout, pageWidth]" :style="`margin-top: ${multiPage ? -24 : 0}px`">
       <page-toggle-transition :disabled="animate.disabled" :animate="animate.name" :direction="animate.direction">
         <a-keep-alive :exclude-keys="excludeKeys" v-if="multiPage && cachePage" v-model="clearCaches">
-          <router-view v-if="!refreshing" ref="tabContent" :key="$route.path" />
+          <router-view v-if="!refreshing" ref="tabContent" :key="activePage" />
         </a-keep-alive>
         <router-view ref="tabContent" v-else-if="!refreshing" />
       </page-toggle-transition>
@@ -30,6 +30,7 @@ import {getI18nKey} from '@/utils/routerUtil'
 import AKeepAlive from '@/components/cache/AKeepAlive'
 import TabsHead from '@/layouts/tabs/TabsHead'
 import {loadTabs, saveTabs} from './tab-persistence'
+import {SCREEN_PATH, isWorkbenchRoute, screenContextKey, screenSessionStorage, rememberScreenReturn, captureScreenScroll} from '@/utils/screen-navigation'
 
 export default {
   name: 'TabsView',
@@ -77,6 +78,21 @@ export default {
   mounted () {
     this.correctPageMinHeight(-this.tabsOffset)
   },
+  beforeRouteLeave(to, from, next) {
+    if (to.path === SCREEN_PATH) {
+      rememberScreenReturn(screenSessionStorage(window), screenContextKey(this.$store), from)
+      this._restoreScreenScroll = captureScreenScroll(this.$el, window)
+    }
+    next()
+  },
+  activated() {
+    if (this._restoreScreenScroll) {
+      this.$nextTick(() => {
+        this._restoreScreenScroll()
+        this._restoreScreenScroll = null
+      })
+    }
+  },
   beforeDestroy() {
     this.removeListener()
     this.correctPageMinHeight(this.tabsOffset)
@@ -87,6 +103,8 @@ export default {
       this.loadCacheConfig(val)
     },
     '$route': function (newRoute) {
+      // The suspended workbench must not add the full-screen or login route as a tab.
+      if (!isWorkbenchRoute(newRoute)) return
       this.activePage = newRoute.path
       const page = this.pageList.find(item => item.path === newRoute.path)
       if (!this.multiPage) {
@@ -283,6 +301,7 @@ export default {
      */
     setCachedKey(route) {
       const page = this.pageList.find(item => item.path === route.path)
+      if (!page || !this.$refs.tabContent) return
       page.unclose = route.meta && route.meta.page && (route.meta.page.closable === false)
       if (!page._init_) {
         const vnode = this.$refs.tabContent.$vnode

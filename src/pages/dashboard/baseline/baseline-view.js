@@ -7,7 +7,7 @@ const SEVERITIES = Object.freeze([
 ])
 
 function severityMeta(value) {
-  return SEVERITIES.find(item => item.value === Number(value)) || {value: Number(value), label: '未知', color: 'default'}
+  return SEVERITIES.find(item => item.value === Number(value)) || {value: Number(value), label: '未知', color: undefined}
 }
 
 function defaultBaselineForm() {

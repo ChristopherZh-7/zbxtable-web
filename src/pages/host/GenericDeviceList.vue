@@ -59,9 +59,11 @@
 
       <!-- 设备列表 -->
       <a-table
-        class="smartops-data-panel"
+        class="smartops-data-panel device-table"
         :loading="loading"
         :columns="tableColumns"
+        :scroll="{x: tableWidth}"
+        table-layout="fixed"
         :data-source="list"
         @change="changePage"
         :pagination="pagination"
@@ -93,13 +95,9 @@
           <a-tag :color="$themeColor">{{ record.instance_name || '未知' }}</a-tag>
         </div>
 
-        <div slot="cpu_utilization" slot-scope="record">
-          <a-progress :percent="parseFloat(record.cpu_utilization || 0)" size="small" status="active" />
-        </div>
-
-        <div slot="memory_utilization" slot-scope="record">
-          <a-progress :percent="parseFloat(record.memory_utilization || 0)" size="small" status="active" />
-        </div>
+        <device-metric slot="uptime" slot-scope="record" kind="uptime" :value="record.uptime" />
+        <device-metric slot="cpu_utilization" slot-scope="record" kind="cpu" :value="record.cpu_utilization" />
+        <device-metric slot="memory_utilization" slot-scope="record" kind="memory" :value="record.memory_utilization" />
 
         <div slot="ping" slot-scope="record">
           <a-tag v-if="record.ping && record.ping.includes('Up')" color="#2f6f62">在线</a-tag>
@@ -129,7 +127,7 @@
           </a-tooltip>
         </div>
 
-        <span slot="operation" slot-scope="record">
+        <span slot="operation" slot-scope="record" class="device-actions">
           <a-button v-if="$can('tenant.monitoring', 'update')" type="link" size="small" @click="openTagEditor(record)">编辑标签</a-button>
           <a-button type="link" size="small" @click="seeGraph(record)">查看图形</a-button>
           <a-button type="link" size="small" @click="seeInfo(record)">详细信息</a-button>
@@ -231,9 +229,9 @@
             <a-tag v-else color="#7d8b9a">未知</a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="操作系统" :span="2">{{ detailRecord.os || '--' }}</a-descriptions-item>
-          <a-descriptions-item label="运行时长">{{ detailRecord.uptime || '--' }}</a-descriptions-item>
-          <a-descriptions-item label="CPU使用率">{{ fmtPercent(detailRecord.cpu_utilization) }}</a-descriptions-item>
-          <a-descriptions-item label="内存使用率">{{ fmtPercent(detailRecord.memory_utilization) }}</a-descriptions-item>
+          <a-descriptions-item label="运行时长"><device-metric kind="uptime" :value="detailRecord.uptime" /></a-descriptions-item>
+          <a-descriptions-item label="CPU使用率"><device-metric kind="cpu" :value="detailRecord.cpu_utilization" /></a-descriptions-item>
+          <a-descriptions-item label="内存使用率"><device-metric kind="memory" :value="detailRecord.memory_utilization" /></a-descriptions-item>
           <a-descriptions-item label="设备型号">{{ detailRecord.model || '--' }}</a-descriptions-item>
           <a-descriptions-item label="序列号">{{ detailRecord.serial_no || '--' }}</a-descriptions-item>
           <a-descriptions-item label="厂商">{{ detailRecord.vendor || '--' }}</a-descriptions-item>
@@ -263,6 +261,7 @@ import moment from 'moment'
 import { hostList, hostExport, hostUpdate, hostGraph, getAssetTypes, getAssetTypeFields } from '@/services/admin'
 import { parseTimeFun, expiryStatus } from '@/utils/formatter'
 import AssetTypeFieldDrawer from '@/pages/system/asset-type-fields.vue'
+import DeviceMetric from './DeviceMetric.vue'
 import {
   APP_PATTERN,
   ENV_OPTIONS,
@@ -274,17 +273,18 @@ import {
 } from './asset-tags'
 
 const monitoringHealthPolicy = require('@/utils/monitoring-health')
+const {deviceColumnWidth} = require('./device-metrics')
 const {ALL_DEVICE_TYPE, monitoringHostTypeFilter, allMonitoringDeviceFields} = require('./all-monitoring-devices')
 
 // 专用 slot key（有单独的 template slot，不走通用文本 slot）
 const DEDICATED_SLOTS = new Set([
   'instance_name', 'cpu_utilization', 'memory_utilization', 'ping', 'available', 'operation',
-  'date_hw_expiry',
+  'date_hw_expiry', 'uptime',
 ])
 
 export default {
   name: 'GenericDeviceList',
-  components: { PageLayout, AssetTypeFieldDrawer },
+  components: { PageLayout, AssetTypeFieldDrawer, DeviceMetric },
   props: {
     // 嵌入模式时，typeCode 由父组件传入；独立路由时从 $route.meta 读取
     typeCode: { type: String, default: '' },
@@ -362,12 +362,15 @@ export default {
           title: f.key === 'available' ? '采集健康' : f.custom ? `${f.label || f.key}（历史只读 · 非 CMDB）` : f.label, key: f.key, align: 'left',
           scopedSlots: { customRender: f.key },
         }
-        if (f.width) col.width = f.width
+        col.width = deviceColumnWidth(f)
         return col
       })
-      cols.push({ title: '标准标签', key: 'standard_tags', align: 'left', width: 360, scopedSlots: { customRender: 'standard_tags' } })
-      cols.push({ title: '操作', key: 'operation', align: 'left', width: 250, fixed: 'right', scopedSlots: { customRender: 'operation' } })
+      cols.push({ title: '标准标签', key: 'standard_tags', align: 'left', width: 200, scopedSlots: { customRender: 'standard_tags' } })
+      cols.push({ title: '操作', key: 'operation', align: 'left', width: 216, fixed: 'right', scopedSlots: { customRender: 'operation' } })
       return cols
+    },
+    tableWidth() {
+      return this.tableColumns.reduce((width, column) => width + column.width, 0)
     },
   },
   watch: {
@@ -464,7 +467,8 @@ export default {
       return monitoringHealthPolicy.normalizeMonitoringHealth(record && record.monitoring_health)
     },
     collectionHealthMeta(record) {
-      return monitoringHealthPolicy.monitoringHealthMeta(this.collectionHealth(record))
+      const meta = monitoringHealthPolicy.monitoringHealthMeta(this.collectionHealth(record))
+      return {...meta, color: meta.color === 'default' ? undefined : meta.color}
     },
     interfaceAvailabilityLabel(value) {
       return monitoringHealthPolicy.interfaceAvailabilityLabel(value)
@@ -597,10 +601,6 @@ export default {
     closeInfo() {
       this.infoVisible = false
     },
-    fmtPercent(v) {
-      const n = parseFloat(v)
-      return isNaN(n) ? '--' : n.toFixed(1) + '%'
-    },
     // 维保到期状态（共享工具，详见 @/utils/formatter）
     expiryStatus(dateStr) {
       return expiryStatus(dateStr)
@@ -651,6 +651,21 @@ export default {
 <style lang="less" scoped>
 .generic-device-list {
   padding: 0;
+  min-width: 0;
+}
+.device-table /deep/ .ant-table-thead > tr > th {
+  white-space: nowrap;
+  background: #f6f9fc;
+  color: #52677d;
+  font-weight: 600;
+  padding: 13px 12px;
+}
+.device-table /deep/ .ant-table-tbody > tr > td {
+  padding: 15px 12px;
+}
+.device-actions {
+  display: inline-flex;
+  white-space: nowrap;
 }
 /* 搜索栏行：搜索表单左对齐，字段设置按钮右对齐 */
 .search-bar-row {
@@ -661,6 +676,7 @@ export default {
 }
 .home-search {
   flex: 1;
+  min-width: 0;
   margin-bottom: 0;
 }
 .field-config-btn {
@@ -668,11 +684,14 @@ export default {
   flex-shrink: 0;
 }
 .standard-tags {
-  min-width: 320px;
   line-height: 26px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .standard-tags .ant-tag {
   margin-bottom: 4px;
+  max-width: 100%;
+  white-space: normal;
 }
 .collection-health-cell {
   display: inline-flex;
@@ -685,7 +704,7 @@ export default {
 /* 长文本单元格：单行省略，超出部分悬浮显示全文 */
 .cell-ellipsis {
   display: inline-block;
-  max-width: 260px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

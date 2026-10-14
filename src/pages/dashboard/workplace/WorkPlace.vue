@@ -9,7 +9,7 @@
                 <a-icon slot="dot" type="close-circle" v-if="v.severity == 3" :style="{ fontSize: '16px', color: '#ff0000' }" />
                 <a-icon slot="dot" type="minus-circle" v-else-if="v.severity == 2" :style="{ fontSize: '16px', color: '#F56C6C' }" />
                 <a-icon slot="dot" type="exclamation-circle" v-else :style="{ fontSize: '16px', color: '#E6A23C' }" />
-                {{v.lastchange | parsetime}} <b>{{v.name}}</b> {{v.lasteventname}}
+                {{v.lastchange | parsetime}} <b>{{v.name}}</b> <span :title="'原文：' + (v.lasteventname || '')">{{ alarmText(v.lasteventname) }}</span>
               </a-timeline-item>
             </a-timeline>
           </div>
@@ -85,6 +85,7 @@
 import PageLayout from '@/layouts/PageLayout'
 import {indexRestop, indexTrigger, indexInfo, hostMockd} from "@/services/admin"
 import {parseTimeFun} from '@/utils/formatter'
+import {formatAlarmMessage} from '@/utils/alarm-display'
 import verLine from "@/components/chart/verLine"
 import verLine1 from "@/components/chart/verLine1"
 export default {
@@ -138,6 +139,7 @@ export default {
     this.initMock();
   },
   methods: {
+    alarmText(value) { return formatAlarmMessage(value, this.$i18n.locale) },
     getPrimaryName(name) {
       if (!name) return ''
       return String(name).replace(/\s*[（(][^（）()]*[）)]\s*$/u, '').trim()

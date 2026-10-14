@@ -4,7 +4,7 @@ module.exports = {
       home: {name: '首页'},
       dashboard: {
         name: '监控',
-        workplace: {name: '面板'},
+        workplace: {name: '主页'},
         domains: {name: '域名监控'},
         domainMonitoring: {name: '域名监控'},
         inventory: {name: '资产管理'},
@@ -37,6 +37,7 @@ module.exports = {
       },
       topology: {
         name: '可视化',
+        'custom-screens': {name: '大屏管理'},
         list: {name: '拓扑维护'},
         detail: {name: '编辑'},
         show: {name: '展示'}
@@ -119,7 +120,7 @@ module.exports = {
       home: {name: 'Home'},
       dashboard: {
         name: 'Monitoring',
-        workplace: {name: 'Dashboard'},
+        workplace: {name: 'Home'},
         inventory: {name: 'Inventory'},
         overview: {name: 'Overview'}
       },
@@ -229,7 +230,7 @@ module.exports = {
       home: {name: '首頁'},
       dashboard: {
         name: '監控',
-        workplace: {name: '面板'},
+        workplace: {name: '主頁'},
         inventory: {name: '資產管理'},
         overview: {name: '狀態總覽'}
       },

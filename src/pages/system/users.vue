@@ -25,7 +25,7 @@
         <span slot="ding_talk" slot-scope="record">{{record.ding_talk}}</span>
         <span slot="wechat" slot-scope="record">{{record.wechat}}</span>
         <span slot="wechat_robot_key" slot-scope="record">
-          <a-tag :color="record.wechat_robot_key_configured ? 'green' : 'default'">
+          <a-tag :color="record.wechat_robot_key_configured ? 'green' : undefined">
             {{ record.wechat_robot_key_configured ? $t('configured') : $t('not_configured') }}
           </a-tag>
         </span>

@@ -4,6 +4,7 @@
 
 <script>
 import * as echarts from 'echarts'
+import {SCREEN_COLORS, screenTooltip, screenPieStyle} from '../chart-theme'
 
 export default {
   name: 'HostTypePie',
@@ -38,7 +39,7 @@ export default {
     render() {
       if (!this.chart) return
       const d = this.data || {}
-      const palette = ['#00e6ff', '#1f7bff', '#7c3cff', '#ff9248', '#19d27c', '#ffd166', '#ef476f', '#8d99ae']
+      const palette = SCREEN_COLORS
       const dynamicItems = Array.isArray(d.asset_type_counts) ? d.asset_type_counts : []
       const items = dynamicItems.length
         ? dynamicItems.map((item, index) => ({
@@ -53,7 +54,7 @@ export default {
           { name: this.$t('host_type_net'), value: d.net_count || 0, itemStyle: { color: palette[3] } }
         ]
       this.chart.setOption({
-        tooltip: { trigger: 'item', backgroundColor: 'rgba(2,6,13,0.85)', borderColor: 'rgba(0,230,255,0.4)', textStyle: { color: '#cfe8ff' } },
+        tooltip: screenTooltip(),
         legend: {
           bottom: 4, left: 'center', itemWidth: 10, itemHeight: 10,
           textStyle: { color: 'rgba(207,232,255,0.75)', fontSize: 12 }
@@ -64,18 +65,12 @@ export default {
           center: ['50%', '46%'],
           roseType: 'radius',
           avoidLabelOverlap: true,
-          itemStyle: {
-            borderColor: 'rgba(2,6,13,0.85)',
-            borderWidth: 2,
-            shadowBlur: 14,
-            shadowColor: 'rgba(0,230,255,0.45)'
-          },
+          ...screenPieStyle(),
           label: {
             color: '#cfe8ff',
             fontSize: 11,
             formatter: '{b}\n{c}'
           },
-          labelLine: { lineStyle: { color: 'rgba(0,230,255,0.4)' } },
           data: items
         }]
       }, true)

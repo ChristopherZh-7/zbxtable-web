@@ -1,6 +1,6 @@
 const CONTACT_STATUS = {
   active: {label: '启用', color: 'green', tone: 'active'},
-  inactive: {label: '停用', color: 'default', tone: 'inactive'},
+  inactive: {label: '停用', color: undefined, tone: 'inactive'},
 }
 
 const ACCOUNT_STATE = {
@@ -8,7 +8,7 @@ const ACCOUNT_STATE = {
   disabled: {label: '账号已停用', color: 'red', tone: 'warning'},
   not_member: {label: '已移出租户', color: 'orange', tone: 'warning'},
   deleted: {label: '账号已删除', color: 'red', tone: 'warning'},
-  unlinked: {label: '外部人员 / 未关联', color: 'default', tone: 'unlinked'},
+  unlinked: {label: '外部人员 / 未关联', color: undefined, tone: 'unlinked'},
 }
 
 function normalizeImpact(impact) {

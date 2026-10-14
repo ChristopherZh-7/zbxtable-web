@@ -38,7 +38,7 @@ const options = {
     {
       path: "/screen/dashboard",
       name: "运维大屏",
-      component: () => import("@/pages/screen/index"),
+      component: () => import("@/pages/screen/ScreenEntry"),
     },
     {
       path: "/",
@@ -54,7 +54,7 @@ const options = {
           children: [
             {
               path: "workplace",
-              name: "面板",
+              name: "主页",
               meta: { page: { closable: false } },
               component: () => import("@/pages/dashboard/index"),
             },
@@ -67,6 +67,7 @@ const options = {
             {
               path: "custom-dashboards",
               name: "自定义仪表盘",
+              meta: { invisible: true },
               component: () => import("@/pages/dashboard/custom/index"),
             },
             {
@@ -203,11 +204,12 @@ const options = {
             {
               path: "/screen/dashboard",
               name: "运维大屏",
-              component: () => import("@/pages/screen/index"),
+              meta: { invisible: true },
+              component: () => import("@/pages/screen/ScreenEntry"),
             },
             {
               path: "custom-screens",
-              name: "自定义大屏",
+              name: "大屏管理",
               component: () => import("@/pages/dashboard/custom/index"),
             },
             {

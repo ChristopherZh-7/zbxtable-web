@@ -76,6 +76,7 @@ import { getCurrentTenant } from '@/services/tenant'
 import { getPermissionContext, getRoutesConfig } from '@/services/user'
 import { getTenantContext, removeTenantContext, setTenantContext } from '@/utils/request'
 import { businessPayload, normalizePermissionContext } from '@/utils/permission-policy'
+import {defaultScreenKey, screenPreferenceStorage, readDefaultScreen, screenLocation} from '@/pages/dashboard/custom/screen-management'
 
 export default {
   name: "AdminHeader",
@@ -143,7 +144,8 @@ export default {
       this.$emit("menuSelect", obj);
     },
     goToScreen() {
-      this.$router.push('/screen/dashboard')
+      const id = readDefaultScreen(screenPreferenceStorage(window), defaultScreenKey(this.$store))
+      this.$router.push(screenLocation(id))
     },
     async switchTenant(id) {
       const candidate = this.tenantOptions.find((tenant) => Number(tenant.id) === Number(id))

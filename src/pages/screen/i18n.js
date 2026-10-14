@@ -3,7 +3,7 @@ module.exports = {
     CN: {
       screen_title: '运维监控指挥中心',
       screen_subtitle: '集中监控与运行态势',
-      screen_back: '返回工作台',
+      screen_back: '返回原页面',
       screen_manage: '大屏管理',
       screen_create: '新建大屏',
       screen_fullscreen: '全屏',
@@ -41,7 +41,7 @@ module.exports = {
     US: {
       screen_title: 'NOC Command Center',
       screen_subtitle: 'OPERATION COMMAND CENTER',
-      screen_back: 'Back to Workplace',
+      screen_back: 'Back to Previous Page',
       screen_manage: 'Manage Screens',
       screen_create: 'New Screen',
       screen_fullscreen: 'Fullscreen',
