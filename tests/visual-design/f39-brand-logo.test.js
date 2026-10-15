@@ -39,13 +39,14 @@ test('F39 replaces the generic login lockup with the full Chinese brand logo', (
   assert.match(login, /this\.logoUrl = infoRes\.data\.system_logo/)
 })
 
-test('F39 uses the wide brand in expanded navigation and tiger mark when collapsed', () => {
+test('navigation pairs the tiger mark with the configured system name and preserves header branding', () => {
   const sideMenu = source('src/components/menu/SideMenu.vue')
   const sideStyle = source('src/components/menu/index.less')
   const header = source('src/layouts/header/AdminHeader.vue')
 
-  assert.match(sideMenu, /collapsed \? brandMarkEmbeddedLogo : brandWideEmbeddedLogo/)
-  assert.match(sideMenu, /qianxin-horizontal(?:-embedded)?\.png/)
+  assert.match(sideMenu, /:src="brandMarkEmbeddedLogo"/)
+  assert.match(sideMenu, /v-if="!collapsed" class="brand-system-name">\{\{ systemName \}\}/)
+  assert.match(sideMenu, /:aria-label="systemName" :title="systemName"/)
   assert.match(sideMenu, /qianxin-tiger(?:-embedded)?\.png/)
   assert.match(sideStyle, /\.logo-brand\.is-expanded/)
   assert.match(sideStyle, /\.logo-brand\.is-collapsed/)

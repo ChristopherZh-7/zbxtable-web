@@ -37,4 +37,13 @@ function resourcePercentage(value) {
   return Number.isFinite(number) && number >= 0 && number <= 100 ? number : null
 }
 
-module.exports = { resourcePercentage,OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType, operationsKpi}
+function resourceTopEmptyLabel(type, metric, payload = {}) {
+  const rows = metric === 'mem' ? payload.mem : payload.cpu
+  if (Array.isArray(rows) && rows.some(row => row && resourcePercentage(row[metric]) !== null)) return ''
+  const platform = type === 'ops-windows' ? 'Windows' : 'Linux'
+  if (payload.host_count === 0) return `当前租户暂无 ${platform} 主机`
+  const name = metric === 'mem' ? '内存' : 'CPU'
+  return `暂无有效的 ${platform} ${name} 采样，请检查监控启用状态和采集情况`
+}
+
+module.exports = {resourcePercentage, resourceTopEmptyLabel, OPERATIONS_TYPES, OPERATIONS_PRESET, isOperationsType, operationsKpi}

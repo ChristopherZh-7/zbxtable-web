@@ -5,8 +5,8 @@
         <span :class="['logo-brand', collapsed ? 'is-collapsed' : 'is-expanded']">
           <img
             class="brand-image"
-            :src="collapsed ? brandMarkEmbeddedLogo : brandWideEmbeddedLogo"
-            :alt="collapsed ? '奇安信标志' : '奇安信 新一代网络安全领军者'"
+            :src="brandMarkEmbeddedLogo"
+            alt="奇安信标志"
           >
           <span v-if="!collapsed" class="brand-system-name">{{ systemName }}</span>
         </span>
@@ -24,7 +24,6 @@ export default {
   components: { IMenu },
   data() {
     return {
-      brandWideEmbeddedLogo: require('@/assets/img/qianxin-horizontal-embedded.png'),
       brandMarkEmbeddedLogo: require('@/assets/img/qianxin-tiger-embedded.png'),
     };
   },

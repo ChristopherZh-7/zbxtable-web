@@ -128,7 +128,7 @@
               <strong>选择一条配置项</strong>
               <span>详情和关系会在这里展开</span>
             </div>
-            <a-spin v-else :spinning="detailLoading">
+            <a-spin v-else class="inspector-body" :spinning="detailLoading">
               <div class="inspector-head">
                 <div class="inspector-icon"><a-icon :type="classMeta(selectedAsset.class).icon" /></div>
                 <div class="inspector-identity">
@@ -149,145 +149,157 @@
                 >{{ selectedLifecycle.label }}</a-button>
               </div>
 
-              <div class="inspector-section">
-                <div class="inspector-title"><span>配置属性</span><small>详细信息</small></div>
-                <dl class="detail-grid">
-                  <div v-for="row in selectedDetailRows" :key="row.key" :class="{'detail-wide': row.key === 'description'}">
-                    <dt>{{ row.label }}</dt>
-                    <dd :class="{'mono-value': ['managementip', 'serialnumber', 'asset_number'].includes(row.key)}">{{ row.value }}</dd>
-                  </div>
-                </dl>
-                <a-empty v-if="!selectedDetailRows.length" :image-style="{height: '42px'}" description="暂无扩展属性" />
-              </div>
-
-              <div class="inspector-section monitoring-section">
-                <div class="inspector-title"><span>监控状态</span><small>资产 ↔ 监控</small></div>
-                <a-spin :spinning="monitoringLoading">
-                  <div v-if="monitoringError" class="monitoring-error">
-                    <a-alert type="error" show-icon :message="monitoringError" />
-                    <a-button size="small" icon="reload" @click="reloadMonitoring">重新对账</a-button>
-                  </div>
-                  <template v-else>
-                    <div class="monitoring-dimensions" aria-label="监控状态维度">
-                      <article data-testid="cmdb-binding-reconciliation">
-                        <span>绑定对账</span>
-                        <a-badge :status="monitoringMeta.status" :text="monitoringMeta.label" />
-                        <small>{{ monitoringReconciliation.summary }}</small>
-                      </article>
-                      <article data-testid="cmdb-monitoring-configuration">
-                        <span>配置状态</span>
-                        <a-badge :status="monitoringConfigurationBadge.status" :text="monitoringConfigurationBadge.label" />
-                        <small>{{ monitoringConfigurationSummary }}</small>
-                      </article>
-                      <article data-testid="cmdb-collection-health" :data-health-state="collectionHealth.state">
-                        <span>采集健康</span>
-                        <a-badge :status="collectionHealthBadge.status" :text="collectionHealthBadge.label" />
-                        <small>{{ collectionHealth.summary }}</small>
-                      </article>
-                    </div>
-
-                    <div v-if="monitoringBound" class="monitoring-bridge" :data-tone="monitoringMeta.tone">
-                      <div class="bridge-node bridge-node--cmdb">
-                        <span>资产期望</span>
-                        <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.expected_host_status) }}</strong>
-                        <small>{{ selectedLifecycle.retired ? '资产已退役' : '资产在用' }}</small>
+              <a-tabs class="inspector-tabs" default-active-key="attributes" :animated="false">
+                <a-tab-pane key="attributes" tab="配置属性" :force-render="true">
+                  <div class="inspector-section">
+                    <dl class="detail-grid">
+                      <div v-for="row in selectedDetailRows" :key="row.key" :class="{'detail-wide': row.key === 'description'}">
+                        <dt>{{ row.label }}</dt>
+                        <dd :class="{'mono-value': ['managementip', 'serialnumber', 'asset_number'].includes(row.key)}">{{ row.value }}</dd>
                       </div>
-                      <div class="bridge-link" aria-hidden="true"><span></span></div>
-                      <div class="bridge-node bridge-node--zabbix">
-                        <span>监控实际</span>
-                        <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.actual_host_status) }}</strong>
-                        <small>{{ monitoring.host ? monitoring.host.address || (monitoring.binding && monitoring.binding.origin === 'smartops_created' && monitoring.host.interface_count === 0 ? '无独立接口，采集目标由策略确定' : '未采集地址') : '无法读取主机' }}</small>
-                      </div>
-                    </div>
-
-                    <div v-if="monitoring.host" class="monitoring-host">
-                      <span class="monitoring-host__icon"><a-icon type="monitor" /></span>
-                      <span>
-                        <strong>{{ monitoring.host.host_name }}</strong>
-                        <small>{{ monitoring.host.instance_name }} · 监控主机 {{ monitoring.host.host_id }}</small>
-                      </span>
-                    </div>
-                    <div v-else-if="monitoringBound" class="monitoring-host monitoring-host--stale">
-                      <span class="monitoring-host__icon"><a-icon type="disconnect" /></span>
-                      <span>
-                        <strong>已保存的监控身份不可用</strong>
-                        <small>监控源编号 {{ monitoring.binding.zid }} · 监控主机 {{ monitoring.binding.host_id }}</small>
-                      </span>
-                    </div>
-                    <div v-else class="monitoring-unbound">
-                      <a-icon type="link" />
-                      <span><strong>尚未关联监控主机</strong><small>从当前租户主机组中人工确认对应主机。</small></span>
-                    </div>
-
-                    <div v-if="monitoringIssueLabels.length" class="monitoring-issues">
-                      <a-tag v-for="issue in monitoringIssueLabels" :key="issue">{{ issue }}</a-tag>
-                    </div>
-
-                    <div v-if="monitoringEvidenceReasons.length" class="monitoring-issues monitoring-evidence-reasons">
-                      <a-tag v-for="reason in monitoringEvidenceReasons" :key="reason">{{ reason }}</a-tag>
-                    </div>
-
-                    <dl class="monitoring-evidence">
-                      <div><dt>已启用 / 可用项</dt><dd>{{ collectionHealth.enabled_item_count }} / {{ collectionHealth.supported_item_count }}</dd></div>
-                      <div><dt>新鲜 / 陈旧值</dt><dd>{{ collectionHealth.fresh_item_count }} / {{ collectionHealth.stale_item_count }}</dd></div>
-                      <div><dt>最近监控值</dt><dd>{{ collectionLastValueLabel }}</dd></div>
                     </dl>
+                    <a-empty v-if="!selectedDetailRows.length" :image-style="{height: '42px'}" description="暂无扩展属性" />
+                  </div>
 
-                    <div v-if="canOperate && writeContextReady" class="monitoring-actions">
-                      <a-button size="small" icon="link" @click="openMonitoringBinding">{{ monitoringBound ? '更换绑定' : '关联监控主机' }}</a-button>
-                      <a-button
-                        v-if="monitoringReconciliation.can_repair"
-                        size="small"
-                        type="primary"
-                        icon="tool"
-                        :loading="monitoringRepairing"
-                        @click="confirmMonitoringRepair"
-                      >按 CMDB 状态修复监控</a-button>
-                      <a-button v-if="monitoringBound" size="small" type="link" icon="disconnect" @click="confirmMonitoringUnbind">解除关联</a-button>
-                    </div>
-                    <monitoring-provision
-                      v-if="writeContextReady && !detailLoading && selectedAsset && selectedDetail && assetKey(selectedAsset) === assetKey(selectedDetail) && ['Server', 'VirtualMachine', 'NetworkDevice'].includes(selectedAsset.class)"
-                      :key="`${cmdbContext.key}/${assetKey(selectedAsset)}`"
-                      :asset="selectedDetail"
-                      :context="cmdbContext"
-                      :writable="canOperate && writeContextReady"
-                      :bound="monitoringBound"
-                      :retired="selectedLifecycle.retired"
-                      :configured="monitoring.configuration && monitoring.configuration.state === 'ready'"
-                      @changed="reloadMonitoring"
-                      @context-stale="loadOverviewAndAssets"
-                    />
-                  </template>
-                </a-spin>
-              </div>
+                </a-tab-pane>
+                <a-tab-pane key="monitoring" tab="监控状态" :force-render="true">
+                  <div class="inspector-section monitoring-section">
+                    <p class="inspector-caption">资产 ↔ 监控：核对资产期望状态、配置应用与实际采集情况。</p>
+                    <a-spin :spinning="monitoringLoading">
+                      <div v-if="monitoringError" class="monitoring-error">
+                        <a-alert type="error" show-icon :message="monitoringError" />
+                        <a-button size="small" icon="reload" @click="reloadMonitoring">重新对账</a-button>
+                      </div>
+                      <template v-else>
+                        <div class="monitoring-dimensions" aria-label="监控状态维度">
+                          <article data-testid="cmdb-binding-reconciliation">
+                            <span>绑定对账</span>
+                            <a-badge :status="monitoringMeta.status" :text="monitoringMeta.label" />
+                            <small>{{ monitoringReconciliation.summary }}</small>
+                          </article>
+                          <article data-testid="cmdb-monitoring-configuration">
+                            <span>配置状态</span>
+                            <a-badge :status="monitoringConfigurationBadge.status" :text="monitoringConfigurationBadge.label" />
+                            <small>{{ monitoringConfigurationSummary }}</small>
+                          </article>
+                          <article data-testid="cmdb-collection-health" :data-health-state="collectionHealth.state">
+                            <span>采集健康</span>
+                            <a-badge :status="collectionHealthBadge.status" :text="collectionHealthBadge.label" />
+                            <small>{{ collectionHealth.summary }}</small>
+                          </article>
+                        </div>
 
-              <div class="inspector-section relation-section">
-                <div class="inspector-title"><span>配置关系</span><small>直接关联</small></div>
-                <div class="configuration-spine">
-                  <div class="relation-lane">
-                    <span class="lane-label">上游依赖</span>
-                    <div v-for="node in relationView.upstream" :key="assetKey(node)" class="relation-node">
-                      <a-icon :type="classMeta(node.class).icon" />
-                      <span><strong>{{ node.name }}</strong><small>{{ classMeta(node.class).label }}</small></span>
+                        <section class="monitoring-group">
+                          <h3>资产与监控</h3>
+                        <div v-if="monitoringBound" class="monitoring-bridge" :data-tone="monitoringMeta.tone">
+                          <div class="bridge-node bridge-node--cmdb">
+                            <span>资产期望</span>
+                            <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.expected_host_status) }}</strong>
+                            <small>{{ selectedLifecycle.retired ? '资产已退役' : '资产在用' }}</small>
+                          </div>
+                          <div class="bridge-link" aria-hidden="true"><span></span></div>
+                          <div class="bridge-node bridge-node--zabbix">
+                            <span>监控实际</span>
+                            <strong>{{ monitoringHostStatusLabel(monitoringReconciliation.actual_host_status) }}</strong>
+                            <small>{{ monitoring.host ? monitoring.host.address || (monitoring.binding && monitoring.binding.origin === 'smartops_created' && monitoring.host.interface_count === 0 ? '无独立接口，采集目标由策略确定' : '未采集地址') : '无法读取主机' }}</small>
+                          </div>
+                        </div>
+
+                        <div v-if="monitoring.host" class="monitoring-host">
+                          <span class="monitoring-host__icon"><a-icon type="monitor" /></span>
+                          <span>
+                            <strong>{{ monitoring.host.host_name }}</strong>
+                            <small>{{ monitoring.host.instance_name }} · 监控主机 {{ monitoring.host.host_id }}</small>
+                          </span>
+                        </div>
+                        <div v-else-if="monitoringBound" class="monitoring-host monitoring-host--stale">
+                          <span class="monitoring-host__icon"><a-icon type="disconnect" /></span>
+                          <span>
+                            <strong>已保存的监控身份不可用</strong>
+                            <small>监控源编号 {{ monitoring.binding.zid }} · 监控主机 {{ monitoring.binding.host_id }}</small>
+                          </span>
+                        </div>
+                        <div v-else class="monitoring-unbound">
+                          <a-icon type="link" />
+                          <span><strong>尚未关联监控主机</strong><small>从当前租户主机组中人工确认对应主机。</small></span>
+                        </div>
+
+                        <div v-if="monitoringIssueLabels.length" class="monitoring-issues">
+                          <a-tag v-for="issue in monitoringIssueLabels" :key="issue">{{ issue }}</a-tag>
+                        </div>
+
+                        <div v-if="monitoringEvidenceReasons.length" class="monitoring-issues monitoring-evidence-reasons">
+                          <a-tag v-for="reason in monitoringEvidenceReasons" :key="reason">{{ reason }}</a-tag>
+                        </div>
+                        </section>
+
+                        <section class="monitoring-group">
+                          <h3>采集指标</h3>
+                        <dl class="monitoring-evidence">
+                          <div><dt>已启用 / 可用项</dt><dd>{{ collectionHealth.enabled_item_count }} / {{ collectionHealth.supported_item_count }}</dd></div>
+                          <div><dt>新鲜 / 陈旧值</dt><dd>{{ collectionHealth.fresh_item_count }} / {{ collectionHealth.stale_item_count }}</dd></div>
+                          <div><dt>最近监控值</dt><dd>{{ collectionLastValueLabel }}</dd></div>
+                        </dl>
+                        </section>
+
+                        <div v-if="canOperate && writeContextReady" class="monitoring-actions">
+                          <a-button size="small" icon="link" @click="openMonitoringBinding">{{ monitoringBound ? '更换绑定' : '关联监控主机' }}</a-button>
+                          <a-button
+                            v-if="monitoringReconciliation.can_repair"
+                            size="small"
+                            type="primary"
+                            icon="tool"
+                            :loading="monitoringRepairing"
+                            @click="confirmMonitoringRepair"
+                          >按 CMDB 状态修复监控</a-button>
+                          <a-button v-if="monitoringBound" size="small" type="link" icon="disconnect" @click="confirmMonitoringUnbind">解除关联</a-button>
+                        </div>
+                        <monitoring-provision
+                          v-if="writeContextReady && !detailLoading && selectedAsset && selectedDetail && assetKey(selectedAsset) === assetKey(selectedDetail) && ['Server', 'VirtualMachine', 'NetworkDevice'].includes(selectedAsset.class)"
+                          :key="`${cmdbContext.key}/${assetKey(selectedAsset)}`"
+                          :asset="selectedDetail"
+                          :context="cmdbContext"
+                          :writable="canOperate && writeContextReady"
+                          :bound="monitoringBound"
+                          :retired="selectedLifecycle.retired"
+                          :configured="monitoring.configuration && monitoring.configuration.state === 'ready'"
+                          @changed="reloadMonitoring"
+                          @context-stale="loadOverviewAndAssets"
+                        />
+                      </template>
+                    </a-spin>
+                  </div>
+
+                </a-tab-pane>
+                <a-tab-pane key="relations" tab="配置关系" :force-render="true">
+                  <div class="inspector-section relation-section">
+                    <div class="configuration-spine">
+                      <div class="relation-lane">
+                        <span class="lane-label">上游依赖</span>
+                        <div v-for="node in relationView.upstream" :key="assetKey(node)" class="relation-node">
+                          <a-icon :type="classMeta(node.class).icon" />
+                          <span><strong>{{ node.name }}</strong><small>{{ classMeta(node.class).label }}</small></span>
+                        </div>
+                        <span v-if="!relationView.upstream.length" class="relation-empty">无上游配置项</span>
+                      </div>
+                      <div class="spine-connector"><span></span></div>
+                      <div class="origin-node">
+                        <span class="origin-mark"><a-icon :type="classMeta(selectedAsset.class).icon" /></span>
+                        <span><strong>{{ selectedAsset.name }}</strong><small>当前配置项</small></span>
+                      </div>
+                      <div class="spine-connector"><span></span></div>
+                      <div class="relation-lane">
+                        <span class="lane-label">下游支撑</span>
+                        <div v-for="node in relationView.downstream" :key="assetKey(node)" class="relation-node">
+                          <a-icon :type="classMeta(node.class).icon" />
+                          <span><strong>{{ node.name }}</strong><small>{{ classMeta(node.class).label }}</small></span>
+                        </div>
+                        <span v-if="!relationView.downstream.length" class="relation-empty">无下游配置项</span>
+                      </div>
                     </div>
-                    <span v-if="!relationView.upstream.length" class="relation-empty">无上游配置项</span>
                   </div>
-                  <div class="spine-connector"><span></span></div>
-                  <div class="origin-node">
-                    <span class="origin-mark"><a-icon :type="classMeta(selectedAsset.class).icon" /></span>
-                    <span><strong>{{ selectedAsset.name }}</strong><small>当前配置项</small></span>
-                  </div>
-                  <div class="spine-connector"><span></span></div>
-                  <div class="relation-lane">
-                    <span class="lane-label">下游支撑</span>
-                    <div v-for="node in relationView.downstream" :key="assetKey(node)" class="relation-node">
-                      <a-icon :type="classMeta(node.class).icon" />
-                      <span><strong>{{ node.name }}</strong><small>{{ classMeta(node.class).label }}</small></span>
-                    </div>
-                    <span v-if="!relationView.downstream.length" class="relation-empty">无下游配置项</span>
-                  </div>
-                </div>
-              </div>
+                </a-tab-pane>
+              </a-tabs>
             </a-spin>
           </aside>
         </div>
@@ -2032,8 +2044,11 @@ export default {
 .toolbar-summary { margin-left: auto; color: var(--smartops-muted); font-size: 12px; white-space: nowrap; }
 .toolbar-summary strong { margin: 0 3px; color: var(--smartops-command-navy); font-family: var(--smartops-font-mono); font-size: 16px; }
 
-.cmdb-workbench { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; }
-.asset-ledger { min-width: 0; overflow: hidden; }
+.cmdb-workbench { --cmdb-panel-height: clamp(540px, calc(100vh - 320px), 800px); display: grid; align-items: stretch; grid-template-columns: minmax(0, 3fr) minmax(440px, 2fr); gap: 16px; }
+.asset-ledger { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: var(--cmdb-panel-height); overflow: hidden; }
+.asset-ledger > .panel-heading, .asset-ledger > .smartops-panel-footer { flex-shrink: 0; }
+.asset-ledger > .ant-table-wrapper { min-height: 0; overflow-y: auto; }
+.asset-ledger > .smartops-panel-footer { margin-top: auto; }
 .panel-heading > div:first-child { display: flex; align-items: center; gap: 12px; }
 .panel-heading small { color: var(--smartops-muted); font-size: 11px; }
 .class-counts { display: flex; overflow: hidden; gap: 12px; color: var(--smartops-muted); font-size: 11px; white-space: nowrap; }
@@ -2048,37 +2063,46 @@ export default {
 .asset-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 32px; border: 1px solid #cfdae6; background: #f1f5f9; color: var(--smartops-signal-blue); }
 .mono-value { font-family: var(--smartops-font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 
-.asset-inspector { position: sticky; top: 84px; max-height: calc(100vh - 112px); overflow: auto; }
+.asset-inspector { min-width: 0; height: var(--cmdb-panel-height); overflow: hidden; }
+.asset-inspector /deep/ .inspector-body,
+.asset-inspector /deep/ .inspector-body > .ant-spin-container { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .inspector-placeholder { display: flex; align-items: center; justify-content: center; min-height: 320px; flex-direction: column; color: var(--smartops-muted); }
 .inspector-placeholder .anticon { margin-bottom: 15px; color: #9eb0c3; font-size: 32px; }
 .inspector-placeholder strong { margin-bottom: 5px; color: var(--smartops-command-navy); }
 .inspector-placeholder span { font-size: 12px; }
-.inspector-head { display: flex; align-items: center; min-height: 120px; padding: 20px; border-bottom: 1px solid var(--smartops-line); background: #f7f9fc; gap: 14px; }
-.inspector-icon { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; flex: 0 0 54px; border: 1px solid #b8c9da; background: #fff; color: var(--smartops-signal-blue); font-size: 23px; }
+.inspector-head { display: flex; align-items: center; flex-shrink: 0; min-height: 96px; padding: 16px; border-bottom: 1px solid var(--smartops-line); background: #f7f9fc; gap: 12px; }
+.inspector-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; border: 1px solid var(--smartops-line); border-radius: 2px; background: #fff; color: var(--smartops-signal-blue); font-size: 22px; }
 .inspector-identity { min-width: 0; }
-.inspector-head h2 { max-width: 250px; overflow: hidden; margin: 5px 0 2px; color: var(--smartops-command-navy); font-size: 18px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.inspector-head code { color: var(--smartops-muted); font-size: 10px; }
-.inspector-actions { display: grid; padding: 12px 18px; border-bottom: 1px solid var(--smartops-line); background: #fff; grid-template-columns: 1fr 1fr; gap: 8px; }
-.inspector-section { padding: 17px 18px; border-bottom: 1px solid var(--smartops-line); }
-.inspector-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; color: var(--smartops-command-navy); font-size: 13px; font-weight: 700; }
-.inspector-title small { color: #8c9caf; font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .1em; }
-.detail-grid { display: grid; margin: 0; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.inspector-head h2 { margin: 4px 0; color: var(--smartops-command-navy); font-size: 18px; font-weight: 600; line-height: 26px; overflow-wrap: anywhere; }
+.inspector-head code { color: var(--smartops-muted); font-size: 12px; }
+.inspector-actions { display: flex; flex-shrink: 0; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--smartops-line); background: #fff; gap: 8px; }
+.inspector-tabs { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.inspector-tabs /deep/ .ant-tabs-bar { flex-shrink: 0; margin-bottom: 0; padding: 0 16px; }
+.inspector-tabs /deep/ .ant-tabs-nav .ant-tabs-tab { margin-right: 16px; padding: 12px 0; }
+.inspector-tabs /deep/ .ant-tabs-content { flex: 1; min-height: 0; overflow: hidden; }
+.inspector-tabs /deep/ .ant-tabs-tabpane-active { min-width: 0; height: 100%; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+.inspector-section { padding: 16px; }
+.inspector-caption { margin: 0 0 12px; color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
+.detail-grid { display: grid; margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
 .detail-grid > div { min-width: 0; }
-.detail-grid dt { margin-bottom: 3px; color: var(--smartops-muted); font-size: 10px; }
-.detail-grid dd { overflow-wrap: anywhere; margin: 0; color: #243b55; font-size: 12px; line-height: 1.5; }
+.detail-grid dt { margin-bottom: 4px; color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
+.detail-grid dd { overflow-wrap: anywhere; margin: 0; color: var(--smartops-ink); font-size: 14px; line-height: 22px; }
 .detail-grid .detail-wide { grid-column-start: 1; grid-column-end: -1; }
 
-.monitoring-section { background: #fbfcfe; }
-.monitoring-dimensions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-.monitoring-dimensions article { display: flex; min-width: 0; min-height: 96px; padding: 9px; border: 1px solid #d8e2ec; background: #fff; flex-direction: column; gap: 6px; }
-.monitoring-dimensions article > span:first-child { color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .06em; }
-.monitoring-dimensions article small { color: #6e7f92; font-size: 9px; line-height: 1.5; }
-.monitoring-bridge { display: grid; align-items: stretch; margin-top: 13px; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); }
-.bridge-node { min-width: 0; padding: 10px; border: 1px solid #ccd9e5; background: #fff; }
-.bridge-node > span { display: block; color: var(--smartops-muted); font-family: var(--smartops-font-mono); font-size: 9px; letter-spacing: .07em; }
-.bridge-node strong { display: block; margin: 4px 0 2px; color: var(--smartops-command-navy); font-size: 14px; }
-.bridge-node small { display: block; overflow: hidden; color: #76879a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.bridge-node--cmdb { border-left: 3px solid var(--smartops-signal-blue); }
+.monitoring-section { background: #fff; }
+.monitoring-dimensions { overflow: hidden; border: 1px solid var(--smartops-line); border-radius: 4px; }
+.monitoring-dimensions article { display: grid; min-width: 0; padding: 12px 14px; grid-template-columns: 72px minmax(0, 1fr); align-items: start; gap: 4px 12px; }
+.monitoring-dimensions article + article { border-top: 1px solid #edf1f5; }
+.monitoring-dimensions article > span:first-child { color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
+.monitoring-dimensions /deep/ .ant-badge-status-text { color: var(--smartops-ink); font-size: 13px; font-weight: 500; line-height: 20px; }
+.monitoring-dimensions article small { grid-column: 2; color: var(--smartops-muted); font-size: 12px; line-height: 20px; overflow-wrap: anywhere; }
+.monitoring-group { margin-top: 20px; }
+.monitoring-group > h3 { margin: 0 0 10px; color: var(--smartops-command-navy); font-size: 13px; font-weight: 600; line-height: 22px; }
+.monitoring-bridge { display: grid; align-items: stretch; padding: 12px 14px; border: 1px solid #e3eaf2; border-radius: 4px; background: #f6f9fc; grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr); }
+.bridge-node { min-width: 0; padding: 0 4px; }
+.bridge-node > span { display: block; color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
+.bridge-node strong { display: block; margin: 4px 0 2px; color: var(--smartops-command-navy); font-size: 16px; font-weight: 600; line-height: 24px; }
+.bridge-node small { display: block; color: var(--smartops-muted); font-size: 12px; line-height: 20px; overflow-wrap: anywhere; }
 .bridge-link { position: relative; display: flex; align-items: center; justify-content: center; }
 .bridge-link::before { width: 100%; height: 1px; background: #90a7bc; content: ''; }
 .bridge-link span { position: absolute; width: 9px; height: 9px; border: 2px solid #90a7bc; border-radius: 50%; background: #fbfcfe; }
@@ -2088,28 +2112,28 @@ export default {
 .monitoring-bridge[data-tone='warning'] .bridge-link span { border-color: #d49a35; }
 .monitoring-bridge[data-tone='error'] .bridge-link::before { background: #c55b5b; }
 .monitoring-bridge[data-tone='error'] .bridge-link span { border-color: #c55b5b; }
-.monitoring-host, .monitoring-unbound { display: flex; align-items: center; margin-top: 11px; padding: 9px 10px; border: 1px solid #dae3ec; background: #fff; gap: 9px; }
+.monitoring-host, .monitoring-unbound { display: flex; align-items: center; margin-top: 12px; padding: 0; gap: 10px; }
 .monitoring-host > span:last-child, .monitoring-unbound > span:last-child { display: flex; min-width: 0; flex-direction: column; }
-.monitoring-host strong, .monitoring-unbound strong { overflow: hidden; color: #243b55; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.monitoring-host small, .monitoring-unbound small { color: var(--smartops-muted); font-size: 9px; line-height: 1.5; }
-.monitoring-host__icon, .monitoring-unbound > .anticon { display: inline-flex; align-items: center; justify-content: center; width: 29px; height: 29px; flex: 0 0 29px; background: #eaf2f9; color: var(--smartops-signal-blue); }
-.monitoring-host--stale { border-color: #e7c8c8; background: #fff8f8; }
+.monitoring-host strong, .monitoring-unbound strong { color: var(--smartops-ink); font-size: 14px; line-height: 22px; overflow-wrap: anywhere; }
+.monitoring-host small, .monitoring-unbound small { color: var(--smartops-muted); font-size: 12px; line-height: 20px; overflow-wrap: anywhere; }
+.monitoring-host__icon, .monitoring-unbound > .anticon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 4px; background: #eaf2f9; color: var(--smartops-signal-blue); font-size: 16px; }
+.monitoring-host--stale { padding: 10px 12px; border-radius: 4px; background: #fff8f8; }
 .monitoring-host--stale .monitoring-host__icon { background: #fae8e8; color: #b94f4f; }
-.monitoring-unbound { border-style: dashed; }
-.monitoring-issues { display: flex; margin-top: 9px; flex-wrap: wrap; gap: 4px; }
-.monitoring-issues .ant-tag { margin: 0; color: #765716; }
-.monitoring-evidence-reasons .ant-tag { white-space: normal; }
-.monitoring-evidence { display: grid; margin: 10px 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #dfe7ef; }
-.monitoring-evidence > div { min-width: 0; padding: 8px; background: #fff; }
-.monitoring-evidence dt { color: var(--smartops-muted); font-size: 9px; }
-.monitoring-evidence dd { overflow: hidden; margin: 3px 0 0; color: #243b55; font-family: var(--smartops-font-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.monitoring-actions { display: flex; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 6px; }
+.monitoring-unbound { padding: 12px; border: 1px dashed var(--smartops-line); border-radius: 4px; }
+.monitoring-issues { display: flex; margin-top: 10px; flex-wrap: wrap; gap: 4px 14px; }
+.monitoring-issues + .monitoring-issues { margin-top: 4px; }
+.monitoring-issues .ant-tag { display: inline-flex; align-items: baseline; margin: 0; padding: 0; border: 0; background: transparent; color: #8a682b; font-size: 12px; line-height: 20px; white-space: normal; }
+.monitoring-issues .ant-tag::before { width: 4px; height: 4px; flex: 0 0 4px; margin-right: 6px; border-radius: 50%; background: #c89b48; content: ''; }
+.monitoring-evidence { display: grid; margin: 0; overflow: hidden; border-radius: 4px; background: #f6f9fc; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.monitoring-evidence > div { min-width: 0; padding: 12px 14px; }
+.monitoring-evidence > div:first-child { border-right: 1px solid #e3eaf2; }
+.monitoring-evidence > div:last-child { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; border-top: 1px solid #e3eaf2; grid-column-start: 1; grid-column-end: -1; gap: 4px 12px; }
+.monitoring-evidence dt { color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
+.monitoring-evidence dd { margin: 4px 0 0; color: var(--smartops-command-navy); font-family: var(--smartops-font-mono); font-size: 16px; font-weight: 600; line-height: 24px; overflow-wrap: anywhere; }
+.monitoring-evidence > div:last-child dd { margin: 0; color: var(--smartops-ink); font-size: 12px; font-weight: 400; line-height: 20px; }
+.monitoring-actions { display: flex; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--smartops-line); flex-wrap: wrap; gap: 8px; }
 .monitoring-actions .ant-btn { margin: 0; }
 .monitoring-error .ant-btn { margin-top: 10px; }
-
-@media (max-width: 1280px) {
-  .monitoring-dimensions { grid-template-columns: 1fr; }
-}
 
 .monitoring-modal-context { display: flex; align-items: center; margin: -4px 0 16px; padding: 13px 15px; border: 1px solid #bfd0df; background: #f1f6fa; gap: 12px; }
 .monitoring-modal-context > span { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
@@ -2131,19 +2155,19 @@ export default {
 .configuration-spine { position: relative; padding-left: 17px; }
 .configuration-spine::before { position: absolute; top: 19px; bottom: 19px; left: 6px; width: 1px; background: #a9bbcd; content: ''; }
 .relation-lane { position: relative; }
-.lane-label { display: block; margin-bottom: 7px; color: var(--smartops-muted); font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+.lane-label { display: block; margin-bottom: 8px; color: var(--smartops-muted); font-size: 12px; font-weight: 600; line-height: 20px; }
 .relation-node, .origin-node { position: relative; display: flex; align-items: center; min-height: 45px; padding: 8px 10px; border: 1px solid #d6e0ea; background: #fff; gap: 9px; }
 .relation-node + .relation-node { margin-top: 6px; }
 .relation-node::before, .origin-node::before { position: absolute; top: 50%; left: -15px; width: 14px; height: 1px; background: #a9bbcd; content: ''; }
 .relation-node .anticon { color: var(--smartops-signal-blue); }
 .relation-node > span, .origin-node > span:last-child { display: flex; min-width: 0; flex-direction: column; }
-.relation-node strong, .origin-node strong { overflow: hidden; color: #243b55; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.relation-node small, .origin-node small { color: var(--smartops-muted); font-size: 10px; }
+.relation-node strong, .origin-node strong { color: var(--smartops-ink); font-size: 14px; line-height: 22px; overflow-wrap: anywhere; }
+.relation-node small, .origin-node small { color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
 .origin-node { border-color: #6d96bb; background: #edf4fa; }
 .origin-mark { display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; flex: 0 0 27px; background: var(--smartops-signal-blue); color: #fff; }
 .spine-connector { height: 20px; }
 .spine-connector span { position: absolute; left: 2px; width: 9px; height: 9px; margin-top: 5px; border: 1px solid #8da5bc; border-radius: 50%; background: #fff; }
-.relation-empty { display: block; padding: 8px 0; color: #9aa8b7; font-size: 11px; }
+.relation-empty { display: block; padding: 8px 0; color: var(--smartops-muted); font-size: 12px; line-height: 20px; }
 .asset-form-context { display: flex; align-items: center; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #b9cce0; background: #f0f5fa; gap: 12px; }
 .asset-form-context__mark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; background: var(--smartops-command-navy); color: #fff; }
 .asset-form-context strong { display: block; color: var(--smartops-command-navy); font-size: 13px; }
@@ -2289,15 +2313,15 @@ export default {
 .mapping-field-help code { color: #9b5f14; font-size: 10px; font-weight: 700; }
 .mapping-actions { display: flex; justify-content: flex-end; margin: 18px -22px -20px; padding: 12px 22px; border-top: 1px solid #dce4ea; background: #f7f9fb; gap: 8px; }
 
-@media (max-width: 1240px) {
-  .cmdb-workbench { grid-template-columns: minmax(0, 1fr) 350px; }
+@media (max-width: 1399px) {
+  .cmdb-workbench { grid-template-columns: minmax(0, 1fr); }
+  .asset-ledger { height: auto; max-height: var(--cmdb-panel-height); }
+  .cmdb-toolbar { flex-wrap: wrap; }
 }
 @media (max-width: 980px) {
   .cmdb-toolbar { align-items: stretch; flex-wrap: wrap; }
   .search-control { width: 100%; max-width: none; }
   .toolbar-summary { display: flex; align-items: center; margin-left: 0; }
-  .cmdb-workbench { grid-template-columns: 1fr; }
-  .asset-inspector { position: static; max-height: none; }
   .admission-workspace { grid-template-columns: 285px minmax(0, 1fr); }
   .admission-stage-rail { grid-template-columns: 1fr 1fr; }
   .admission-stage:nth-child(2) { border-right: 0; }

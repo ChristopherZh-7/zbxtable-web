@@ -2,7 +2,7 @@
   <page-layout :noTitle="true" content-title="参数配置" content-description="维护系统信息、通知渠道和后台任务设置。">
     <div class="config-container">
       <a-card :bordered="false">
-        <a-tabs v-model="activeTab" type="card">
+        <a-tabs v-model="activeTab" :animated="false">
           <!-- 系统配置 -->
           <a-tab-pane key="system" :tab="$t('systemTab')">
             <a-form-model ref="systemForm" :model="systemForm" :label-col="{ span: 6 }" :wrapper-col="{ span: 14 }">
@@ -17,32 +17,6 @@
               <a-form-model-item :label="$t('systemSubtitle')">
                 <a-input v-model="systemForm.system_subtitle" :placeholder="$t('systemSubtitlePlaceholder')" />
                 <div class="config-hint">{{$t('systemSubtitleHint')}}</div>
-              </a-form-model-item>
-
-              <a-form-model-item :label="$t('systemLogo')">
-                <div class="logo-upload-container">
-                  <div class="logo-preview">
-                    <img v-if="systemForm.system_logo" :src="systemForm.system_logo" :alt="$t('logoPreview')" />
-                    <div v-else class="logo-placeholder">
-                      <a-icon type="picture" style="font-size: 48px; color: #ccc;" />
-                    </div>
-                  </div>
-                  <div class="logo-upload-actions">
-                    <a-upload
-                      name="file"
-                      :show-upload-list="false"
-                      :before-upload="beforeLogoUpload"
-                      :custom-request="handleLogoUpload"
-                      accept="image/png,image/jpeg,image/jpg,image/svg+xml">
-                      <a-button :loading="logoUploading">
-                        <a-icon type="upload" /> {{logoUploading ? $t('logoUploading') : $t('uploadLogo')}}
-                      </a-button>
-                    </a-upload>
-                    <div class="upload-hint">
-                      <a-icon type="info-circle" /> {{$t('logoUploadHint')}}
-                    </div>
-                  </div>
-                </div>
               </a-form-model-item>
 
               <!-- 系统配置部分 -->
@@ -363,7 +337,6 @@ export default {
       aiForm: {},
       securityForm: {},
       saveLoading: false,
-      logoUploading: false,
       isKeyVisible: false,  // 控制密钥是否可见
       gettingUrl: false,  // 控制获取地址按钮的加载状态
       testEmailVisible: false,  // 测试邮件对话框
@@ -786,47 +759,6 @@ export default {
       
       document.body.removeChild(textarea)
     },
-    // Logo上传前的验证
-    beforeLogoUpload(file) {
-      const isImage = file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/svg+xml'
-      if (!isImage) {
-        this.$message.error(this.$t('logoFormatError'))
-        return false
-      }
-      const isLt2M = file.size / 1024 / 1024 < 2
-      if (!isLt2M) {
-        this.$message.error(this.$t('logoSizeError'))
-        return false
-      }
-      return true
-    },
-    // 自定义Logo上传
-    async handleLogoUpload({ file }) {
-      this.logoUploading = true
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        
-        // 使用 axios 直接发送请求
-        const axios = require('axios')
-        const response = await axios.post('/v1/system/upload-logo', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
-        
-        if (response.data.code === 200) {
-          this.systemForm.system_logo = response.data.data.url
-          this.$message.success(this.$t('logoUploadSuccess'))
-        } else {
-          this.$message.error(response.data.message || this.$t('logoUploadFailed'))
-        }
-      } catch (error) {
-        this.$message.error(this.$t('logoUploadFailed') + ': ' + (error.message || this.$t('unknownError')))
-      } finally {
-        this.logoUploading = false
-      }
-    },
     // AI 类型切换
     onAiTypeChange(value) {
       // 当切换 AI 类型时，可以在这里做一些额外的处理
@@ -1025,51 +957,6 @@ export default {
 /deep/ .ant-input,
 /deep/ .ant-input-password {
   border-radius: 4px;
-}
-
-.logo-upload-container {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-}
-
-.logo-preview {
-  width: 80px;
-  height: 80px;
-  border: 1px dashed #d9d9d9;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #fafafa;
-}
-
-.logo-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.logo-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.logo-upload-actions {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.upload-hint {
-  color: #999;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .task-config-grid {

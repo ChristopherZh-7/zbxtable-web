@@ -957,6 +957,8 @@ export default {
             const host_type = type === 'ops-linux' ? 'VM_LIN' : 'VM_WIN'
             const [cpu, mem] = await Promise.all(['CPU', 'MEM'].map(metrics_type => read(type + metrics_type, () => indexRestop({host_type, metrics_type, top_num: '10'}))))
             payload.cpu = cpu || []; payload.mem = mem || []
+            const info = await read('info', indexInfo).catch(() => null)
+            payload.host_count = info ? info[type === 'ops-linux' ? 'lin_count' : 'win_count'] : null
           }
           if (current()) node.setData({...node.getData(), operations: payload, loadState: ''}, {overwrite: true})
         } catch (_) {

@@ -1,13 +1,6 @@
 <template>
-  <div :class="['page-header', layout, pageWidth]">
+  <div v-show="!noTitle" :class="['page-header', layout, pageWidth]">
     <div class="page-header-wide">
-      <div class="breadcrumb" :style="{marginBottom: noTitle ? '0px' : '20px'}">
-        <a-breadcrumb>
-          <a-breadcrumb-item :key="index" v-for="(item, index) in breadcrumb">
-            <span>{{item}}</span>
-          </a-breadcrumb-item>
-        </a-breadcrumb>
-      </div>
       <div class="detail" v-if="!noTitle">
         <div class="main">
           <div class="row">
@@ -34,10 +27,6 @@ export default {
   props: {
     title: {
       type: [String, Boolean],
-      required: false
-    },
-    breadcrumb: {
-      type: Array,
       required: false
     },
     logo: {

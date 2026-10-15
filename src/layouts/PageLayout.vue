@@ -1,6 +1,6 @@
 <template>
   <div class="page-layout" :class="{'smartops-management-page': contentTitle}">
-    <page-header ref="pageHeader" :style="`margin-top: ${multiPage ? 0 : -24}px`" :noTitle="noTitle" :breadcrumb="breadcrumb" :title="pageTitle" :logo="logo" :avatar="avatar">
+    <page-header ref="pageHeader" :style="`margin-top: ${multiPage ? 0 : -24}px`" :noTitle="noTitle" :title="pageTitle" :logo="logo" :avatar="avatar">
       <slot name="action"  slot="action"></slot>
       <slot slot="content" name="headerContent"></slot>
       <div slot="content" v-if="!this.$slots.headerContent && desc">
@@ -13,7 +13,7 @@
       </div>
       <slot v-if="this.$slots.extra" slot="extra" name="extra"></slot>
     </page-header>
-    <div ref="page" :class="['page-content', layout, pageWidth]" >
+    <div ref="page" :class="['page-content', layout, pageWidth, {'page-content--standalone': noTitle}]" >
       <header v-if="contentTitle" class="smartops-page-heading">
         <div>
           <h1>{{ contentTitle }}</h1>
@@ -36,7 +36,7 @@ import {getI18nKey} from '@/utils/routerUtil'
 export default {
   name: 'PageLayout',
   components: {PageHeader},
-  props: ['desc', 'logo', 'title', 'avatar', 'linkList', 'extraImage', "noTitle", "customBreadcrumb", 'contentTitle', 'contentDescription'],
+  props: ['desc', 'logo', 'title', 'avatar', 'linkList', 'extraImage', "noTitle", 'contentTitle', 'contentDescription'],
   data () {
     return {
       page: {},
@@ -78,44 +78,12 @@ export default {
       const route = this.$route
       return this.$t(getI18nKey(route.matched[route.matched.length - 1].path))
     },
-    breadcrumb() {
-      // 优先使用外部传入的自定义面包屑（直接作为展示文本，缺失的 i18n key 原样返回）
-      if (this.customBreadcrumb && this.customBreadcrumb.length) {
-        return this.customBreadcrumb.map(item => this.$t(item))
-      }
-      let page = this.page
-      let breadcrumb = page && page.breadcrumb
-      if (breadcrumb) {
-        let i18nBreadcrumb = []
-        breadcrumb.forEach(item => {
-          i18nBreadcrumb.push(this.$t(item))
-        })
-        return i18nBreadcrumb
-      } else {
-        return this.getRouteBreadcrumb()
-      }
-    },
     marginCorrect() {
       return this.multiPage ? 24 : 0
     }
   },
   methods: {
     ...mapMutations('setting', ['correctPageMinHeight']),
-    getRouteBreadcrumb() {
-      let routes = this.$route.matched
-      const path = this.$route.path
-      let breadcrumb = []
-      routes.filter(item => path.includes(item.path))
-        .forEach(route => {
-        const path = route.path.length === 0 ? '/home' : route.path
-        breadcrumb.push(this.$t(getI18nKey(path)))
-      })
-      let pageTitle = this.page && this.page.title
-      if (this.customTitle || pageTitle) {
-        breadcrumb[breadcrumb.length - 1] = this.customTitle || pageTitle
-      }
-      return breadcrumb
-    },
     /**
      * 用于计算页面内容最小高度
      * @param newHeight
@@ -147,6 +115,9 @@ export default {
   .page-content{
     position: relative;
     z-index: 9;
+    &.page-content--standalone{
+      padding-top: 16px;
+    }
     &.head.fixed{
       margin: 0 auto;
       max-width: 1400px;

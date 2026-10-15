@@ -8,17 +8,17 @@
   z-index: 10;
   background: #0a1f44;
   .logo{
-    height: 76px;
+    height: 64px;
     position: relative;
     line-height: normal;
-    padding: 0 18px;
+    padding: 0 20px;
     -webkit-transition: all .3s;
     transition: all .3s;
     overflow: hidden;
     background: #0a1f44;
     border-right: 1px solid rgba(145, 174, 204, .12);
     border-bottom: 1px solid rgba(145, 174, 204, .16);
-    box-shadow: inset 0 -10px 20px rgba(3, 13, 31, .08);
+    box-shadow: none;
     > a {
       display: flex;
       align-items: center;
@@ -32,23 +32,22 @@
       }
     }
     .logo-brand {
-      display: grid;
-      flex: 0 0 auto;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
       overflow: hidden;
       background: transparent;
       box-shadow: none;
-      opacity: .98;
     }
     .logo-brand.is-expanded {
-      width: 204px;
-      height: 64px;
-      grid-template-rows: 40px 20px;
-      row-gap: 2px;
+      width: 100%;
+      height: 40px;
     }
     .logo-brand.is-collapsed {
-      width: 58px;
-      height: 44px;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
     }
     .logo-brand .brand-image{
       display: block;
@@ -57,22 +56,26 @@
       object-fit: contain;
     }
     .logo-brand.is-expanded .brand-image {
-      width: 160px !important;
-      height: 40px !important;
+      width: 40px !important;
+      height: 28px !important;
+      flex: 0 0 40px;
     }
     .brand-system-name {
-      max-width: 100%;
+      min-width: 0;
       overflow: hidden;
       color: #f3f7fc;
+      font-family: var(--smartops-font-sans);
       font-size: 16px;
-      font-weight: 600;
-      line-height: 20px;
+      font-weight: 500;
+      line-height: 24px;
+      letter-spacing: 0;
+      text-shadow: none;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .logo-brand.is-collapsed .brand-image {
-      width: 52px !important;
-      height: 32px !important;
+      width: 36px !important;
+      height: 28px !important;
     }
   }
   /deep/ .ant-menu-dark,

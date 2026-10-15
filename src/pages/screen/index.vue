@@ -29,13 +29,13 @@
       <operations-widget class="area-severity" type="ops-severity" :title="$t('panel_severity')" :payload="{triggers: triggerList}" :status="dataStatus.alarms" />
 
       <!-- 行 3 左：Linux TOP（CPU/内存切换） -->
-      <operations-widget class="area-cpu-top" type="ops-linux" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="linMetric" :payload="{cpu: linCpuTop, mem: linMemTop}" :status="dataStatus[linMetric === 'cpu' ? 'linCpuTop' : 'linMemTop']" @metric-change="linMetric = $event" />
+      <operations-widget class="area-cpu-top" type="ops-linux" :title="'Linux ' + (linMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="linMetric" :payload="{cpu: linCpuTop, mem: linMemTop, host_count: dataStatus.info ? null : info.lin_count}" :status="dataStatus[linMetric === 'cpu' ? 'linCpuTop' : 'linMemTop']" @metric-change="linMetric = $event" />
 
       <!-- 行 3 中：实时告警动态 -->
       <operations-widget class="area-alert" type="ops-alerts" :title="$t('panel_alert_list')" :payload="{triggers: triggerList}" :status="dataStatus.alarms" />
 
       <!-- 行 3 右：Windows TOP（CPU/内存切换） -->
-      <operations-widget class="area-mem-top" type="ops-windows" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="winMetric" :payload="{cpu: winCpuTop, mem: winMemTop}" :status="dataStatus[winMetric === 'cpu' ? 'winCpuTop' : 'winMemTop']" @metric-change="winMetric = $event" />
+      <operations-widget class="area-mem-top" type="ops-windows" :title="'Windows ' + (winMetric === 'cpu' ? 'CPU' : '内存') + ' 排行'" :metric="winMetric" :payload="{cpu: winCpuTop, mem: winMemTop, host_count: dataStatus.info ? null : info.win_count}" :status="dataStatus[winMetric === 'cpu' ? 'winCpuTop' : 'winMemTop']" @metric-change="winMetric = $event" />
 
       </div>
     </div>
@@ -166,6 +166,7 @@ export default {
           win_count: d.win_count || 0,
           lin_count: d.lin_count || 0,
           total_count: d.total_count || 0,
+          online_rate: d.online_rate,
           asset_type_counts: Array.isArray(d.asset_type_counts) ? d.asset_type_counts : []
         }
       }).catch(() => { this.dataStatus.info = 'error' })

@@ -24,7 +24,7 @@ test('F40 keeps side navigation branding inside one structural masthead', () => 
   const side = source('src/components/menu/index.less')
   const logoBlock = side.slice(side.indexOf('.logo{'), side.indexOf('/deep/'))
 
-  assert.match(logoBlock, /height:\s*76px/)
+  assert.match(logoBlock, /height:\s*64px/)
   assert.match(logoBlock, /border-bottom:\s*1px solid/)
   assert.match(logoBlock, /\.logo-brand\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/)
   assert.doesNotMatch(logoBlock, /border-left:\s*3px solid #ffd100/)

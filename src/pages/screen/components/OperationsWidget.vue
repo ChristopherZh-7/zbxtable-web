@@ -12,7 +12,7 @@
       <host-type-pie v-if="type === 'ops-hosts'" :data="payload.info || {}" />
       <severity-rose v-else-if="type === 'ops-severity'" :triggers="payload.triggers || []" />
       <egress-area v-else-if="type === 'ops-egress'" :data="payload.egress || []" />
-      <resource-top-bar v-else-if="isTop" :rows="activeMetric === 'cpu' ? (payload.cpu || []) : (payload.mem || [])" :metric="activeMetric" />
+      <resource-top-bar v-else-if="isTop && !emptyLabel" :rows="activeMetric === 'cpu' ? (payload.cpu || []) : (payload.mem || [])" :metric="activeMetric" />
       <alert-marquee v-else-if="type === 'ops-alerts'" :list="payload.triggers || []" />
       <div v-if="emptyLabel && !status" class="operations-widget__empty">{{ emptyLabel }}</div>
     </screen-panel>
@@ -27,7 +27,7 @@ import SeverityRose from './SeverityRose'
 import ResourceTopBar from './ResourceTopBar'
 import EgressArea from './EgressArea'
 import AlertMarquee from './AlertMarquee'
-import {operationsKpi} from '../operations-model'
+import {operationsKpi, resourceTopEmptyLabel} from '../operations-model'
 import '../style.less'
 export default {
   name: 'OperationsWidget',
@@ -39,6 +39,7 @@ export default {
     kpi() { return operationsKpi(this.payload.info, this.payload.triggers) },
     isTop() { return this.type === 'ops-linux' || this.type === 'ops-windows' },
     emptyLabel() {
+      if (this.isTop) return resourceTopEmptyLabel(this.type, this.activeMetric, this.payload)
       if (this.type === 'ops-egress' && !(this.payload.egress || []).length) return '当前租户暂无可展示的出口流量'
       if (this.type === 'ops-hosts' && !operationsKpi(this.payload.info).total) return '当前租户暂无主机'
       if (this.type === 'ops-severity' && !(this.payload.triggers || []).length) return '暂无活动告警'
@@ -52,6 +53,6 @@ export default {
 .operations-widget { position: relative; width: 100%; height: 100%; color: #cfe8ff; font-family: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 .operations-widget .screen-panel { box-sizing: border-box; }
 .operations-widget__kpi-title { position: absolute; top: 4px; left: 10px; z-index: 1; color: #cfe8ff; font-size: 12px; }
-.operations-widget__empty { position: absolute; top: 45%; left: 0; width: 100%; text-align: center; color: #9ab8ca; pointer-events: none; }
+.operations-widget__empty { position: absolute; top: 45%; left: 0; width: 100%; padding: 0 24px; box-sizing: border-box; text-align: center; line-height: 1.8; color: #9ab8ca; pointer-events: none; }
 .operations-widget__status { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(2,6,13,.9); color: #cfe8ff; }
 </style>

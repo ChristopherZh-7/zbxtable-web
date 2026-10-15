@@ -21,11 +21,11 @@ test('F41 uses transparent dark-surface assets in expanded and collapsed navigat
   const styles = source('src/components/menu/index.less')
   const logoBlock = styles.slice(styles.indexOf('.logo{'), styles.indexOf('/deep/'))
 
-  assert.match(component, /qianxin-horizontal-embedded\.png/)
+  assert.match(component, /alt="奇安信标志"/)
   assert.match(component, /qianxin-tiger-embedded\.png/)
   assert.match(logoBlock, /background:\s*#0a1f44/)
   assert.doesNotMatch(logoBlock, /background-color:\s*#fff/)
-  assert.match(logoBlock, /box-shadow:\s*inset/)
+  assert.match(logoBlock, /box-shadow:\s*none/)
   assert.match(logoBlock, /\.logo-brand\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/)
 })
 

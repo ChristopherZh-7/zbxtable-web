@@ -226,6 +226,28 @@
   }
   .ant-table { color: var(--smartops-ink); font-size: 14px; border-radius: 2px; }
   .ant-table-body, .ant-table-content { max-width: 100%; overflow-x: auto; }
+  // Ant sets inline overflow-x: scroll when scroll.x is provided, even if all columns fit.
+  .ant-table-scroll .ant-table-body { overflow-x: auto !important; }
+  // Ant renders the empty state beside the body, so let their shared container
+  // scroll together. Otherwise an empty table puts its scrollbar below the header.
+  .ant-table-empty > .ant-table-content {
+    > .ant-table-scroll { overflow-x: auto; }
+    > .ant-table-body,
+    > .ant-table-scroll > .ant-table-body,
+    > .ant-table-scroll > .ant-table-header {
+      overflow: visible !important;
+      max-height: none !important;
+    }
+    > .ant-table-scroll > .ant-table-header {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    > .ant-table-placeholder,
+    > .ant-table-scroll > .ant-table-placeholder {
+      position: sticky;
+      left: 0;
+    }
+  }
   .ant-table-thead > tr > th,
   .ant-table.ant-table-small > .ant-table-content > .ant-table-body > table > .ant-table-thead > tr > th {
     // Ant's middle/small/fixed-column selectors otherwise reintroduce different densities.
